@@ -1,5 +1,17 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, LayoutGrid, LayoutDashboard, X } from 'lucide-react';
+import {
+  Home,
+  LayoutGrid,
+  LayoutDashboard,
+  ClipboardList,
+  Target,
+  NotebookText,
+  WalletCards,
+  Dumbbell,
+  Handshake,
+  GraduationCap,
+  X,
+} from 'lucide-react';
 import SidebarSection from './SidebarSection';
 import SidebarItem from './SidebarItem';
 import SidebarToggle from './SidebarToggle';
@@ -13,10 +25,17 @@ const navItems = [
   { id: 'home', label: 'Home', icon: Home, path: '/home' },
   { id: 'canvas', label: 'Canvas', icon: LayoutGrid, path: '/canvas' },
   { id: 'command', label: 'Command Center', icon: LayoutDashboard, path: '/command' },
+  { id: 'tasks', label: 'Tasks', icon: ClipboardList, path: '/tasks' },
+  { id: 'goals', label: 'Goals', icon: Target, path: '/goals' },
+  { id: 'journal', label: 'Journal', icon: NotebookText, path: '/journal' },
+  { id: 'finance', label: 'Finance', icon: WalletCards, path: '/finance' },
+  { id: 'fitness', label: 'Fitness', icon: Dumbbell, path: '/fitness' },
+  { id: 'crm', label: 'CRM', icon: Handshake, path: '/crm' },
+  { id: 'academics', label: 'Academics', icon: GraduationCap, path: '/academics' },
 ];
 
 function formatChatLabel({ date, title }) {
-  return `${date} — ${title}`;
+  return `${date} - ${title}`;
 }
 
 export default function Sidebar() {
