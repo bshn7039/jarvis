@@ -23,13 +23,15 @@ export function CategoryBreakdown({ categoryBreakdown }) {
   return (
     <div className="space-y-3">
       {categoryBreakdown.map((category) => {
-        const pct = Math.round((category.amount / category.budget) * 100);
+        const amount = category.amount ?? 0;
+        const budget = category.budget || 1;
+        const pct = Math.round((amount / budget) * 100);
         return (
           <article key={category.category} className="rounded-xl border border-jarvis-border bg-black/20 p-3">
             <div className="flex items-center justify-between text-sm">
               <p className="text-jarvis-text">{category.category}</p>
               <p className="text-jarvis-muted">
-                {category.amount.toLocaleString('en-IN')} / {category.budget.toLocaleString('en-IN')}
+                {amount.toLocaleString('en-IN')} / {budget.toLocaleString('en-IN')}
               </p>
             </div>
             <div className="mt-2">

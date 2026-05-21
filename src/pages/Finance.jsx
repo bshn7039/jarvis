@@ -28,9 +28,13 @@ export default function Finance() {
   const categoryBreakdown = useMemo(() => {
     const counts = {};
     transactions.filter(t => t.type === 'expense').forEach(t => {
-      counts[t.category] = (counts[t.category] || 0) + t.amount;
+      counts[t.category] = (counts[t.category] || 0) + (t.amount || 0);
     });
-    return Object.entries(counts).map(([label, value]) => ({ label, value }));
+    return Object.entries(counts).map(([category, amount]) => ({ 
+      category, 
+      amount, 
+      budget: 10000 // Default budget placeholder
+    }));
   }, [transactions]);
 
   const filteredTransactions = useMemo(
@@ -79,12 +83,14 @@ export default function Finance() {
       <PagePanel title="Savings Tracker">
         <div className="grid gap-3 md:grid-cols-2">
           {savingsGoals.map((goal) => {
-            const pct = Math.round((goal.current / goal.target) * 100);
+            const current = goal.current ?? 0;
+            const target = goal.target || 1;
+            const pct = Math.round((current / target) * 100);
             return (
               <article key={goal.id} className="rounded-xl border border-jarvis-border bg-black/20 p-3">
                 <p className="text-sm text-jarvis-text">{goal.title}</p>
                 <p className="mt-1 text-xs text-jarvis-muted">
-                  {goal.current.toLocaleString('en-IN')} / {goal.target.toLocaleString('en-IN')}
+                  {current.toLocaleString('en-IN')} / {target.toLocaleString('en-IN')}
                 </p>
                 <div className="mt-2">
                   <ProgressBar value={pct} />

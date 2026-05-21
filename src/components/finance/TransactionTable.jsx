@@ -24,7 +24,7 @@ export default function TransactionTable({ transactions }) {
                   transaction.type === 'income' ? 'text-jarvis-accent' : 'text-jarvis-text',
                 ].join(' ')}
               >
-                {transaction.amount.toLocaleString('en-IN', {
+                {(transaction.amount ?? 0).toLocaleString('en-IN', {
                   style: 'currency',
                   currency: 'INR',
                   maximumFractionDigits: 0,
