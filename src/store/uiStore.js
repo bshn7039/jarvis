@@ -290,6 +290,7 @@ export const useUiStore = create(
           if (import.meta.env.DEV) {
             console.warn('[jarvis] persisted state unusable, using defaults');
           }
+          clearPersistedUi();
           return current;
         }
 

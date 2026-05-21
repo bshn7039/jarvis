@@ -66,7 +66,14 @@ export function sanitizeUi(ui = {}) {
 }
 
 export function isValidDatabaseTree(tree) {
-  return Array.isArray(tree) && tree.length > 0 && tree.every((node) => node && typeof node.id === 'string');
+  const isValidNode = (node) => {
+    if (!node || typeof node !== 'object' || typeof node.id !== 'string') return false;
+    if (node.children === undefined) return true;
+    if (!Array.isArray(node.children)) return false;
+    return node.children.every(isValidNode);
+  };
+
+  return Array.isArray(tree) && tree.length > 0 && tree.every(isValidNode);
 }
 
 export function sanitizeDatabaseTree(tree, fallback) {

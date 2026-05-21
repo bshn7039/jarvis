@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useUiStore, getVisibleModules, selectSafeCanvasView } from '../../store/uiStore';
 import { useStoreHydrated } from '../../hooks/useStoreHydrated';
-import { sanitizeZoom } from '../../utils/safePersist';
+import { sanitizePan, sanitizeZoom } from '../../utils/safePersist';
 import CanvasToolbar from './CanvasToolbar';
 import WorkspaceGrid from './WorkspaceGrid';
 import DraggableModule from './DraggableModule';
@@ -14,7 +14,13 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const hydrated = useStoreHydrated();
   const [workspaceScale, setWorkspaceScale] = useState(1);
   const [isDraggingModule, setIsDraggingModule] = useState(false);
+  const [transformMountKey, setTransformMountKey] = useState('pending');
   const persistReadyRef = useRef(false);
+  const initialTransformRef = useRef({
+    scale: 1,
+    positionX: 0,
+    positionY: 0,
+  });
 
   const { scale, positionX, positionY } = useUiStore(selectSafeCanvasView);
   const visibleModules = useUiStore(getVisibleModules);
@@ -29,13 +35,28 @@ export default function CanvasWorkspace({ onMenuClick }) {
       return undefined;
     }
 
-    setWorkspaceScale(scale);
+    const safeScale = sanitizeZoom(scale, 1);
+    const safePositionX = sanitizePan(positionX, 0);
+    const safePositionY = sanitizePan(positionY, 0);
+
+    initialTransformRef.current = {
+      scale: safeScale,
+      positionX: safePositionX,
+      positionY: safePositionY,
+    };
+    setWorkspaceScale(safeScale);
+    setTransformMountKey(`hydrated:${safeScale}:${safePositionX}:${safePositionY}`);
+
+    if (import.meta.env.DEV) {
+      console.log('[jarvis] canvas hydration complete', initialTransformRef.current);
+    }
+
     const frame = requestAnimationFrame(() => {
       persistReadyRef.current = true;
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [hydrated, scale]);
+  }, [hydrated, scale, positionX, positionY]);
 
   const updateLocalScale = useCallback((_, state) => {
     const nextScale = sanitizeZoom(state?.scale, 1);
@@ -47,11 +68,28 @@ export default function CanvasWorkspace({ onMenuClick }) {
       if (!persistReadyRef.current || !state) return;
 
       const nextScale = sanitizeZoom(state.scale, 1);
+      const nextPositionX = sanitizePan(state.positionX, 0);
+      const nextPositionY = sanitizePan(state.positionY, 0);
+
+      if (import.meta.env.DEV) {
+        const sanitized =
+          nextScale !== state.scale ||
+          nextPositionX !== state.positionX ||
+          nextPositionY !== state.positionY;
+        if (sanitized) {
+          console.warn('[jarvis] invalid transform values sanitized', {
+            scale: state.scale,
+            positionX: state.positionX,
+            positionY: state.positionY,
+          });
+        }
+      }
+
       setWorkspaceScale(nextScale);
       setCanvasView({
         scale: nextScale,
-        positionX: state.positionX,
-        positionY: state.positionY,
+        positionX: nextPositionX,
+        positionY: nextPositionY,
       });
     },
     [setCanvasView],
@@ -60,6 +98,9 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const zoomPercent = Math.round(workspaceScale * 100);
 
   if (!hydrated) {
+    if (import.meta.env.DEV) {
+      console.log('[jarvis] canvas hydration start');
+    }
     return (
       <div className="flex h-full w-full flex-col overflow-hidden">
         <CanvasToolbar
@@ -81,9 +122,10 @@ export default function CanvasWorkspace({ onMenuClick }) {
     <div className="flex h-full w-full flex-col overflow-hidden">
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <TransformWrapper
-          initialScale={scale}
-          initialPositionX={positionX}
-          initialPositionY={positionY}
+          key={transformMountKey}
+          initialScale={initialTransformRef.current.scale}
+          initialPositionX={initialTransformRef.current.positionX}
+          initialPositionY={initialTransformRef.current.positionY}
           minScale={0.5}
           maxScale={2}
           limitToBounds={false}
@@ -121,6 +163,10 @@ export default function CanvasWorkspace({ onMenuClick }) {
                   persistReadyRef.current = false;
                   resetTransform(TOOLBAR_ZOOM_ANIMATION_MS);
                   resetCanvasView();
+                  setWorkspaceScale(1);
+                  if (import.meta.env.DEV) {
+                    console.log('[jarvis] transform reset to defaults');
+                  }
                   requestAnimationFrame(() => {
                     persistReadyRef.current = true;
                   });
