@@ -1,6 +1,10 @@
 import { createJSONStorage } from 'zustand/middleware';
 import { safeParseJson, STORAGE_KEY } from './safePersist';
 
+// Temporary stability guard: keep persistence pipeline mounted but disable IO.
+// Re-enable by setting this to true once runtime stability is confirmed.
+const PERSISTENCE_ENABLED = false;
+
 const devWarnStorage = (message, value) => {
   if (import.meta.env.DEV) {
     console.warn(`[jarvis] ${message}`, value);
@@ -8,6 +12,10 @@ const devWarnStorage = (message, value) => {
 };
 
 function readStorage(name) {
+  if (!PERSISTENCE_ENABLED) {
+    return null;
+  }
+
   try {
     const raw = localStorage.getItem(name);
     if (!raw) return null;
@@ -32,6 +40,10 @@ function readStorage(name) {
 }
 
 function writeStorage(name, value) {
+  if (!PERSISTENCE_ENABLED) {
+    return;
+  }
+
   try {
     localStorage.setItem(name, value);
   } catch (error) {
@@ -40,6 +52,10 @@ function writeStorage(name, value) {
 }
 
 export function createSafeLocalStorage() {
+  if (!PERSISTENCE_ENABLED) {
+    clearPersistedUi();
+  }
+
   return createJSONStorage(() => ({
     getItem: readStorage,
     setItem: writeStorage,

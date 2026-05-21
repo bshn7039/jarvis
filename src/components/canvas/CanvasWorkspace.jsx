@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { useUiStore, getVisibleModules, selectSafeCanvasView } from '../../store/uiStore';
+import { useUiStore, getEnrichedModules } from '../../store/uiStore';
 import { useStoreHydrated } from '../../hooks/useStoreHydrated';
 import { sanitizePan, sanitizeZoom } from '../../utils/safePersist';
 import CanvasToolbar from './CanvasToolbar';
@@ -16,22 +16,31 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const [isDraggingModule, setIsDraggingModule] = useState(false);
   const [transformMountKey, setTransformMountKey] = useState('pending');
   const persistReadyRef = useRef(false);
+  const hasInitializedTransformRef = useRef(false);
   const initialTransformRef = useRef({
     scale: 1,
     positionX: 0,
     positionY: 0,
   });
 
-  const { scale, positionX, positionY } = useUiStore(selectSafeCanvasView);
-  const visibleModules = useUiStore(getVisibleModules);
+  const scale = useUiStore((s) => sanitizeZoom(s.ui?.canvasZoom));
+  const positionX = useUiStore((s) => sanitizePan(s.ui?.canvasPositionX));
+  const positionY = useUiStore((s) => sanitizePan(s.ui?.canvasPositionY));
+  const modules = useUiStore((s) => s.modules);
   const setCanvasView = useUiStore((s) => s.setCanvasView);
   const resetCanvasView = useUiStore((s) => s.resetCanvasView);
   const toggleModuleVisibility = useUiStore((s) => s.toggleModuleVisibility);
   const updateModulePosition = useUiStore((s) => s.updateModulePosition);
+  const visibleModules = getEnrichedModules({ modules }).filter((module) => module.visible);
 
   useEffect(() => {
     if (!hydrated) {
       persistReadyRef.current = false;
+      hasInitializedTransformRef.current = false;
+      return undefined;
+    }
+
+    if (hasInitializedTransformRef.current) {
       return undefined;
     }
 
@@ -46,6 +55,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
     };
     setWorkspaceScale(safeScale);
     setTransformMountKey(`hydrated:${safeScale}:${safePositionX}:${safePositionY}`);
+    hasInitializedTransformRef.current = true;
 
     if (import.meta.env.DEV) {
       console.log('[jarvis] canvas hydration complete', initialTransformRef.current);

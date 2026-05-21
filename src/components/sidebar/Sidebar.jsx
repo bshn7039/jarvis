@@ -6,7 +6,7 @@ import SidebarToggle from './SidebarToggle';
 import DatabaseTree from '../canvas/DatabaseTree';
 import Divider from '../ui/Divider';
 import { chatHistory } from '../../data/mockChats';
-import { useUiStore, useCanvasSelectors } from '../../store/uiStore';
+import { useUiStore } from '../../store/uiStore';
 import { useLayout } from '../../context/LayoutContext';
 
 const navItems = [
@@ -25,7 +25,7 @@ export default function Sidebar() {
   const isHome = pathname === '/home';
   const isCanvas = pathname === '/canvas';
 
-  const databaseTree = useCanvasSelectors().databaseTree;
+  const databaseTree = useUiStore((s) => s.databaseTree);
   const toggleTreeCheck = useUiStore((s) => s.toggleTreeCheck);
   const toggleTreeExpand = useUiStore((s) => s.toggleTreeExpand);
 
