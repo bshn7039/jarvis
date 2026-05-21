@@ -4,7 +4,9 @@ import { useUiStore } from '../../store/uiStore';
 
 const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
   const expandKey = `goals:${node.id}`;
-  const expanded = useUiStore((s) => s.command.expanded[expandKey] ?? depth < 1);
+  const expanded = useUiStore(
+    (s) => s.commandCenter.collapsedSections[expandKey] ?? depth < 1,
+  );
   const toggleCommandExpanded = useUiStore((s) => s.toggleCommandExpanded);
   const hasChildren = node.children?.length > 0;
 
@@ -59,7 +61,9 @@ const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
 
 export default function GoalsHierarchy({ tree }) {
   const sectionKey = 'command:goals';
-  const sectionExpanded = useUiStore((s) => s.command.expanded[sectionKey] ?? true);
+  const sectionExpanded = useUiStore(
+    (s) => s.commandCenter.collapsedSections[sectionKey] ?? true,
+  );
   const toggleCommandExpanded = useUiStore((s) => s.toggleCommandExpanded);
 
   return (

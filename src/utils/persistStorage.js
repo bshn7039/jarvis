@@ -1,9 +1,10 @@
 import { createJSONStorage } from 'zustand/middleware';
 import { safeParseJson, STORAGE_KEY } from './safePersist';
+import { resetCorruptState } from './storage';
 
-// Temporary stability guard: keep persistence pipeline mounted but disable IO.
-// Re-enable by setting this to true once runtime stability is confirmed.
-const PERSISTENCE_ENABLED = false;
+const PERSISTENCE_ENABLED = true;
+const WRITE_THROTTLE_MS = 120;
+const writeTimers = new Map();
 
 const devWarnStorage = (message, value) => {
   if (import.meta.env.DEV) {
@@ -23,18 +24,14 @@ function readStorage(name) {
     const envelope = safeParseJson(raw, null);
     if (!envelope) {
       devWarnStorage('corrupt persisted envelope, clearing', name);
-      localStorage.removeItem(name);
+      resetCorruptState(name);
       return null;
     }
 
     return raw;
   } catch (error) {
     devWarnStorage('storage read failed, clearing', error);
-    try {
-      localStorage.removeItem(name);
-    } catch {
-      /* ignore */
-    }
+    resetCorruptState(name);
     return null;
   }
 }
@@ -44,11 +41,20 @@ function writeStorage(name, value) {
     return;
   }
 
-  try {
-    localStorage.setItem(name, value);
-  } catch (error) {
-    devWarnStorage('storage write failed', error);
+  if (writeTimers.has(name)) {
+    clearTimeout(writeTimers.get(name));
   }
+
+  const timer = setTimeout(() => {
+    writeTimers.delete(name);
+    try {
+      localStorage.setItem(name, value);
+    } catch (error) {
+      devWarnStorage('storage write failed', error);
+    }
+  }, WRITE_THROTTLE_MS);
+
+  writeTimers.set(name, timer);
 }
 
 export function createSafeLocalStorage() {
@@ -60,6 +66,11 @@ export function createSafeLocalStorage() {
     getItem: readStorage,
     setItem: writeStorage,
     removeItem: (name) => {
+      const timer = writeTimers.get(name);
+      if (timer) {
+        clearTimeout(timer);
+        writeTimers.delete(name);
+      }
       try {
         localStorage.removeItem(name);
       } catch {
@@ -70,6 +81,11 @@ export function createSafeLocalStorage() {
 }
 
 export function clearPersistedUi() {
+  const timer = writeTimers.get(STORAGE_KEY);
+  if (timer) {
+    clearTimeout(timer);
+    writeTimers.delete(STORAGE_KEY);
+  }
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {

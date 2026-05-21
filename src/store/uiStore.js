@@ -7,7 +7,7 @@ import {
   setNodeCheckedInTree,
   toggleTreeExpanded as toggleTreeExpandedInTree,
 } from '../data/mockCanvasData';
-import { defaultSchedule } from '../data/mockCommandData';
+import { defaultSchedule, defaultGoalsTree } from '../data/mockCommandData';
 import { buildVisibilityMap } from '../utils/fieldVisibility';
 import { deepClone } from '../utils/deepClone';
 import { createSafeLocalStorage, clearPersistedUi } from '../utils/persistStorage';
@@ -22,7 +22,7 @@ import {
   sanitizeModules,
   sanitizeDatabaseTree,
   sanitizeModuleFieldExpanded,
-  sanitizeCommand,
+  sanitizeCommandCenter,
   canvasViewNeedsReset,
 } from '../utils/safePersist';
 
@@ -57,14 +57,17 @@ function buildDefaultModuleFieldExpanded(modules) {
 }
 
 const defaultCommand = {
+  goalsTree: deepClone(defaultGoalsTree),
   schedule: deepClone(defaultSchedule),
-  expanded: {
+  collapsedSections: {
     'command:tasks': true,
     'command:goals': true,
     'command:schedule': true,
     'goals:main': true,
     'goals:phase': true,
   },
+  widgetVisibility: {},
+  widgetLayout: {},
 };
 
 export function resetPersistedUiState() {
@@ -79,8 +82,9 @@ export function resetPersistedUiState() {
     }),
     modules: defaults,
     databaseTree: deepClone(initialDatabaseTree),
+    visibilityTree: {},
     moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
-    command: deepClone(defaultCommand),
+    commandCenter: deepClone(defaultCommand),
   });
 }
 
@@ -95,8 +99,9 @@ export const useUiStore = create(
       }),
       modules: buildModulesState(),
       databaseTree: deepClone(initialDatabaseTree),
+      visibilityTree: {},
       moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
-      command: deepClone(defaultCommand),
+      commandCenter: deepClone(defaultCommand),
 
       toggleSidebarCollapsed: () =>
         set((state) => ({
@@ -179,6 +184,10 @@ export const useUiStore = create(
             ...state.modules,
             [moduleId]: { ...state.modules[moduleId], visible: Boolean(visible) },
           },
+          visibilityTree: {
+            ...state.visibilityTree,
+            [moduleId]: Boolean(visible),
+          },
           databaseTree: setNodeCheckedInTree(state.databaseTree, moduleId, visible),
         }));
       },
@@ -232,22 +241,52 @@ export const useUiStore = create(
 
       toggleCommandExpanded: (key) =>
         set((state) => ({
-          command: {
-            ...state.command,
-            expanded: {
-              ...state.command.expanded,
-              [key]: !state.command.expanded[key],
+          commandCenter: {
+            ...state.commandCenter,
+            collapsedSections: {
+              ...state.commandCenter.collapsedSections,
+              [key]: !state.commandCenter.collapsedSections[key],
             },
           },
         })),
 
-      isCommandExpanded: (key) => get().command.expanded[key] ?? false,
+      isCommandExpanded: (key) => get().commandCenter.collapsedSections[key] ?? false,
 
       setCommandSchedule: (schedule) =>
         set((state) => ({
-          command: {
-            ...state.command,
-            schedule: Array.isArray(schedule) ? schedule : state.command.schedule,
+          commandCenter: {
+            ...state.commandCenter,
+            schedule: Array.isArray(schedule) ? schedule : state.commandCenter.schedule,
+          },
+        })),
+      setCommandGoalsTree: (goalsTree) =>
+        set((state) => ({
+          commandCenter: {
+            ...state.commandCenter,
+            goalsTree:
+              goalsTree && typeof goalsTree === 'object'
+                ? goalsTree
+                : state.commandCenter.goalsTree,
+          },
+        })),
+      setCommandWidgetVisibility: (widgetId, visible) =>
+        set((state) => ({
+          commandCenter: {
+            ...state.commandCenter,
+            widgetVisibility: {
+              ...state.commandCenter.widgetVisibility,
+              [widgetId]: Boolean(visible),
+            },
+          },
+        })),
+      setCommandWidgetLayoutPref: (prefId, enabled) =>
+        set((state) => ({
+          commandCenter: {
+            ...state.commandCenter,
+            widgetLayout: {
+              ...state.commandCenter.widgetLayout,
+              [prefId]: Boolean(enabled),
+            },
           },
         })),
     }),
@@ -259,8 +298,9 @@ export const useUiStore = create(
         ui: state.ui,
         modules: state.modules,
         databaseTree: state.databaseTree,
+        visibilityTree: state.visibilityTree,
         moduleFieldExpanded: state.moduleFieldExpanded,
-        command: state.command,
+        commandCenter: state.commandCenter,
       }),
       migrate: (persisted, version) => {
         if (!persisted || version < PERSIST_VERSION) {
@@ -280,8 +320,9 @@ export const useUiStore = create(
             ...current,
             modules: buildModulesState(),
             databaseTree: deepClone(initialDatabaseTree),
+            visibilityTree: {},
             moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
-            command: deepClone(defaultCommand),
+            commandCenter: deepClone(defaultCommand),
           },
           initialModules,
         );
@@ -303,8 +344,9 @@ export const useUiStore = create(
           ui: sanitized.ui,
           modules: sanitized.modules,
           databaseTree: sanitized.databaseTree,
+          visibilityTree: sanitized.visibilityTree,
           moduleFieldExpanded: sanitized.moduleFieldExpanded,
-          command: sanitized.command,
+          commandCenter: sanitized.commandCenter,
         };
       },
       onRehydrateStorage: () => (state, error) => {

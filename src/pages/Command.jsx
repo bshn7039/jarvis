@@ -11,6 +11,7 @@ import WarningPanel from '../components/command/WarningPanel';
 import QuickActions from '../components/command/QuickActions';
 import TimelineCard from '../components/command/TimelineCard';
 import GoalsHierarchy from '../components/command/GoalsHierarchy';
+import { useUiStore } from '../store/uiStore';
 import {
   todayFocus,
   taskSummaries,
@@ -21,11 +22,11 @@ import {
   aiInsights,
   systemWarnings,
   quickActions,
-  defaultGoalsTree,
 } from '../data/mockCommandData';
 
 function CommandDashboard() {
   const { openMobile } = useLayout();
+  const goalsTree = useUiStore((s) => s.commandCenter.goalsTree);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
@@ -71,7 +72,7 @@ function CommandDashboard() {
             <TimelineCard />
           </div>
 
-          <GoalsHierarchy tree={defaultGoalsTree} />
+          <GoalsHierarchy tree={goalsTree} />
         </div>
       </div>
     </div>

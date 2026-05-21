@@ -9,8 +9,10 @@ const statusStyles = {
 };
 
 export default function TimelineCard() {
-  const schedule = useUiStore((s) => s.command.schedule);
-  const sectionExpanded = useUiStore((s) => s.command.expanded['command:schedule'] ?? true);
+  const schedule = useUiStore((s) => s.commandCenter.schedule);
+  const sectionExpanded = useUiStore(
+    (s) => s.commandCenter.collapsedSections['command:schedule'] ?? true,
+  );
   const toggleCommandExpanded = useUiStore((s) => s.toggleCommandExpanded);
   const setCommandSchedule = useUiStore((s) => s.setCommandSchedule);
 

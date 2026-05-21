@@ -22,7 +22,9 @@ function SummaryBlock({ title, stats }) {
 
 export default function TaskSummaryCard({ summaries, highlights }) {
   const sectionKey = 'command:tasks';
-  const sectionExpanded = useUiStore((s) => s.command.expanded[sectionKey] ?? true);
+  const sectionExpanded = useUiStore(
+    (s) => s.commandCenter.collapsedSections[sectionKey] ?? true,
+  );
   const toggleCommandExpanded = useUiStore((s) => s.toggleCommandExpanded);
 
   return (

@@ -1,12 +1,20 @@
+import { useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import ModuleTree from './ModuleTree';
 import VisibilityCheckbox from '../ui/VisibilityCheckbox';
-import { useUiStore, getFieldVisibilityMap } from '../../store/uiStore';
+import { useUiStore } from '../../store/uiStore';
+import { initialDatabaseTree } from '../../data/mockCanvasData';
+import { buildVisibilityMap } from '../../utils/fieldVisibility';
+import { sanitizeDatabaseTree } from '../../utils/safePersist';
 
 export default function ModuleCard({ module, onVisibilityToggle, onDragIntent }) {
   const collapsed = module.collapsed;
   const toggleModuleCollapsed = useUiStore((s) => s.toggleModuleCollapsed);
-  const fieldVisibilityMap = useUiStore(getFieldVisibilityMap);
+  const databaseTree = useUiStore((s) => s.databaseTree);
+  const fieldVisibilityMap = useMemo(
+    () => buildVisibilityMap(sanitizeDatabaseTree(databaseTree, initialDatabaseTree)),
+    [databaseTree],
+  );
 
   return (
     <div

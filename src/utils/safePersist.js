@@ -1,4 +1,5 @@
 import { deepClone } from './deepClone';
+import { clamp, isFiniteNumber, safeParse } from './storage';
 
 export const STORAGE_KEY = 'jarvis-ui-storage';
 export const PERSIST_VERSION = 2;
@@ -17,7 +18,7 @@ const devWarn = (message, value) => {
 export function safeParseJson(value, fallback = null) {
   if (value == null || value === '') return fallback;
   try {
-    const parsed = JSON.parse(value);
+    const parsed = safeParse(value, fallback);
     return parsed ?? fallback;
   } catch (error) {
     devWarn('failed to parse persisted JSON', error);
@@ -26,26 +27,26 @@ export function safeParseJson(value, fallback = null) {
 }
 
 export function sanitizeZoom(value, fallback = 1) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
+  if (!isFiniteNumber(value)) {
     devWarn('invalid canvas zoom, using default', value);
     return fallback;
   }
-  return Math.min(CANVAS_ZOOM_MAX, Math.max(CANVAS_ZOOM_MIN, value));
+  return clamp(value, CANVAS_ZOOM_MIN, CANVAS_ZOOM_MAX, fallback);
 }
 
 export function sanitizePan(value, fallback = 0) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
+  if (!isFiniteNumber(value)) {
     devWarn('invalid canvas pan, using default', value);
     return fallback;
   }
-  return Math.min(CANVAS_PAN_MAX, Math.max(-CANVAS_PAN_MAX, value));
+  return clamp(value, -CANVAS_PAN_MAX, CANVAS_PAN_MAX, fallback);
 }
 
 export function sanitizeModuleCoord(value, fallback) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
+  if (!isFiniteNumber(value)) {
     return fallback;
   }
-  return Math.min(10000, Math.max(-500, Math.round(value)));
+  return clamp(Math.round(value), -500, 10000, fallback);
 }
 
 export function sanitizePosition(position, fallback = DEFAULT_MODULE_POSITION) {
@@ -113,17 +114,39 @@ export function sanitizeModuleFieldExpanded(expanded, defaults) {
   return result;
 }
 
-export function sanitizeCommand(command, defaults) {
-  const schedule = Array.isArray(command?.schedule)
-    ? command.schedule.filter((item) => item && typeof item.id === 'string')
+function sanitizeBooleanMap(value, defaults) {
+  if (!value || typeof value !== 'object') return defaults;
+  const next = { ...defaults };
+  Object.entries(value).forEach(([key, mapValue]) => {
+    if (typeof key === 'string' && typeof mapValue === 'boolean') {
+      next[key] = mapValue;
+    }
+  });
+  return next;
+}
+
+export function sanitizeCommandCenter(commandCenter, defaults) {
+  const schedule = Array.isArray(commandCenter?.schedule)
+    ? commandCenter.schedule.filter((item) => item && typeof item.id === 'string')
     : defaults.schedule;
+  const goalsTree =
+    commandCenter?.goalsTree && typeof commandCenter.goalsTree === 'object'
+      ? commandCenter.goalsTree
+      : defaults.goalsTree;
 
-  const expanded =
-    command?.expanded && typeof command.expanded === 'object'
-      ? { ...defaults.expanded, ...command.expanded }
-      : defaults.expanded;
-
-  return { schedule, expanded };
+  return {
+    schedule,
+    goalsTree,
+    collapsedSections: sanitizeBooleanMap(
+      commandCenter?.collapsedSections,
+      defaults.collapsedSections,
+    ),
+    widgetVisibility: sanitizeBooleanMap(
+      commandCenter?.widgetVisibility,
+      defaults.widgetVisibility,
+    ),
+    widgetLayout: sanitizeBooleanMap(commandCenter?.widgetLayout, defaults.widgetLayout),
+  };
 }
 
 export function sanitizePersistedPayload(persisted, current, initialModules = []) {
@@ -136,11 +159,18 @@ export function sanitizePersistedPayload(persisted, current, initialModules = []
     ui: sanitizeUi({ ...current.ui, ...state.ui }),
     modules: sanitizeModules(state.modules, current.modules, initialModules),
     databaseTree: sanitizeDatabaseTree(state.databaseTree, current.databaseTree),
+    visibilityTree:
+      state.visibilityTree && typeof state.visibilityTree === 'object'
+        ? { ...current.visibilityTree, ...state.visibilityTree }
+        : current.visibilityTree,
     moduleFieldExpanded: sanitizeModuleFieldExpanded(
       state.moduleFieldExpanded,
       current.moduleFieldExpanded,
     ),
-    command: sanitizeCommand(state.command, current.command),
+    commandCenter: sanitizeCommandCenter(
+      state.commandCenter ?? state.command,
+      current.commandCenter,
+    ),
   };
 }
 
