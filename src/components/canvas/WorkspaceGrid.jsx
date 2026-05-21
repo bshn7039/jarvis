@@ -1,4 +1,4 @@
-import { WORKSPACE_SIZE } from '../../data/mockCanvasData';
+import { WORKSPACE_SIZE } from '../../config/canvasModules';
 
 export default function WorkspaceGrid({ children }) {
   return (

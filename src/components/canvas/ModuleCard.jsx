@@ -1,19 +1,17 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import ModuleTree from './ModuleTree';
 import VisibilityCheckbox from '../ui/VisibilityCheckbox';
 import { useUiStore } from '../../store/uiStore';
-import { initialDatabaseTree } from '../../data/mockCanvasData';
-import { buildVisibilityMap } from '../../utils/fieldVisibility';
-import { sanitizeDatabaseTree } from '../../utils/safePersist';
+import DatabaseNode from './DatabaseNode';
+import { databaseTree } from '../../data/databaseTree';
 
-export default function ModuleCard({ module, onVisibilityToggle, onDragIntent }) {
+const ModuleCard = memo(function ModuleCard({ module, onVisibilityToggle, onDragIntent }) {
   const collapsed = module.collapsed;
   const toggleModuleCollapsed = useUiStore((s) => s.toggleModuleCollapsed);
-  const databaseTree = useUiStore((s) => s.databaseTree);
-  const fieldVisibilityMap = useMemo(
-    () => buildVisibilityMap(sanitizeDatabaseTree(databaseTree, initialDatabaseTree)),
-    [databaseTree],
+  
+  const moduleNode = useMemo(() => 
+    databaseTree.find((node) => node.id === module.id),
+    [module.id]
   );
 
   return (
@@ -57,17 +55,27 @@ export default function ModuleCard({ module, onVisibilityToggle, onDragIntent })
       <div
         className={[
           'module-no-drag overflow-hidden transition-all duration-200 ease-out',
-          collapsed ? 'max-h-0 opacity-0' : 'max-h-[480px] opacity-100',
+          collapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100',
         ].join(' ')}
       >
         <div className="px-3 py-3">
-          <ModuleTree
-            moduleId={module.id}
-            nodes={module.data}
-            visibilityMap={fieldVisibilityMap}
-          />
+          <div className="max-h-[800px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-jarvis-border">
+            {moduleNode?.children?.length ? (
+              <div className="flex flex-col gap-1">
+                {moduleNode.children.map((node) => (
+                  <DatabaseNode key={node.id} node={node} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center opacity-50">
+                <p className="text-[11px] text-jarvis-muted italic">No data layers visible.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
   );
-}
+});
+
+export default ModuleCard;

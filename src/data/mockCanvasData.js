@@ -1,3 +1,4 @@
+<<<<<<< ours
 export const MODULE_IDS = ['personal', 'academics', 'fitness', 'journal'];
 
 export const WORKSPACE_SIZE = {
@@ -94,6 +95,20 @@ export const initialDatabaseTree = [
     ],
   },
 ];
+=======
+import { canvasModules } from '../config/canvasModules';
+
+export const MODULE_IDS = canvasModules.map((module) => module.id);
+
+export const initialDatabaseTree = canvasModules.map((module) => ({
+  id: module.id,
+  label: module.title,
+  checked: module.visible,
+  expanded: false,
+  isModule: true,
+  children: [],
+}));
+>>>>>>> theirs
 
 export function findNodeInTree(tree, nodeId) {
   for (const node of tree) {

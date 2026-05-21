@@ -477,4 +477,21 @@ export const mockDatabase = {
     learningScore: 76,
     relationshipScore: 64,
   },
+
+  personal: {
+    profile: {
+      fullName: 'Bhuvan M',
+      age: 21,
+      birthday: '2005-07-11',
+      location: 'Bengaluru, India',
+      occupation: 'CS Student & Builder',
+      bio: 'Building systems to augment human cognition and execution.',
+    },
+    preferences: {
+      theme: 'Monochrome Dark',
+      sidebar: 'Left',
+      focusMode: true,
+      dataRetention: 'Permanent',
+    },
+  },
 };

@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { createInitialModules } from '../data/mockModules';
+import { canvasModules } from '../config/canvasModules';
 import {
-  initialDatabaseTree,
+  databaseTree as initialDatabaseTree,
   findNodeInTree,
   setNodeCheckedInTree,
   toggleTreeExpanded as toggleTreeExpandedInTree,
-} from '../data/mockCanvasData';
+} from '../data/databaseTree';
 import { defaultSchedule, defaultGoalsTree } from '../data/mockCommandData';
 import { buildVisibilityMap } from '../utils/fieldVisibility';
 import { deepClone } from '../utils/deepClone';
@@ -26,7 +26,7 @@ import {
   canvasViewNeedsReset,
 } from '../utils/safePersist';
 
-const initialModules = createInitialModules();
+const initialModules = canvasModules;
 
 function buildModulesState() {
   return Object.fromEntries(
@@ -43,15 +43,8 @@ function buildModulesState() {
 
 function buildDefaultModuleFieldExpanded(modules) {
   const expanded = {};
-  const walk = (moduleId, node) => {
-    const key = `${moduleId}:${node.id}`;
-    if (node.children?.length) {
-      expanded[key] = true;
-      node.children.forEach((child) => walk(moduleId, child));
-    }
-  };
   modules.forEach((module) => {
-    module.data.forEach((node) => walk(module.id, node));
+    expanded[`${module.id}:module`] = true;
   });
   return expanded;
 }
@@ -81,8 +74,8 @@ export function resetPersistedUiState() {
       canvasPositionY: 0,
     }),
     modules: defaults,
-    databaseTree: deepClone(initialDatabaseTree),
-    visibilityTree: {},
+    treeExpansion: {},
+    treeChecked: {},
     moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
     commandCenter: deepClone(defaultCommand),
   });
@@ -98,9 +91,10 @@ export const useUiStore = create(
         canvasPositionY: 0,
       }),
       modules: buildModulesState(),
-      databaseTree: deepClone(initialDatabaseTree),
-      visibilityTree: {},
+      treeExpansion: {},
+      treeChecked: {},
       moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
+
       commandCenter: deepClone(defaultCommand),
 
       toggleSidebarCollapsed: () =>
@@ -184,11 +178,10 @@ export const useUiStore = create(
             ...state.modules,
             [moduleId]: { ...state.modules[moduleId], visible: Boolean(visible) },
           },
-          visibilityTree: {
-            ...state.visibilityTree,
+          treeChecked: {
+            ...state.treeChecked,
             [moduleId]: Boolean(visible),
           },
-          databaseTree: setNodeCheckedInTree(state.databaseTree, moduleId, visible),
         }));
       },
 
@@ -199,24 +192,36 @@ export const useUiStore = create(
         }
       },
 
-      toggleTreeCheck: (nodeId) => {
-        const tree = get().databaseTree;
-        const node = findNodeInTree(tree, nodeId);
+      toggleTreeCheck: (path) => {
+        const current = get().treeChecked[path] !== false;
+        const next = !current;
+        
+        const node = findNodeInTree(initialDatabaseTree, path);
         if (!node) return;
 
-        const nextChecked = !node.checked;
+        const newCheckedMap = { ...get().treeChecked };
+        
+        const walk = (n) => {
+          newCheckedMap[n.id] = next;
+          if (n.children) n.children.forEach(walk);
+        };
+        
+        walk(node);
 
-        if (node.isModule) {
-          get().setModuleVisibility(nodeId, nextChecked);
-          return;
+        set({ treeChecked: newCheckedMap });
+
+        // If it's a top-level module, sync with modules state
+        if (initialModules.some(m => m.id === path)) {
+          get().setModuleVisibility(path, next);
         }
-
-        set({ databaseTree: setNodeCheckedInTree(tree, nodeId, nextChecked) });
       },
 
-      toggleTreeExpand: (nodeId) =>
+      toggleTreeExpand: (path) =>
         set((state) => ({
-          databaseTree: toggleTreeExpandedInTree(state.databaseTree, nodeId),
+          treeExpansion: {
+            ...state.treeExpansion,
+            [path]: !state.treeExpansion[path],
+          },
         })),
 
       setModuleFieldExpanded: (moduleId, nodeId, expanded) =>
@@ -297,8 +302,8 @@ export const useUiStore = create(
       partialize: (state) => ({
         ui: state.ui,
         modules: state.modules,
-        databaseTree: state.databaseTree,
-        visibilityTree: state.visibilityTree,
+        treeExpansion: state.treeExpansion,
+        treeChecked: state.treeChecked,
         moduleFieldExpanded: state.moduleFieldExpanded,
         commandCenter: state.commandCenter,
       }),
@@ -319,8 +324,8 @@ export const useUiStore = create(
           {
             ...current,
             modules: buildModulesState(),
-            databaseTree: deepClone(initialDatabaseTree),
-            visibilityTree: {},
+            treeExpansion: {},
+            treeChecked: {},
             moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
             commandCenter: deepClone(defaultCommand),
           },
@@ -343,8 +348,8 @@ export const useUiStore = create(
           ...current,
           ui: sanitized.ui,
           modules: sanitized.modules,
-          databaseTree: sanitized.databaseTree,
-          visibilityTree: sanitized.visibilityTree,
+          treeExpansion: sanitized.treeExpansion || {},
+          treeChecked: sanitized.treeChecked || {},
           moduleFieldExpanded: sanitized.moduleFieldExpanded,
           commandCenter: sanitized.commandCenter,
         };
@@ -410,18 +415,17 @@ export function getVisibleModules(state) {
   return getEnrichedModules(state).filter((module) => module.visible);
 }
 
-export function getFieldVisibilityMap(state) {
-  const tree = sanitizeDatabaseTree(state.databaseTree, initialDatabaseTree);
-  return buildVisibilityMap(tree);
-}
-
 export function useCanvasSelectors() {
   const modules = useUiStore(getEnrichedModules);
   const visibleModules = useUiStore(getVisibleModules);
-  const databaseTree = useUiStore((s) =>
-    sanitizeDatabaseTree(s.databaseTree, initialDatabaseTree),
-  );
-  const fieldVisibilityMap = useUiStore(getFieldVisibilityMap);
+  const treeExpansion = useUiStore((s) => s.treeExpansion);
+  const treeChecked = useUiStore((s) => s.treeChecked);
 
-  return { modules, visibleModules, databaseTree, fieldVisibilityMap };
+  return { 
+    modules, 
+    visibleModules, 
+    databaseTree: initialDatabaseTree,
+    treeExpansion,
+    treeChecked
+  };
 }

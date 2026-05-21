@@ -32,7 +32,6 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const toggleModuleVisibility = useUiStore((s) => s.toggleModuleVisibility);
   const updateModulePosition = useUiStore((s) => s.updateModulePosition);
   const visibleModules = getEnrichedModules({ modules }).filter((module) => module.visible);
-
   useEffect(() => {
     if (!hydrated) {
       persistReadyRef.current = false;

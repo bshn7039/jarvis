@@ -149,6 +149,17 @@ export function sanitizeCommandCenter(commandCenter, defaults) {
   };
 }
 
+export function sanitizeTreeMap(value, defaults) {
+  if (!value || typeof value !== 'object') return defaults;
+  const next = { ...defaults };
+  Object.entries(value).forEach(([key, mapValue]) => {
+    if (typeof key === 'string' && typeof mapValue === 'boolean') {
+      next[key] = mapValue;
+    }
+  });
+  return next;
+}
+
 export function sanitizePersistedPayload(persisted, current, initialModules = []) {
   if (!persisted || typeof persisted !== 'object') return null;
 
@@ -158,11 +169,8 @@ export function sanitizePersistedPayload(persisted, current, initialModules = []
   return {
     ui: sanitizeUi({ ...current.ui, ...state.ui }),
     modules: sanitizeModules(state.modules, current.modules, initialModules),
-    databaseTree: sanitizeDatabaseTree(state.databaseTree, current.databaseTree),
-    visibilityTree:
-      state.visibilityTree && typeof state.visibilityTree === 'object'
-        ? { ...current.visibilityTree, ...state.visibilityTree }
-        : current.visibilityTree,
+    treeExpansion: sanitizeTreeMap(state.treeExpansion, current.treeExpansion || {}),
+    treeChecked: sanitizeTreeMap(state.treeChecked, current.treeChecked || {}),
     moduleFieldExpanded: sanitizeModuleFieldExpanded(
       state.moduleFieldExpanded,
       current.moduleFieldExpanded,

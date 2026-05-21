@@ -15,10 +15,8 @@ import {
 import SidebarSection from './SidebarSection';
 import SidebarItem from './SidebarItem';
 import SidebarToggle from './SidebarToggle';
-import DatabaseTree from '../canvas/DatabaseTree';
 import Divider from '../ui/Divider';
 import { chatHistory } from '../../data/mockChats';
-import { useUiStore } from '../../store/uiStore';
 import { useLayout } from '../../context/LayoutContext';
 
 const navItems = [
@@ -43,10 +41,6 @@ export default function Sidebar() {
   const { collapsed, mobileOpen, toggleCollapsed, closeMobile } = useLayout();
   const isHome = pathname === '/home';
   const isCanvas = pathname === '/canvas';
-
-  const databaseTree = useUiStore((s) => s.databaseTree);
-  const toggleTreeCheck = useUiStore((s) => s.toggleTreeCheck);
-  const toggleTreeExpand = useUiStore((s) => s.toggleTreeExpand);
 
   const widthClass = collapsed ? 'w-[72px]' : 'w-[260px] lg:w-[280px]';
 
@@ -123,7 +117,7 @@ export default function Sidebar() {
           </div>
         )}
 
-        <nav className={['flex shrink-0 flex-col gap-0.5', collapsed ? 'px-1.5' : 'px-2'].join(' ')}>
+        <nav className={['flex shrink-0 flex-col gap-0.5 mt-2', collapsed ? 'px-1.5' : 'px-2'].join(' ')}>
           {navItems.map((item) => (
             <SidebarItem
               key={item.id}
@@ -145,7 +139,7 @@ export default function Sidebar() {
 
             <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
               {isHome && (
-                <SidebarSection title="Chat History">
+                <SidebarSection title="Recent Chats">
                   {chatHistory.map((chat) => (
                     <button
                       key={chat.id}
@@ -155,16 +149,6 @@ export default function Sidebar() {
                       {formatChatLabel(chat)}
                     </button>
                   ))}
-                </SidebarSection>
-              )}
-
-              {isCanvas && (
-                <SidebarSection title="Database">
-                  <DatabaseTree
-                    tree={databaseTree}
-                    onToggleCheck={toggleTreeCheck}
-                    onToggleExpand={toggleTreeExpand}
-                  />
                 </SidebarSection>
               )}
             </div>
