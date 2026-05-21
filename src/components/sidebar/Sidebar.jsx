@@ -3,6 +3,7 @@ import {
   Home,
   LayoutGrid,
   LayoutDashboard,
+  User,
   ClipboardList,
   Target,
   NotebookText,
@@ -16,13 +17,14 @@ import SidebarSection from './SidebarSection';
 import SidebarItem from './SidebarItem';
 import SidebarToggle from './SidebarToggle';
 import Divider from '../ui/Divider';
-import { chatHistory } from '../../data/mockChats';
 import { useLayout } from '../../context/LayoutContext';
+import { useChatStore } from '../../store/chatStore';
 
 const navItems = [
   { id: 'home', label: 'Home', icon: Home, path: '/home' },
   { id: 'canvas', label: 'Canvas', icon: LayoutGrid, path: '/canvas' },
   { id: 'command', label: 'Command Center', icon: LayoutDashboard, path: '/command' },
+  { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
   { id: 'tasks', label: 'Tasks', icon: ClipboardList, path: '/tasks' },
   { id: 'goals', label: 'Goals', icon: Target, path: '/goals' },
   { id: 'journal', label: 'Journal', icon: NotebookText, path: '/journal' },
@@ -39,6 +41,10 @@ function formatChatLabel({ date, title }) {
 export default function Sidebar() {
   const { pathname } = useLocation();
   const { collapsed, mobileOpen, toggleCollapsed, closeMobile } = useLayout();
+  const chatHistory = useChatStore((s) => s.chatHistory);
+  const setActiveChatId = useChatStore((s) => s.setActiveChatId);
+  const activeChatId = useChatStore((s) => s.activeChatId);
+
   const isHome = pathname === '/home';
   const isCanvas = pathname === '/canvas';
 
@@ -144,7 +150,13 @@ export default function Sidebar() {
                     <button
                       key={chat.id}
                       type="button"
-                      className="w-full truncate rounded-lg px-2.5 py-2 text-left text-[13px] text-jarvis-muted transition-colors duration-200 hover:bg-white/[0.03] hover:text-jarvis-text"
+                      onClick={() => setActiveChatId(chat.id)}
+                      className={[
+                        'w-full truncate rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-200',
+                        activeChatId === chat.id
+                          ? 'bg-white/10 text-jarvis-text'
+                          : 'text-jarvis-muted hover:bg-white/[0.03] hover:text-jarvis-text',
+                      ].join(' ')}
                     >
                       {formatChatLabel(chat)}
                     </button>

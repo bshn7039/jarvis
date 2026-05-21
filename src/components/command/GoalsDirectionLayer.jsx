@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { useUiStore } from '../../store/uiStore';
 
 const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
@@ -9,10 +9,14 @@ const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
   );
   const toggleCommandExpanded = useUiStore((s) => s.toggleCommandExpanded);
   const hasChildren = node.children?.length > 0;
+  const isCompleted = node.completed;
 
   return (
     <div style={{ paddingLeft: `${depth * 14}px` }}>
-      <div className="flex items-center gap-1.5 rounded-lg py-1.5 pr-2 transition-colors duration-200 hover:bg-white/[0.02]">
+      <div className={[
+        "flex items-center gap-1.5 rounded-lg py-1.5 pr-2 transition-colors duration-200 hover:bg-white/[0.02]",
+        isCompleted ? "opacity-40" : "opacity-100"
+      ].join(' ')}>
         {hasChildren ? (
           <button
             type="button"
@@ -33,6 +37,7 @@ const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
           className={[
             'text-sm',
             depth === 0 ? 'font-medium text-jarvis-text' : 'text-jarvis-text/85',
+            isCompleted ? 'line-through' : ''
           ].join(' ')}
         >
           {node.label}
@@ -59,7 +64,7 @@ const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
   );
 });
 
-export default function GoalsHierarchy({ tree }) {
+export default function GoalsDirectionLayer({ tree }) {
   const sectionKey = 'command:goals';
   const sectionExpanded = useUiStore(
     (s) => s.commandCenter.collapsedSections[sectionKey] ?? true,
@@ -68,20 +73,21 @@ export default function GoalsHierarchy({ tree }) {
 
   return (
     <section className="rounded-2xl border border-jarvis-border bg-jarvis-panel p-5 md:p-6">
-      <button
-        type="button"
-        onClick={() => toggleCommandExpanded(sectionKey)}
-        className="mb-4 flex w-full items-center justify-between gap-2 text-left"
-      >
-        <h2 className="text-sm font-medium uppercase tracking-wider text-jarvis-muted">
-          Goals Hierarchy
-        </h2>
-        {sectionExpanded ? (
-          <ChevronDown className="h-4 w-4 text-jarvis-muted" strokeWidth={1.75} />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-jarvis-muted" strokeWidth={1.75} />
-        )}
-      </button>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => toggleCommandExpanded(sectionKey)}
+          className="flex items-center gap-2 text-sm font-medium uppercase tracking-wider text-jarvis-muted hover:text-jarvis-text"
+        >
+          Goals Direction Layer
+          {sectionExpanded ? (
+            <ChevronDown className="h-4 w-4" strokeWidth={1.75} />
+          ) : (
+            <ChevronRight className="h-4 w-4" strokeWidth={1.75} />
+          )}
+        </button>
+        <Target className="h-4 w-4 text-jarvis-muted/40" />
+      </div>
 
       <div
         className={[
@@ -91,7 +97,7 @@ export default function GoalsHierarchy({ tree }) {
       >
         <div className="overflow-hidden">
           <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-jarvis-muted/70">
-            Main Goal
+            Strategic Roadmap
           </p>
           <GoalTreeNode node={tree} depth={0} />
         </div>

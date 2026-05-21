@@ -36,9 +36,9 @@ export const canvasModules = [
     position: { x: 2460, y: 1040 },
   },
   {
-    id: 'personal',
-    title: 'Personal',
-    type: 'personal',
+    id: 'profile',
+    title: 'Profile',
+    type: 'profile',
     visible: true,
     position: { x: 300, y: 1020 },
   },

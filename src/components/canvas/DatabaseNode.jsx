@@ -1,17 +1,25 @@
 import { memo, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Hash, List, Database, FileText, Table, Folder } from 'lucide-react';
+import { ChevronDown, ChevronRight, Hash, List, Database, FileText, Folder } from 'lucide-react';
 import { useUiStore } from '../../store/uiStore';
-import { mockDatabase } from '../../data/mockDatabase';
+import { useCombinedState } from '../../hooks/useCombinedState';
 import ProgressBar from '../ui/ProgressBar';
 
 const MAX_DEPTH = 10;
 
-function getNestedData(path) {
-  if (!path) return null;
+function getNestedData(data, path) {
+  if (!path || !data) return null;
   const parts = path.split('.');
-  let current = mockDatabase;
+  let current = data;
   for (const part of parts) {
-    if (current && typeof current === 'object') {
+    if (current === undefined || current === null) return null;
+    
+    if (Array.isArray(current)) {
+      const found = current.find((item, index) => 
+        (item && typeof item === 'object' && (String(item.id) === part || String(item.name) === part)) ||
+        String(index) === part
+      );
+      current = found;
+    } else if (typeof current === 'object') {
       current = current[part];
     } else {
       return null;
@@ -54,7 +62,31 @@ const DataTable = memo(function DataTable({ value }) {
   );
 });
 
-const DataRenderer = memo(function DataRenderer({ value, depth = 0, label }) {
+function formatValue(value, label = '') {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  
+  const str = String(value);
+  
+  // Date detection (simple)
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    try {
+      const date = new Date(value);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Mood/Score handling
+  if (label.toLowerCase().includes('mood') || label.toLowerCase().includes('score')) {
+    return `${value}/10`;
+  }
+
+  return str;
+}
+
+const DataRenderer = memo(function DataRenderer({ value, depth = 0, label = '' }) {
   if (value === null || value === undefined) {
     return <span className="text-jarvis-muted/50 italic text-[10px]">empty</span>;
   }
@@ -63,7 +95,9 @@ const DataRenderer = memo(function DataRenderer({ value, depth = 0, label }) {
 
   // Primitive Handling
   if (typeof value !== 'object') {
-    if (typeof value === 'number' && value >= 0 && value <= 100 && depth > 0 && !label?.toLowerCase().includes('year') && !label?.toLowerCase().includes('age')) {
+    if (typeof value === 'number' && value >= 0 && value <= 100 && depth > 0 && 
+        !label.toLowerCase().includes('year') && !label.toLowerCase().includes('age') && 
+        (label.toLowerCase().includes('progress') || label.toLowerCase().includes('rate'))) {
        return (
          <div className="flex items-center gap-2 py-0.5">
            <div className="flex-1 min-w-[60px]"><ProgressBar progress={value} height={4} /></div>
@@ -71,10 +105,34 @@ const DataRenderer = memo(function DataRenderer({ value, depth = 0, label }) {
          </div>
        );
     }
-    return <span className="text-jarvis-text/90 break-words leading-relaxed">{String(value)}</span>;
+    
+    const formatted = formatValue(value, label);
+    const isLongText = typeof value === 'string' && value.length > 100;
+
+    return (
+      <span className={[
+        "text-jarvis-text/90 break-words leading-relaxed",
+        isLongText ? "block mt-1 text-[11px] bg-white/[0.02] p-2 rounded border border-jarvis-border/30" : ""
+      ].join(' ')}>
+        {formatted}
+      </span>
+    );
   }
 
-  // Object/Array Handling
+  // Array of primitives
+  if (Array.isArray(value) && value.length > 0 && typeof value[0] !== 'object') {
+    return (
+      <div className="flex flex-wrap gap-1.5 py-1">
+        {value.map((v, i) => (
+          <span key={i} className="rounded-full bg-jarvis-muted/10 px-2 py-0.5 text-[10px] text-jarvis-muted border border-jarvis-border/40">
+            {String(v)}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  // Object/Array Handling with specific UI
   if (value.progress !== undefined || (value.current !== undefined && value.target !== undefined)) {
     const progress = value.progress ?? Math.round((value.current / value.target) * 100);
     return (
@@ -112,23 +170,21 @@ const DataRenderer = memo(function DataRenderer({ value, depth = 0, label }) {
   );
 });
 
-const DatabaseNode = memo(function DatabaseNode({ node, depth = 0 }) {
-  const toggleTreeExpand = useUiStore((s) => s.toggleTreeExpand);
-  const isExpanded = useUiStore((s) => !!s.treeExpansion[node.id]);
+const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState }) {
+  const toggleCanvasExpand = useUiStore((s) => s.toggleCanvasExpand);
+  const setActiveDetailPath = useUiStore((s) => s.setActiveDetailPath);
+  const isExpanded = useUiStore((s) => !!s.canvasExpansion[node.id]);
   const isVisible = useUiStore((s) => s.treeChecked[node.id] !== false);
 
   const data = useMemo(() => {
     if (node.dataKey) {
-      return getNestedData(node.dataKey);
+      return getNestedData(combinedState, node.dataKey);
     }
     return null;
-  }, [node.dataKey]);
-
-  if (!isVisible) return null;
+  }, [node.dataKey, combinedState]);
 
   const hasChildren = node.children && node.children.length > 0;
-  const showLeafData = !hasChildren && data !== null;
-
+  
   const Icon = useMemo(() => {
     if (node.isModule) return Database;
     if (hasChildren) return Folder;
@@ -137,7 +193,11 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0 }) {
     return FileText;
   }, [node.isModule, hasChildren, data]);
 
+  if (!isVisible) return null;
   if (depth > MAX_DEPTH) return null;
+
+  const isPrimitive = data !== null && typeof data !== 'object';
+  const showLeafData = !hasChildren && data !== null;
 
   return (
     <div className="flex flex-col select-none">
@@ -152,7 +212,7 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0 }) {
           <button
             type="button"
             className="module-no-drag rounded p-0.5 text-jarvis-muted transition-colors duration-200 hover:bg-white/10 hover:text-jarvis-text"
-            onClick={() => toggleTreeExpand(node.id)}
+            onClick={() => toggleCanvasExpand(node.id)}
           >
             {isExpanded ? (
               <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
@@ -165,13 +225,25 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0 }) {
         )}
         
         <Icon className={`h-3.5 w-3.5 shrink-0 ${isExpanded ? 'text-jarvis-text' : 'text-jarvis-muted/70'}`} strokeWidth={1.5} />
-        <span className={[
-          "min-w-0 flex-1 truncate text-[12px] tracking-tight",
-          isExpanded ? "font-semibold text-white" : "font-medium text-jarvis-text/80",
-          depth === 0 && "text-[13px]"
-        ].join(' ')}>
-          {node.label}
-        </span>
+        
+        <div 
+          className="flex min-w-0 flex-1 items-baseline gap-2 cursor-pointer group/label"
+          onClick={() => setActiveDetailPath(node.id)}
+        >
+          <span className={[
+            "truncate text-[12px] tracking-tight transition-colors duration-200",
+            isExpanded ? "font-semibold text-white" : "font-medium text-jarvis-text/80 group-hover/label:text-white",
+            depth === 0 && "text-[13px]"
+          ].join(' ')}>
+            {node.label}
+          </span>
+
+          {showLeafData && isPrimitive && !node.label.toLowerCase().includes('progress') && (
+            <span className="truncate text-[11px] text-jarvis-muted font-normal group-hover/label:text-jarvis-text/70 transition-colors">
+              : {formatValue(data, node.label)}
+            </span>
+          )}
+        </div>
       </div>
 
       {isExpanded && hasChildren && (
@@ -181,12 +253,13 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0 }) {
               key={child.id}
               node={child}
               depth={depth + 1}
+              combinedState={combinedState}
             />
           ))}
         </div>
       )}
 
-      {showLeafData && (
+      {showLeafData && (!isPrimitive || node.label.toLowerCase().includes('progress') || (typeof data === 'string' && data.length > 100)) && (
         <div className="ml-[7px] pl-4 mb-2">
            <DataRenderer value={data} label={node.label} depth={depth + 1} />
         </div>

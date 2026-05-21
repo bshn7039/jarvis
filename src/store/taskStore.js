@@ -1,8 +1,9 @@
-import { mockDatabase } from '../data/mockDatabase';
-import { createPersistedStore } from './persistHelpers';
+import { create } from 'zustand';
+import { taskService } from '../database/services/taskService';
+import { deepClone } from '../utils/deepClone';
 
 const initialState = {
-  tasks: mockDatabase.tasks,
+  tasks: [],
   searchQuery: '',
   activeCategory: 'All',
   activePriority: 'All',
@@ -14,6 +15,7 @@ const initialState = {
     Completed: false,
   },
   expandedTaskIds: {},
+  isHydrated: false,
 };
 
 function normalizeStatus(task) {
@@ -23,82 +25,104 @@ function normalizeStatus(task) {
   return task;
 }
 
-export const useTaskStore = createPersistedStore({
-  name: 'jarvis-tasks',
-  initialState,
-  partialize: (state) => ({
-    tasks: state.tasks,
-    searchQuery: state.searchQuery,
-    activeCategory: state.activeCategory,
-    activePriority: state.activePriority,
-    collapsedSections: state.collapsedSections,
-    expandedTaskIds: state.expandedTaskIds,
-  }),
-  actions: (set) => ({
-    setSearchQuery: (value) => set({ searchQuery: value }),
-    setActiveCategory: (value) => set({ activeCategory: value }),
-    setActivePriority: (value) => set({ activePriority: value }),
-    toggleSectionCollapsed: (section) =>
-      set((state) => ({
-        collapsedSections: {
-          ...state.collapsedSections,
-          [section]: !state.collapsedSections[section],
-        },
-      })),
-    toggleTaskExpanded: (taskId) =>
-      set((state) => ({
-        expandedTaskIds: {
-          ...state.expandedTaskIds,
-          [taskId]: !state.expandedTaskIds[taskId],
-        },
-      })),
-    toggleTaskCompletion: (taskId) =>
-      set((state) => ({
-        tasks: state.tasks.map((task) => {
-          if (task.id !== taskId) return task;
-          const done = task.status !== 'completed';
-          if (done) {
-            return { ...task, status: 'completed', section: 'Completed', progress: 100 };
-          }
-          return normalizeStatus({
-            ...task,
-            status: 'todo',
-            section: task.deadline?.slice(0, 10) === '2026-05-21' ? 'Today' : 'Weekly',
-            progress: Math.min(task.progress || 0, 95),
-          });
-        }),
-      })),
-    updateTaskProgress: (taskId, progress) =>
-      set((state) => ({
-        tasks: state.tasks.map((task) => {
-          if (task.id !== taskId) return task;
-          const next = Math.max(0, Math.min(100, Number(progress) || 0));
-          if (next >= 100) {
-            return { ...task, progress: 100, status: 'completed', section: 'Completed' };
-          }
-          return { ...task, progress: next };
-        }),
-      })),
-    addTask: (task) =>
-      set((state) => ({
-        tasks: [
-          {
-            id: `task-local-${Date.now()}`,
-            title: task.title?.trim() || 'Untitled task',
-            description: task.description?.trim() || 'Quick capture',
-            status: 'todo',
-            section: 'Today',
-            category: task.category || 'System',
-            priority: task.priority || 'Medium',
-            linkedGoal: task.linkedGoal || null,
-            deadline: task.deadline || '2026-05-21T23:59:00',
-            estimatedTime: task.estimatedTime || '30m',
-            tags: task.tags || ['quick-capture'],
-            progress: 0,
-            scheduleId: null,
-          },
-          ...state.tasks,
-        ],
-      })),
-  }),
-});
+export const useTaskStore = create((set, get) => ({
+  ...deepClone(initialState),
+
+  hydrate: async () => {
+    try {
+      const tasks = await taskService.getAll();
+      set({ tasks, isHydrated: true });
+    } catch (err) {
+      console.error('Failed to hydrate tasks:', err);
+    }
+  },
+
+  setSearchQuery: (value) => set({ searchQuery: value }),
+  setActiveCategory: (value) => set({ activeCategory: value }),
+  setActivePriority: (value) => set({ activePriority: value }),
+  
+  toggleSectionCollapsed: (section) =>
+    set((state) => ({
+      collapsedSections: {
+        ...state.collapsedSections,
+        [section]: !state.collapsedSections[section],
+      },
+    })),
+
+  toggleTaskExpanded: (taskId) =>
+    set((state) => ({
+      expandedTaskIds: {
+        ...state.expandedTaskIds,
+        [taskId]: !state.expandedTaskIds[taskId],
+      },
+    })),
+
+  toggleTaskCompletion: async (taskId) => {
+    const tasks = get().tasks;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    let updatedTask;
+    const done = task.status !== 'completed';
+    if (done) {
+      updatedTask = { ...task, status: 'completed', section: 'Completed', progress: 100 };
+    } else {
+      updatedTask = normalizeStatus({
+        ...task,
+        status: 'todo',
+        section: task.deadline?.slice(0, 10) === '2026-05-21' ? 'Today' : 'Weekly',
+        progress: Math.min(task.progress || 0, 95),
+      });
+    }
+
+    await taskService.update(taskId, updatedTask);
+    set({ tasks: tasks.map(t => t.id === taskId ? updatedTask : t) });
+  },
+
+  updateTaskProgress: async (taskId, progress) => {
+    const tasks = get().tasks;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const next = Math.max(0, Math.min(100, Number(progress) || 0));
+    let updatedTask;
+    if (next >= 100) {
+      updatedTask = { ...task, progress: 100, status: 'completed', section: 'Completed' };
+    } else {
+      updatedTask = { ...task, progress: next };
+    }
+
+    await taskService.update(taskId, updatedTask);
+    set({ tasks: tasks.map(t => t.id === taskId ? updatedTask : t) });
+  },
+
+  addTask: async (taskData) => {
+    const newTask = {
+      title: taskData.title?.trim() || 'Untitled task',
+      description: taskData.description?.trim() || 'Quick capture',
+      status: 'todo',
+      section: 'Today',
+      category: taskData.category || 'System',
+      priority: taskData.priority || 'Medium',
+      linkedGoal: taskData.linkedGoal || null,
+      deadline: taskData.deadline || '2026-05-21T23:59:00',
+      estimatedTime: taskData.estimatedTime || '30m',
+      tags: taskData.tags || ['quick-capture'],
+      progress: 0,
+      scheduleId: null,
+    };
+
+    const savedTask = await taskService.create(newTask);
+    set((state) => ({
+      tasks: [savedTask, ...state.tasks],
+    }));
+  },
+
+  deleteTask: async (taskId) => {
+    await taskService.delete(taskId);
+    set((state) => ({
+      tasks: state.tasks.filter(t => t.id !== taskId),
+    }));
+  }
+}));
+

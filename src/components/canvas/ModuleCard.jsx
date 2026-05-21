@@ -1,18 +1,14 @@
-import { useMemo, memo } from 'react';
+import { memo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import VisibilityCheckbox from '../ui/VisibilityCheckbox';
 import { useUiStore } from '../../store/uiStore';
+import { useCombinedState } from '../../hooks/useCombinedState';
 import DatabaseNode from './DatabaseNode';
-import { databaseTree } from '../../data/databaseTree';
 
-const ModuleCard = memo(function ModuleCard({ module, onVisibilityToggle, onDragIntent }) {
+const ModuleCard = memo(function ModuleCard({ module, moduleNode, onVisibilityToggle, onDragIntent }) {
   const collapsed = module.collapsed;
   const toggleModuleCollapsed = useUiStore((s) => s.toggleModuleCollapsed);
-  
-  const moduleNode = useMemo(() => 
-    databaseTree.find((node) => node.id === module.id),
-    [module.id]
-  );
+  const combinedState = useCombinedState();
 
   return (
     <div
@@ -63,7 +59,7 @@ const ModuleCard = memo(function ModuleCard({ module, onVisibilityToggle, onDrag
             {moduleNode?.children?.length ? (
               <div className="flex flex-col gap-1">
                 {moduleNode.children.map((node) => (
-                  <DatabaseNode key={node.id} node={node} />
+                  <DatabaseNode key={node.id} node={node} combinedState={combinedState} />
                 ))}
               </div>
             ) : (

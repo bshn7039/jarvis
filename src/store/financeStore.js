@@ -1,55 +1,68 @@
-import { mockDatabase } from '../data/mockDatabase';
-import { createPersistedStore } from './persistHelpers';
+import { create } from 'zustand';
+import { financeService } from '../database/services/financeService';
+import { savingsGoalService } from '../database/services/savingsGoalService';
+import { deepClone } from '../utils/deepClone';
 
 const initialState = {
-  balanceOverview: mockDatabase.finance.balanceOverview,
-  monthlySpending: mockDatabase.finance.monthlySpending,
-  categoryBreakdown: mockDatabase.finance.categoryBreakdown,
-  transactions: mockDatabase.finance.transactions,
-  savingsGoals: mockDatabase.finance.savingsGoals,
-  incomeStreams: mockDatabase.finance.incomeStreams,
+  balanceOverview: {
+    totalBalance: 42500,
+    checking: 12400,
+    savings: 28500,
+    cash: 1600,
+  },
+  transactions: [],
+  savingsGoals: [],
   selectedTransactionType: 'all',
   selectedCategory: 'all',
+  isHydrated: false,
 };
 
-export const useFinanceStore = createPersistedStore({
-  name: 'jarvis-finance',
-  initialState,
-  partialize: (state) => ({
-    balanceOverview: state.balanceOverview,
-    monthlySpending: state.monthlySpending,
-    categoryBreakdown: state.categoryBreakdown,
-    transactions: state.transactions,
-    savingsGoals: state.savingsGoals,
-    incomeStreams: state.incomeStreams,
-    selectedTransactionType: state.selectedTransactionType,
-    selectedCategory: state.selectedCategory,
-  }),
-  actions: (set) => ({
-    setSelectedTransactionType: (value) => set({ selectedTransactionType: value }),
-    setSelectedCategory: (value) => set({ selectedCategory: value }),
-    addTransaction: (transaction) =>
-      set((state) => ({
-        transactions: [
-          {
-            id: `txn-local-${Date.now()}`,
-            date: transaction.date || '2026-05-21',
-            type: transaction.type || 'expense',
-            category: transaction.category || 'Food',
-            amount: Number(transaction.amount) || 0,
-            note: transaction.note || 'Manual entry',
-            linkedTaskId: transaction.linkedTaskId || null,
-          },
-          ...state.transactions,
-        ],
-      })),
-    updateSavingsProgress: (goalId, current) =>
-      set((state) => ({
-        savingsGoals: state.savingsGoals.map((goal) =>
-          goal.id === goalId
-            ? { ...goal, current: Math.max(0, Number(current) || 0) }
-            : goal,
-        ),
-      })),
-  }),
-});
+export const useFinanceStore = create((set, get) => ({
+  ...deepClone(initialState),
+
+  hydrate: async () => {
+    try {
+      const transactions = await financeService.getAll();
+      const savingsGoals = await savingsGoalService.getAll();
+      
+      set({ 
+        transactions: transactions.sort((a, b) => b.date.localeCompare(a.date)),
+        savingsGoals,
+        isHydrated: true 
+      });
+    } catch (err) {
+      console.error('Failed to hydrate finance:', err);
+    }
+  },
+
+  setSelectedTransactionType: (value) => set({ selectedTransactionType: value }),
+  setSelectedCategory: (value) => set({ selectedCategory: value }),
+  
+  addTransaction: async (transactionData) => {
+    const next = {
+      date: transactionData.date || '2026-05-21',
+      type: transactionData.type || 'expense',
+      category: transactionData.category || 'Food',
+      amount: Number(transactionData.amount) || 0,
+      note: transactionData.note || 'Manual entry',
+      linkedTaskId: transactionData.linkedTaskId || null,
+    };
+    
+    const savedTransaction = await financeService.create(next);
+    set((state) => ({
+      transactions: [savedTransaction, ...state.transactions],
+    }));
+  },
+
+  updateSavingsProgress: async (goalId, current) => {
+    const goals = get().savingsGoals;
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const updated = { ...goal, current: Math.max(0, Number(current) || 0) };
+    await savingsGoalService.update(goalId, updated);
+    set({ savingsGoals: goals.map(g => g.id === goalId ? updated : g) });
+  },
+}));
+
+

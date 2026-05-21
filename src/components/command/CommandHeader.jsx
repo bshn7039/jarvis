@@ -42,7 +42,7 @@ export default function CommandHeader({ onMenuClick }) {
           <h1 className="text-xl font-medium tracking-tight text-jarvis-text md:text-2xl">
             Command Center
           </h1>
-          <p className="mt-1 text-sm text-jarvis-muted">Operational Overview</p>
+          <p className="mt-1 text-sm text-jarvis-muted">Operational Dashboard</p>
         </div>
       </div>
 

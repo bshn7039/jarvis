@@ -169,7 +169,8 @@ export function sanitizePersistedPayload(persisted, current, initialModules = []
   return {
     ui: sanitizeUi({ ...current.ui, ...state.ui }),
     modules: sanitizeModules(state.modules, current.modules, initialModules),
-    treeExpansion: sanitizeTreeMap(state.treeExpansion, current.treeExpansion || {}),
+    explorerExpansion: sanitizeTreeMap(state.explorerExpansion || state.treeExpansion, current.explorerExpansion || {}),
+    canvasExpansion: sanitizeTreeMap(state.canvasExpansion || state.treeExpansion, current.canvasExpansion || {}),
     treeChecked: sanitizeTreeMap(state.treeChecked, current.treeChecked || {}),
     moduleFieldExpanded: sanitizeModuleFieldExpanded(
       state.moduleFieldExpanded,

@@ -1,5 +1,5 @@
 import { Plus, Search } from 'lucide-react';
-import { TASK_CATEGORIES, TASK_PRIORITIES } from '../../data/mockDatabase';
+import { TASK_CATEGORIES, TASK_PRIORITIES } from '../../utils/constants';
 
 function FilterSelect({ value, onChange, options, label }) {
   return (

@@ -1,30 +1,10 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import { canvasModules } from '../config/canvasModules';
 import {
-  databaseTree as initialDatabaseTree,
   findNodeInTree,
-  setNodeCheckedInTree,
-  toggleTreeExpanded as toggleTreeExpandedInTree,
 } from '../data/databaseTree';
-import { defaultSchedule, defaultGoalsTree } from '../data/mockCommandData';
-import { buildVisibilityMap } from '../utils/fieldVisibility';
 import { deepClone } from '../utils/deepClone';
-import { createSafeLocalStorage, clearPersistedUi } from '../utils/persistStorage';
-import {
-  STORAGE_KEY,
-  PERSIST_VERSION,
-  sanitizeUi,
-  sanitizeZoom,
-  sanitizePan,
-  sanitizePosition,
-  sanitizePersistedPayload,
-  sanitizeModules,
-  sanitizeDatabaseTree,
-  sanitizeModuleFieldExpanded,
-  sanitizeCommandCenter,
-  canvasViewNeedsReset,
-} from '../utils/safePersist';
+import { uiService } from '../database/services/uiService';
 
 const initialModules = canvasModules;
 
@@ -50,8 +30,6 @@ function buildDefaultModuleFieldExpanded(modules) {
 }
 
 const defaultCommand = {
-  goalsTree: deepClone(defaultGoalsTree),
-  schedule: deepClone(defaultSchedule),
   collapsedSections: {
     'command:tasks': true,
     'command:goals': true,
@@ -63,339 +41,260 @@ const defaultCommand = {
   widgetLayout: {},
 };
 
-export function resetPersistedUiState() {
-  clearPersistedUi();
-  const defaults = buildModulesState();
-  useUiStore.setState({
-    ui: sanitizeUi({
-      sidebarCollapsed: false,
-      canvasZoom: 1,
-      canvasPositionX: 0,
-      canvasPositionY: 0,
-    }),
-    modules: defaults,
-    treeExpansion: {},
-    treeChecked: {},
-    moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
-    commandCenter: deepClone(defaultCommand),
-  });
-}
+export const useUiStore = create((set, get) => ({
+  ui: {
+    sidebarCollapsed: false,
+    canvasZoom: 1,
+    canvasPositionX: 0,
+    canvasPositionY: 0,
+  },
+  modules: buildModulesState(),
+  explorerExpansion: {},
+  canvasExpansion: {},
+  treeChecked: {},
+  moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
+  activeDetailPath: null,
+  commandCenter: deepClone(defaultCommand),
+  isHydrated: false,
 
-export const useUiStore = create(
-  persist(
-    (set, get) => ({
-      ui: sanitizeUi({
-        sidebarCollapsed: false,
+  hydrate: async () => {
+    try {
+      const settings = await uiService.getSettings();
+      const canvasRegistry = await uiService.getCanvasRegistry();
+      const commandState = await uiService.getCommandCenterState();
+
+      const profile = settings['user-profile'];
+      const prefs = settings['user-preferences'];
+
+      // Map canvas registry back to modules state
+      const modules = get().modules;
+      if (canvasRegistry.length > 0) {
+        canvasRegistry.forEach(m => {
+          if (modules[m.id]) {
+            modules[m.id] = {
+              ...modules[m.id],
+              position: m.position || modules[m.id].position,
+              visible: typeof m.visible === 'boolean' ? m.visible : modules[m.id].visible,
+            };
+          }
+        });
+      }
+
+      set({
+        ui: {
+          ...get().ui,
+          sidebarCollapsed: prefs?.sidebarCollapsed ?? false,
+          canvasZoom: prefs?.canvasZoom ?? 1,
+          canvasPositionX: prefs?.canvasPositionX ?? 0,
+          canvasPositionY: prefs?.canvasPositionY ?? 0,
+        },
+        modules,
+        commandCenter: commandState ? { ...get().commandCenter, ...commandState } : get().commandCenter,
+        isHydrated: true,
+      });
+    } catch (err) {
+      console.error('Failed to hydrate UI:', err);
+    }
+  },
+
+  savePrefs: async () => {
+    const { ui } = get();
+    await uiService.saveSetting('user-preferences', {
+      sidebarCollapsed: ui.sidebarCollapsed,
+      canvasZoom: ui.canvasZoom,
+      canvasPositionX: ui.canvasPositionX,
+      canvasPositionY: ui.canvasPositionY,
+    });
+  },
+
+  toggleSidebarCollapsed: () => {
+    set((state) => ({
+      ui: { ...state.ui, sidebarCollapsed: !state.ui.sidebarCollapsed },
+    }));
+    get().savePrefs();
+  },
+
+  setSidebarCollapsed: (collapsed) => {
+    set((state) => ({
+      ui: { ...state.ui, sidebarCollapsed: Boolean(collapsed) },
+    }));
+    get().savePrefs();
+  },
+
+  setCanvasView: ({ scale, positionX, positionY }) => {
+    set((state) => ({
+      ui: {
+        ...state.ui,
+        ...(scale !== undefined && { canvasZoom: scale }),
+        ...(positionX !== undefined && { canvasPositionX: positionX }),
+        ...(positionY !== undefined && { canvasPositionY: positionY }),
+      },
+    }));
+    get().savePrefs();
+  },
+
+  resetCanvasView: () => {
+    set((state) => ({
+      ui: {
+        ...state.ui,
         canvasZoom: 1,
         canvasPositionX: 0,
         canvasPositionY: 0,
-      }),
-      modules: buildModulesState(),
-      treeExpansion: {},
-      treeChecked: {},
-      moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
-
-      commandCenter: deepClone(defaultCommand),
-
-      toggleSidebarCollapsed: () =>
-        set((state) => ({
-          ui: { ...state.ui, sidebarCollapsed: !state.ui.sidebarCollapsed },
-        })),
-
-      setSidebarCollapsed: (collapsed) =>
-        set((state) => ({
-          ui: { ...state.ui, sidebarCollapsed: Boolean(collapsed) },
-        })),
-
-      setCanvasView: ({ scale, positionX, positionY }) => {
-        const nextUi = sanitizeUi({
-          ...get().ui,
-          ...(scale !== undefined && { canvasZoom: scale }),
-          ...(positionX !== undefined && { canvasPositionX: positionX }),
-          ...(positionY !== undefined && { canvasPositionY: positionY }),
-        });
-
-        const prev = get().ui;
-        const unchanged =
-          prev.canvasZoom === nextUi.canvasZoom &&
-          prev.canvasPositionX === nextUi.canvasPositionX &&
-          prev.canvasPositionY === nextUi.canvasPositionY;
-
-        if (unchanged) return;
-        set({ ui: nextUi });
       },
+    }));
+    get().savePrefs();
+  },
 
-      resetCanvasView: () =>
-        set((state) => ({
-          ui: sanitizeUi({
-            ...state.ui,
-            canvasZoom: 1,
-            canvasPositionX: 0,
-            canvasPositionY: 0,
-          }),
-        })),
-
-      updateModulePosition: (moduleId, x, y) => {
-        const base = initialModules.find((m) => m.id === moduleId);
-        const position = sanitizePosition(
-          { x, y },
-          base?.position ?? { x: 300, y: 200 },
-        );
-
-        set((state) => ({
-          modules: {
-            ...state.modules,
-            [moduleId]: {
-              ...state.modules[moduleId],
-              position,
-            },
-          },
-        }));
+  updateModulePosition: async (moduleId, x, y) => {
+    set((state) => ({
+      modules: {
+        ...state.modules,
+        [moduleId]: {
+          ...state.modules[moduleId],
+          position: { x, y },
+        },
       },
+    }));
+    
+    // Persist to IDB
+    const moduleState = get().modules[moduleId];
+    await uiService.saveCanvasModule({
+      id: moduleId,
+      position: { x, y },
+      visible: moduleState.visible
+    });
+  },
 
-      setModuleCollapsed: (moduleId, collapsed) =>
-        set((state) => ({
-          modules: {
-            ...state.modules,
-            [moduleId]: { ...state.modules[moduleId], collapsed: Boolean(collapsed) },
-          },
-        })),
-
-      toggleModuleCollapsed: (moduleId) =>
-        set((state) => ({
-          modules: {
-            ...state.modules,
-            [moduleId]: {
-              ...state.modules[moduleId],
-              collapsed: !state.modules[moduleId]?.collapsed,
-            },
-          },
-        })),
-
-      setModuleVisibility: (moduleId, visible) => {
-        set((state) => ({
-          modules: {
-            ...state.modules,
-            [moduleId]: { ...state.modules[moduleId], visible: Boolean(visible) },
-          },
-          treeChecked: {
-            ...state.treeChecked,
-            [moduleId]: Boolean(visible),
-          },
-        }));
+  setModuleCollapsed: (moduleId, collapsed) =>
+    set((state) => ({
+      modules: {
+        ...state.modules,
+        [moduleId]: { ...state.modules[moduleId], collapsed: Boolean(collapsed) },
       },
+    })),
 
-      toggleModuleVisibility: (moduleId) => {
-        const module = get().modules[moduleId];
-        if (module) {
-          get().setModuleVisibility(moduleId, !module.visible);
-        }
+  toggleModuleCollapsed: (moduleId) =>
+    set((state) => ({
+      modules: {
+        ...state.modules,
+        [moduleId]: {
+          ...state.modules[moduleId],
+          collapsed: !state.modules[moduleId]?.collapsed,
+        },
       },
+    })),
 
-      toggleTreeCheck: (path) => {
-        const current = get().treeChecked[path] !== false;
-        const next = !current;
-        
-        const node = findNodeInTree(initialDatabaseTree, path);
-        if (!node) return;
-
-        const newCheckedMap = { ...get().treeChecked };
-        
-        const walk = (n) => {
-          newCheckedMap[n.id] = next;
-          if (n.children) n.children.forEach(walk);
-        };
-        
-        walk(node);
-
-        set({ treeChecked: newCheckedMap });
-
-        // If it's a top-level module, sync with modules state
-        if (initialModules.some(m => m.id === path)) {
-          get().setModuleVisibility(path, next);
-        }
+  setModuleVisibility: async (moduleId, visible) => {
+    set((state) => ({
+      modules: {
+        ...state.modules,
+        [moduleId]: { ...state.modules[moduleId], visible: Boolean(visible) },
       },
-
-      toggleTreeExpand: (path) =>
-        set((state) => ({
-          treeExpansion: {
-            ...state.treeExpansion,
-            [path]: !state.treeExpansion[path],
-          },
-        })),
-
-      setModuleFieldExpanded: (moduleId, nodeId, expanded) =>
-        set((state) => ({
-          moduleFieldExpanded: {
-            ...state.moduleFieldExpanded,
-            [`${moduleId}:${nodeId}`]: Boolean(expanded),
-          },
-        })),
-
-      toggleModuleFieldExpanded: (moduleId, nodeId) => {
-        const key = `${moduleId}:${nodeId}`;
-        const current = get().moduleFieldExpanded[key] ?? true;
-        get().setModuleFieldExpanded(moduleId, nodeId, !current);
+      treeChecked: {
+        ...state.treeChecked,
+        [moduleId]: Boolean(visible),
       },
+    }));
 
-      isModuleFieldExpanded: (moduleId, nodeId) => {
-        const key = `${moduleId}:${nodeId}`;
-        const value = get().moduleFieldExpanded[key];
-        return value !== undefined ? value : true;
+    const moduleState = get().modules[moduleId];
+    await uiService.saveCanvasModule({
+      id: moduleId,
+      position: moduleState.position,
+      visible: Boolean(visible)
+    });
+  },
+
+  toggleModuleVisibility: (moduleId) => {
+    const module = get().modules[moduleId];
+    if (module) {
+      get().setModuleVisibility(moduleId, !module.visible);
+    }
+  },
+
+  toggleTreeCheck: (path, tree) => {
+    const current = get().treeChecked[path] !== false;
+    const next = !current;
+    
+    if (!tree) return;
+    const node = findNodeInTree(tree, path);
+    if (!node) return;
+
+    const newCheckedMap = { ...get().treeChecked };
+    
+    const walk = (n) => {
+      newCheckedMap[n.id] = next;
+      if (n.children) n.children.forEach(walk);
+    };
+    
+    walk(node);
+
+    set({ treeChecked: newCheckedMap });
+
+    if (initialModules.some(m => m.id === path)) {
+      get().setModuleVisibility(path, next);
+    }
+  },
+
+  toggleExplorerExpand: (path) =>
+    set((state) => ({
+      explorerExpansion: {
+        ...state.explorerExpansion,
+        [path]: !state.explorerExpansion[path],
       },
+    })),
 
-      toggleCommandExpanded: (key) =>
-        set((state) => ({
-          commandCenter: {
-            ...state.commandCenter,
-            collapsedSections: {
-              ...state.commandCenter.collapsedSections,
-              [key]: !state.commandCenter.collapsedSections[key],
-            },
-          },
-        })),
-
-      isCommandExpanded: (key) => get().commandCenter.collapsedSections[key] ?? false,
-
-      setCommandSchedule: (schedule) =>
-        set((state) => ({
-          commandCenter: {
-            ...state.commandCenter,
-            schedule: Array.isArray(schedule) ? schedule : state.commandCenter.schedule,
-          },
-        })),
-      setCommandGoalsTree: (goalsTree) =>
-        set((state) => ({
-          commandCenter: {
-            ...state.commandCenter,
-            goalsTree:
-              goalsTree && typeof goalsTree === 'object'
-                ? goalsTree
-                : state.commandCenter.goalsTree,
-          },
-        })),
-      setCommandWidgetVisibility: (widgetId, visible) =>
-        set((state) => ({
-          commandCenter: {
-            ...state.commandCenter,
-            widgetVisibility: {
-              ...state.commandCenter.widgetVisibility,
-              [widgetId]: Boolean(visible),
-            },
-          },
-        })),
-      setCommandWidgetLayoutPref: (prefId, enabled) =>
-        set((state) => ({
-          commandCenter: {
-            ...state.commandCenter,
-            widgetLayout: {
-              ...state.commandCenter.widgetLayout,
-              [prefId]: Boolean(enabled),
-            },
-          },
-        })),
-    }),
-    {
-      name: STORAGE_KEY,
-      version: PERSIST_VERSION,
-      storage: createSafeLocalStorage(),
-      partialize: (state) => ({
-        ui: state.ui,
-        modules: state.modules,
-        treeExpansion: state.treeExpansion,
-        treeChecked: state.treeChecked,
-        moduleFieldExpanded: state.moduleFieldExpanded,
-        commandCenter: state.commandCenter,
-      }),
-      migrate: (persisted, version) => {
-        if (!persisted || version < PERSIST_VERSION) {
-          if (import.meta.env.DEV && persisted) {
-            console.warn('[jarvis] migrating persisted state to version', PERSIST_VERSION);
-          }
-        }
-        return persisted;
+  toggleCanvasExpand: (path) =>
+    set((state) => ({
+      canvasExpansion: {
+        ...state.canvasExpansion,
+        [path]: !state.canvasExpansion[path],
       },
-      merge: (persisted, current) => {
-        const raw = persisted?.state ?? persisted;
-        const hadInvalidCanvas = raw?.ui && canvasViewNeedsReset(raw.ui);
+    })),
 
-        const sanitized = sanitizePersistedPayload(
-          { state: raw },
-          {
-            ...current,
-            modules: buildModulesState(),
-            treeExpansion: {},
-            treeChecked: {},
-            moduleFieldExpanded: buildDefaultModuleFieldExpanded(initialModules),
-            commandCenter: deepClone(defaultCommand),
-          },
-          initialModules,
-        );
+  setActiveDetailPath: (path) => set({ activeDetailPath: path }),
+  clearActiveDetailPath: () => set({ activeDetailPath: null }),
 
-        if (!sanitized) {
-          if (import.meta.env.DEV) {
-            console.warn('[jarvis] persisted state unusable, using defaults');
-          }
-          clearPersistedUi();
-          return current;
-        }
-
-        if (hadInvalidCanvas && import.meta.env.DEV) {
-          console.warn('[jarvis] reset invalid canvas transform values');
-        }
-
-        return {
-          ...current,
-          ui: sanitized.ui,
-          modules: sanitized.modules,
-          treeExpansion: sanitized.treeExpansion || {},
-          treeChecked: sanitized.treeChecked || {},
-          moduleFieldExpanded: sanitized.moduleFieldExpanded,
-          commandCenter: sanitized.commandCenter,
-        };
+  setModuleFieldExpanded: (moduleId, nodeId, expanded) =>
+    set((state) => ({
+      moduleFieldExpanded: {
+        ...state.moduleFieldExpanded,
+        [`${moduleId}:${nodeId}`]: Boolean(expanded),
       },
-      onRehydrateStorage: () => (state, error) => {
-        if (error) {
-          if (import.meta.env.DEV) {
-            console.warn('[jarvis] rehydration error, resetting persisted UI', error);
-          }
-          clearPersistedUi();
-          resetPersistedUiState();
-          return;
-        }
+    })),
 
-        if (state?.ui && canvasViewNeedsReset(state.ui)) {
-          useUiStore.setState({
-            ui: sanitizeUi({
-              ...state.ui,
-              canvasZoom: 1,
-              canvasPositionX: 0,
-              canvasPositionY: 0,
-            }),
-          });
-        }
+  toggleModuleFieldExpanded: (moduleId, nodeId) => {
+    const key = `${moduleId}:${nodeId}`;
+    const current = get().moduleFieldExpanded[key] ?? true;
+    get().setModuleFieldExpanded(moduleId, nodeId, !current);
+  },
+
+  isModuleFieldExpanded: (moduleId, nodeId) => {
+    const key = `${moduleId}:${nodeId}`;
+    const value = get().moduleFieldExpanded[key];
+    return value !== undefined ? value : true;
+  },
+
+  toggleCommandExpanded: (key) => {
+    set((state) => ({
+      commandCenter: {
+        ...state.commandCenter,
+        collapsedSections: {
+          ...state.commandCenter.collapsedSections,
+          [key]: !state.commandCenter.collapsedSections[key],
+        },
       },
-    },
-  ),
-);
+    }));
+    uiService.saveCommandCenterState(get().commandCenter);
+  },
 
-useUiStore.persist.onFinishHydration(() => {
-  const state = useUiStore.getState();
-  const fixedUi = sanitizeUi(state.ui);
-  if (
-    fixedUi.canvasZoom !== state.ui.canvasZoom ||
-    fixedUi.canvasPositionX !== state.ui.canvasPositionX ||
-    fixedUi.canvasPositionY !== state.ui.canvasPositionY
-  ) {
-    useUiStore.setState({ ui: fixedUi });
-  }
-});
+  isCommandExpanded: (key) => get().commandCenter.collapsedSections[key] ?? false,
+}));
 
 export function selectSafeCanvasView(state) {
   return {
-    scale: sanitizeZoom(state.ui?.canvasZoom),
-    positionX: sanitizePan(state.ui?.canvasPositionX),
-    positionY: sanitizePan(state.ui?.canvasPositionY),
+    scale: state.ui?.canvasZoom || 1,
+    positionX: state.ui?.canvasPositionX || 0,
+    positionY: state.ui?.canvasPositionY || 0,
   };
 }
 
@@ -404,7 +303,7 @@ export function getEnrichedModules(state) {
     const saved = state.modules?.[base.id];
     return {
       ...base,
-      position: sanitizePosition(saved?.position, base.position),
+      position: saved?.position || base.position,
       visible: typeof saved?.visible === 'boolean' ? saved.visible : base.visible,
       collapsed: Boolean(saved?.collapsed),
     };
@@ -418,14 +317,22 @@ export function getVisibleModules(state) {
 export function useCanvasSelectors() {
   const modules = useUiStore(getEnrichedModules);
   const visibleModules = useUiStore(getVisibleModules);
-  const treeExpansion = useUiStore((s) => s.treeExpansion);
+  const explorerExpansion = useUiStore((s) => s.explorerExpansion);
+  const canvasExpansion = useUiStore((s) => s.canvasExpansion);
   const treeChecked = useUiStore((s) => s.treeChecked);
+  const activeDetailPath = useUiStore((s) => s.activeDetailPath);
+  const setActiveDetailPath = useUiStore((s) => s.setActiveDetailPath);
+  const clearActiveDetailPath = useUiStore((s) => s.clearActiveDetailPath);
 
   return { 
     modules, 
     visibleModules, 
-    databaseTree: initialDatabaseTree,
-    treeExpansion,
-    treeChecked
+    explorerExpansion,
+    canvasExpansion,
+    treeChecked,
+    activeDetailPath,
+    setActiveDetailPath,
+    clearActiveDetailPath
   };
 }
+

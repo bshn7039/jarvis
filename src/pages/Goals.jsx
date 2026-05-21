@@ -14,6 +14,7 @@ export default function Goals() {
   const setSelectedGoalId = useGoalStore((s) => s.setSelectedGoalId);
   const toggleGoalCollapsed = useGoalStore((s) => s.toggleGoalCollapsed);
   const toggleObjectiveExpanded = useGoalStore((s) => s.toggleObjectiveExpanded);
+  const addGoal = useGoalStore((s) => s.addGoal);
 
   const tasks = useTaskStore((s) => s.tasks);
   const tasksById = useMemo(() => Object.fromEntries(tasks.map((task) => [task.id, task])), [tasks]);
@@ -28,6 +29,15 @@ export default function Goals() {
       <PagePanel
         title={selectedGoal?.title || 'Goal System'}
         subtitle={selectedGoal?.mission}
+        actions={
+          <button
+            type="button"
+            onClick={() => addGoal({ title: 'New Strategic Goal', lifeGoal: 'Update life mission.' })}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+          >
+            New Goal
+          </button>
+        }
       >
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">

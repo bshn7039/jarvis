@@ -2,16 +2,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useUiStore, getEnrichedModules } from '../../store/uiStore';
 import { useStoreHydrated } from '../../hooks/useStoreHydrated';
+import { useLiveDatabaseTree } from '../../store/selectors/tree.selectors';
 import { sanitizePan, sanitizeZoom } from '../../utils/safePersist';
 import CanvasToolbar from './CanvasToolbar';
 import WorkspaceGrid from './WorkspaceGrid';
 import DraggableModule from './DraggableModule';
+import DataDetailOverlay from '../ui/DataDetailOverlay';
 
 const TOOLBAR_ZOOM_STEP = 0.08;
 const TOOLBAR_ZOOM_ANIMATION_MS = 250;
 
 export default function CanvasWorkspace({ onMenuClick }) {
   const hydrated = useStoreHydrated();
+  const tree = useLiveDatabaseTree();
   const [workspaceScale, setWorkspaceScale] = useState(1);
   const [isDraggingModule, setIsDraggingModule] = useState(false);
   const [transformMountKey, setTransformMountKey] = useState('pending');
@@ -185,19 +188,23 @@ export default function CanvasWorkspace({ onMenuClick }) {
               <div className="canvas-viewport relative min-h-0 flex-1 overflow-hidden bg-jarvis-bg">
                 <TransformComponent wrapperClass="canvas-zoom-wrapper">
                   <WorkspaceGrid>
-                    {visibleModules.map((module) => (
-                      <DraggableModule
-                        key={module.id}
-                        module={module}
-                        scale={workspaceScale}
-                        onVisibilityToggle={() => toggleModuleVisibility(module.id)}
-                        onPositionChange={(x, y) =>
-                          updateModulePosition(module.id, x, y)
-                        }
-                        onDragStart={() => setIsDraggingModule(true)}
-                        onDragStop={() => setIsDraggingModule(false)}
-                      />
-                    ))}
+                    {visibleModules.map((module) => {
+                      const moduleNode = tree.find(n => n.id === module.id);
+                      return (
+                        <DraggableModule
+                          key={module.id}
+                          module={module}
+                          moduleNode={moduleNode}
+                          scale={workspaceScale}
+                          onVisibilityToggle={() => toggleModuleVisibility(module.id)}
+                          onPositionChange={(x, y) =>
+                            updateModulePosition(module.id, x, y)
+                          }
+                          onDragStart={() => setIsDraggingModule(true)}
+                          onDragStop={() => setIsDraggingModule(false)}
+                        />
+                      );
+                    })}
                   </WorkspaceGrid>
                 </TransformComponent>
               </div>
@@ -205,6 +212,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
           )}
         </TransformWrapper>
       </div>
+      <DataDetailOverlay />
     </div>
   );
 }

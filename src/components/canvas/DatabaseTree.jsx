@@ -6,7 +6,7 @@ import { useUiStore } from '../../store/uiStore';
 const MAX_DEPTH = 10;
 
 const TreeNode = memo(function TreeNode({ node, depth = 0, onToggleCheck, onToggleExpand }) {
-  const isExpanded = useUiStore((s) => !!s.treeExpansion[node.id]);
+  const isExpanded = useUiStore((s) => !!s.explorerExpansion[node.id]);
   const isChecked = useUiStore((s) => s.treeChecked[node.id] !== false);
 
   const hasChildren = node.children?.length > 0;

@@ -25,6 +25,8 @@ export default function Academics() {
   const selectedSubjectId = useAcademicStore((s) => s.selectedSubjectId);
   const setSelectedSubjectId = useAcademicStore((s) => s.setSelectedSubjectId);
   const updateAssignmentProgress = useAcademicStore((s) => s.updateAssignmentProgress);
+  const addSubject = useAcademicStore((s) => s.addSubject);
+  const addAssignment = useAcademicStore((s) => s.addAssignment);
 
   const subjectMap = useMemo(
     () => Object.fromEntries(subjects.map((subject) => [subject.id, subject.name])),
@@ -65,7 +67,18 @@ export default function Academics() {
       </PagePanel>
 
       <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
-        <PagePanel title="Subjects">
+        <PagePanel 
+          title="Subjects"
+          actions={
+            <button
+              type="button"
+              onClick={() => addSubject({ name: 'Computer Networks', code: 'CS601' })}
+              className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+            >
+              New Subject
+            </button>
+          }
+        >
           <div className="space-y-2">
             {subjects.map((subject) => (
               <SubjectCard
@@ -82,6 +95,15 @@ export default function Academics() {
           <PagePanel
             title={`${selectedSubject?.name || 'Subject'} Assignments`}
             subtitle="Assignments, practicals, and project progress."
+            actions={
+              <button
+                type="button"
+                onClick={() => addAssignment({ title: 'New Lab Work' })}
+                className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+              >
+                New Assignment
+              </button>
+            }
           >
             <AssignmentBoard
               assignments={selectedAssignments}

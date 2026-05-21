@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import TaskToolbar from '../components/tasks/TaskToolbar';
 import TaskColumn from '../components/tasks/TaskColumn';
-import { mockDatabase, TASK_SECTIONS } from '../data/mockDatabase';
 import { useTaskStore } from '../store/taskStore';
+import { useGoalStore } from '../store/goalStore';
+import { useScheduleStore } from '../store/scheduleStore';
+import { TASK_SECTIONS } from '../utils/constants';
 
 export default function Tasks() {
   const tasks = useTaskStore((s) => s.tasks);
@@ -21,20 +23,22 @@ export default function Tasks() {
   const toggleTaskCompletion = useTaskStore((s) => s.toggleTaskCompletion);
   const addTask = useTaskStore((s) => s.addTask);
 
+  const goals = useGoalStore((s) => s.goals);
+  const schedules = useScheduleStore((s) => s.schedules);
+
   const goalMap = useMemo(
-    () =>
-      Object.fromEntries(mockDatabase.goals.map((goal) => [goal.id, goal.title])),
-    [],
+    () => Object.fromEntries(goals.map((goal) => [goal.id, goal.title])),
+    [goals],
   );
   const scheduleMap = useMemo(
     () =>
       Object.fromEntries(
-        mockDatabase.schedules.map((schedule) => [
+        schedules.map((schedule) => [
           schedule.id,
           `${schedule.label} (${schedule.date} ${schedule.time})`,
         ]),
       ),
-    [],
+    [schedules],
   );
 
   const filteredTasks = useMemo(() => {

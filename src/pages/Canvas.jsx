@@ -3,12 +3,13 @@ import Sidebar from '../components/sidebar/Sidebar';
 import CanvasWorkspace from '../components/canvas/CanvasWorkspace';
 import DatabaseTree from '../components/canvas/DatabaseTree';
 import { useUiStore } from '../store/uiStore';
-import { databaseTree as initialDatabaseTree } from '../data/databaseTree';
+import { useLiveDatabaseTree } from '../store/selectors/tree.selectors';
 import { Database, Search, Filter } from 'lucide-react';
 
 function DatabaseExplorer() {
+  const tree = useLiveDatabaseTree();
   const toggleTreeCheck = useUiStore((s) => s.toggleTreeCheck);
-  const toggleTreeExpand = useUiStore((s) => s.toggleTreeExpand);
+  const toggleExplorerExpand = useUiStore((s) => s.toggleExplorerExpand);
 
   return (
     <aside className="flex h-full w-[300px] shrink-0 flex-col border-r border-jarvis-border bg-jarvis-panel/30 backdrop-blur-xl">
@@ -19,22 +20,14 @@ function DatabaseExplorer() {
             Explorer
           </h2>
         </div>
-        <div className="flex items-center gap-1">
-          <button className="rounded-md p-1.5 text-jarvis-muted hover:bg-white/5 hover:text-jarvis-text transition-colors">
-            <Search className="h-3.5 w-3.5" />
-          </button>
-          <button className="rounded-md p-1.5 text-jarvis-muted hover:bg-white/5 hover:text-jarvis-text transition-colors">
-            <Filter className="h-3.5 w-3.5" />
-          </button>
-        </div>
       </header>
       
       <div className="flex-1 overflow-y-auto p-3 scrollbar-thin scrollbar-thumb-jarvis-border">
         <div className="rounded-xl border border-jarvis-border/30 bg-black/10 p-2">
           <DatabaseTree
-            tree={initialDatabaseTree}
-            onToggleCheck={toggleTreeCheck}
-            onToggleExpand={toggleTreeExpand}
+            tree={tree}
+            onToggleCheck={(id) => toggleTreeCheck(id, tree)}
+            onToggleExpand={toggleExplorerExpand}
           />
         </div>
       </div>

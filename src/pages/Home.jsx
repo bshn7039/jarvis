@@ -1,5 +1,5 @@
 import MainLayout from '../components/layout/MainLayout';
 
 export default function Home() {
-  return <MainLayout showChat={false} />;
+  return <MainLayout showChat={true} />;
 }

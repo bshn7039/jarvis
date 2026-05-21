@@ -4,6 +4,7 @@ import ModuleCard from './ModuleCard';
 
 export default function DraggableModule({
   module,
+  moduleNode,
   scale = 1,
   onDragStart,
   onDragStop,
@@ -46,6 +47,7 @@ export default function DraggableModule({
       >
         <ModuleCard
           module={module}
+          moduleNode={moduleNode}
           onVisibilityToggle={onVisibilityToggle}
           onDragIntent={onDragStart}
         />

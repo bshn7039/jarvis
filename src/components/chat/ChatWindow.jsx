@@ -1,5 +1,5 @@
 import MessageBubble from './MessageBubble';
-import { emptyState } from '../../data/mockChats';
+import { CHAT_EMPTY_STATE } from '../../utils/constants';
 
 export default function ChatWindow({ messages = [], showEmpty = true }) {
   const isEmpty = showEmpty || messages.length === 0;
@@ -9,10 +9,10 @@ export default function ChatWindow({ messages = [], showEmpty = true }) {
       <div className="flex flex-1 flex-col items-center justify-center px-6 pb-32 pt-8 transition-opacity duration-300">
         <div className="flex max-w-md flex-col items-center text-center">
           <h2 className="text-2xl font-medium tracking-tight text-jarvis-text/90 sm:text-3xl">
-            {emptyState.title}
+            {CHAT_EMPTY_STATE.title}
           </h2>
           <p className="mt-3 text-sm text-jarvis-muted sm:text-base">
-            {emptyState.subtitle}
+            {CHAT_EMPTY_STATE.subtitle}
           </p>
         </div>
       </div>

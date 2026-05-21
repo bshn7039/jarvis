@@ -1,54 +1,83 @@
-import { mockDatabase } from '../data/mockDatabase';
-import { createPersistedStore } from './persistHelpers';
+import { create } from 'zustand';
+import { goalService } from '../database/services/goalService';
+import { deepClone } from '../utils/deepClone';
 
 const initialState = {
-  goals: mockDatabase.goals,
-  selectedGoalId: mockDatabase.goals[0]?.id ?? null,
+  goals: [],
+  selectedGoalId: null,
   expandedObjectives: {},
   expandedMilestones: {},
   collapsedGoalIds: {},
+  isHydrated: false,
 };
 
-export const useGoalStore = createPersistedStore({
-  name: 'jarvis-goals',
-  initialState,
-  partialize: (state) => ({
-    goals: state.goals,
-    selectedGoalId: state.selectedGoalId,
-    expandedObjectives: state.expandedObjectives,
-    expandedMilestones: state.expandedMilestones,
-    collapsedGoalIds: state.collapsedGoalIds,
-  }),
-  actions: (set) => ({
-    setSelectedGoalId: (goalId) => set({ selectedGoalId: goalId }),
-    toggleGoalCollapsed: (goalId) =>
-      set((state) => ({
-        collapsedGoalIds: {
-          ...state.collapsedGoalIds,
-          [goalId]: !state.collapsedGoalIds[goalId],
-        },
-      })),
-    toggleObjectiveExpanded: (objectiveId) =>
-      set((state) => ({
-        expandedObjectives: {
-          ...state.expandedObjectives,
-          [objectiveId]: !state.expandedObjectives[objectiveId],
-        },
-      })),
-    toggleMilestoneExpanded: (milestoneId) =>
-      set((state) => ({
-        expandedMilestones: {
-          ...state.expandedMilestones,
-          [milestoneId]: !state.expandedMilestones[milestoneId],
-        },
-      })),
-    updateGoalProgress: (goalId, progress) =>
-      set((state) => ({
-        goals: state.goals.map((goal) =>
-          goal.id === goalId
-            ? { ...goal, progress: Math.max(0, Math.min(100, Number(progress) || 0)) }
-            : goal,
-        ),
-      })),
-  }),
-});
+export const useGoalStore = create((set, get) => ({
+  ...deepClone(initialState),
+
+  hydrate: async () => {
+    try {
+      const goals = await goalService.getAll();
+      set({ 
+        goals, 
+        selectedGoalId: goals[0]?.id ?? null,
+        isHydrated: true 
+      });
+    } catch (err) {
+      console.error('Failed to hydrate goals:', err);
+    }
+  },
+
+  setSelectedGoalId: (goalId) => set({ selectedGoalId: goalId }),
+
+  toggleGoalCollapsed: (goalId) =>
+    set((state) => ({
+      collapsedGoalIds: {
+        ...state.collapsedGoalIds,
+        [goalId]: !state.collapsedGoalIds[goalId],
+      },
+    })),
+
+  toggleObjectiveExpanded: (objectiveId) =>
+    set((state) => ({
+      expandedObjectives: {
+        ...state.expandedObjectives,
+        [objectiveId]: !state.expandedObjectives[objectiveId],
+      },
+    })),
+
+  toggleMilestoneExpanded: (milestoneId) =>
+    set((state) => ({
+      expandedMilestones: {
+        ...state.expandedMilestones,
+        [milestoneId]: !state.expandedMilestones[milestoneId],
+      },
+    })),
+
+  updateGoalProgress: async (goalId, progress) => {
+    const goals = get().goals;
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+
+    const nextProgress = Math.max(0, Math.min(100, Number(progress) || 0));
+    const updatedGoal = { ...goal, progress: nextProgress };
+
+    await goalService.update(goalId, updatedGoal);
+    set({ goals: goals.map(g => g.id === goalId ? updatedGoal : g) });
+  },
+
+  addGoal: async (goalData) => {
+    const newGoal = {
+      title: goalData.title || 'New Goal',
+      lifeGoal: goalData.lifeGoal || '',
+      mission: goalData.mission || '',
+      currentPhase: goalData.currentPhase || '',
+      progress: 0,
+      objectives: [],
+      milestones: [],
+      ...goalData
+    };
+    const savedGoal = await goalService.create(newGoal);
+    set(state => ({ goals: [...state.goals, savedGoal] }));
+  }
+}));
+

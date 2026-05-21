@@ -17,6 +17,7 @@ export default function CRM() {
   const setActiveTag = useCrmStore((s) => s.setActiveTag);
   const updateContactNotes = useCrmStore((s) => s.updateContactNotes);
   const toggleReminderStatus = useCrmStore((s) => s.toggleReminderStatus);
+  const addContact = useCrmStore((s) => s.addContact);
 
   const tags = useMemo(() => ['all', ...new Set(contacts.flatMap((contact) => contact.tags))], [contacts]);
 
@@ -41,7 +42,18 @@ export default function CRM() {
       title="CRM"
       subtitle="Relationship memory system with reminders, notes, and timelines."
     >
-      <PagePanel title="Filters">
+      <PagePanel 
+        title="Filters"
+        actions={
+          <button
+            type="button"
+            onClick={() => addContact({ name: 'New Lead', role: 'Strategic Partner' })}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+          >
+            New Contact
+          </button>
+        }
+      >
         <div className="flex flex-wrap gap-2">
           <input
             value={searchQuery}

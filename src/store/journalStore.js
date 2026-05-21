@@ -1,65 +1,77 @@
-import { mockDatabase } from '../data/mockDatabase';
-import { createPersistedStore } from './persistHelpers';
-
-const initialEntries = mockDatabase.journal.entries;
+import { create } from 'zustand';
+import { journalService } from '../database/services/journalService';
+import { deepClone } from '../utils/deepClone';
 
 const initialState = {
-  entries: initialEntries,
-  selectedEntryId: initialEntries[0]?.id ?? null,
+  entries: [],
+  selectedEntryId: null,
   searchQuery: '',
   activeType: 'All',
   activeTag: 'All',
   calendarPlaceholderOpen: false,
+  isHydrated: false,
 };
 
-export const useJournalStore = createPersistedStore({
-  name: 'jarvis-journal',
-  initialState,
-  partialize: (state) => ({
-    entries: state.entries,
-    selectedEntryId: state.selectedEntryId,
-    searchQuery: state.searchQuery,
-    activeType: state.activeType,
-    activeTag: state.activeTag,
-    calendarPlaceholderOpen: state.calendarPlaceholderOpen,
-  }),
-  actions: (set) => ({
-    setSelectedEntryId: (entryId) => set({ selectedEntryId: entryId }),
-    setSearchQuery: (value) => set({ searchQuery: value }),
-    setActiveType: (value) => set({ activeType: value }),
-    setActiveTag: (value) => set({ activeTag: value }),
-    toggleCalendarPlaceholder: () =>
-      set((state) => ({ calendarPlaceholderOpen: !state.calendarPlaceholderOpen })),
-    updateEntryContent: (entryId, content) =>
-      set((state) => ({
-        entries: state.entries.map((entry) =>
-          entry.id === entryId ? { ...entry, content } : entry,
-        ),
-      })),
-    updateEntryMood: (entryId, mood) =>
-      set((state) => ({
-        entries: state.entries.map((entry) =>
-          entry.id === entryId
-            ? { ...entry, mood: Math.max(1, Math.min(10, Number(mood) || 1)) }
-            : entry,
-        ),
-      })),
-    addEntry: (partial) =>
-      set((state) => {
-        const next = {
-          id: `jr-local-${Date.now()}`,
-          date: partial.date || '2026-05-21',
-          type: partial.type || 'Thoughts',
-          title: partial.title || 'Quick Note',
-          mood: partial.mood || 6,
-          tags: partial.tags || ['quick'],
-          linkedTaskId: partial.linkedTaskId || null,
-          content: partial.content || 'Captured from Journal module.',
-        };
-        return {
-          entries: [next, ...state.entries],
-          selectedEntryId: next.id,
-        };
-      }),
-  }),
-});
+export const useJournalStore = create((set, get) => ({
+  ...deepClone(initialState),
+
+  hydrate: async () => {
+    try {
+      const entries = await journalService.getAll();
+      set({ 
+        entries: entries.sort((a, b) => b.date.localeCompare(a.date)), 
+        selectedEntryId: entries[0]?.id ?? null,
+        isHydrated: true 
+      });
+    } catch (err) {
+      console.error('Failed to hydrate journal:', err);
+    }
+  },
+
+  setSelectedEntryId: (entryId) => set({ selectedEntryId: entryId }),
+  setSearchQuery: (value) => set({ searchQuery: value }),
+  setActiveType: (value) => set({ activeType: value }),
+  setActiveTag: (value) => set({ activeTag: value }),
+  
+  toggleCalendarPlaceholder: () =>
+    set((state) => ({ calendarPlaceholderOpen: !state.calendarPlaceholderOpen })),
+
+  updateEntryContent: async (entryId, content) => {
+    const entries = get().entries;
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const updatedEntry = { ...entry, content };
+    await journalService.update(entryId, updatedEntry);
+    set({ entries: entries.map(e => e.id === entryId ? updatedEntry : e) });
+  },
+
+  updateEntryMood: async (entryId, mood) => {
+    const entries = get().entries;
+    const entry = entries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const updatedEntry = { ...entry, mood: Math.max(1, Math.min(10, Number(mood) || 1)) };
+    await journalService.update(entryId, updatedEntry);
+    set({ entries: entries.map(e => e.id === entryId ? updatedEntry : e) });
+  },
+
+  addEntry: async (partial) => {
+    const next = {
+      date: partial.date || '2026-05-21',
+      type: partial.type || 'Thoughts',
+      title: partial.title || 'Quick Note',
+      mood: partial.mood || 6,
+      tags: partial.tags || ['quick'],
+      linkedTaskId: partial.linkedTaskId || null,
+      content: partial.content || 'Captured from Journal module.',
+    };
+    
+    const savedEntry = await journalService.create(next);
+    set((state) => ({
+      entries: [savedEntry, ...state.entries],
+      selectedEntryId: savedEntry.id,
+    }));
+  },
+}));
+

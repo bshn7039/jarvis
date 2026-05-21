@@ -4,6 +4,7 @@ import PagePanel from '../components/ui/PagePanel';
 import JournalTimeline from '../components/journal/JournalTimeline';
 import JournalEditor from '../components/journal/JournalEditor';
 import { useJournalStore } from '../store/journalStore';
+import { useJournalStreak } from '../store/selectors/metrics.selectors';
 
 export default function Journal() {
   const entries = useJournalStore((s) => s.entries);
@@ -44,18 +45,7 @@ export default function Journal() {
   const selectedEntry =
     filteredEntries.find((entry) => entry.id === selectedEntryId) ?? filteredEntries[0] ?? null;
 
-  const streak = useMemo(() => {
-    const dates = new Set(entries.map((entry) => entry.date));
-    let streakCount = 0;
-    const current = new Date('2026-05-21');
-    while (true) {
-      const key = current.toISOString().slice(0, 10);
-      if (!dates.has(key)) break;
-      streakCount += 1;
-      current.setDate(current.getDate() - 1);
-    }
-    return streakCount;
-  }, [entries]);
+  const streak = useJournalStreak();
 
   return (
     <ModulePageLayout title="Journal" subtitle="Reflection, emotional awareness, and personal feedback loop.">

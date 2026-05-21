@@ -1,9 +1,18 @@
 import { useState } from 'react';
 import { Paperclip, Mic, Send } from 'lucide-react';
 import IconButton from '../ui/IconButton';
+import { useChatStore } from '../../store/chatStore';
 
 export default function PromptBar() {
   const [value, setValue] = useState('');
+  const addMessage = useChatStore((s) => s.addMessage);
+  const activeChatId = useChatStore((s) => s.activeChatId);
+
+  const handleSend = () => {
+    if (!value.trim()) return;
+    addMessage(activeChatId, value.trim());
+    setValue('');
+  };
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-4 pb-6 pt-8 md:px-6 md:pb-8">
@@ -17,6 +26,7 @@ export default function PromptBar() {
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Write your prompt here..."
             className="min-w-0 flex-1 bg-transparent px-2 py-2.5 text-[15px] text-jarvis-text placeholder:text-jarvis-muted/60 focus:outline-none"
           />
@@ -28,6 +38,7 @@ export default function PromptBar() {
               label="Send message"
               variant="primary"
               size="md"
+              onClick={handleSend}
               className="!rounded-xl"
             />
           </div>

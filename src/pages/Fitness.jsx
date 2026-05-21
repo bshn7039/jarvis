@@ -18,6 +18,8 @@ export default function Fitness() {
   const setSelectedDay = useFitnessStore((s) => s.setSelectedDay);
   const toggleWorkoutCompleted = useFitnessStore((s) => s.toggleWorkoutCompleted);
   const addHydrationLog = useFitnessStore((s) => s.addHydrationLog);
+  const addWorkoutLog = useFitnessStore((s) => s.addWorkoutLog);
+  const addMealLog = useFitnessStore((s) => s.addMealLog);
 
   const mealsForDay = useMemo(() => meals.filter((meal) => meal.date === selectedDay), [meals, selectedDay]);
   const hydrationForDay = useMemo(
@@ -51,6 +53,20 @@ export default function Fitness() {
             className="rounded-lg border border-jarvis-border bg-white/5 px-2.5 py-1 text-xs text-jarvis-text"
           >
             +300ml Water
+          </button>
+          <button
+            type="button"
+            onClick={() => addWorkoutLog({ title: 'New Workout', intensity: 'High' })}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-2.5 py-1 text-xs text-jarvis-text"
+          >
+            Log Workout
+          </button>
+          <button
+            type="button"
+            onClick={() => addMealLog({ title: 'Quick Snack', calories: 200, protein: 10 })}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-2.5 py-1 text-xs text-jarvis-text"
+          >
+            Log Meal
           </button>
         </div>
         <FitnessSummaryCards
