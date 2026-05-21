@@ -14,6 +14,7 @@ const mockDatabase = {
     { id: 'fitness', title: 'Fitness', route: '/fitness', dataKey: 'fitness' },
     { id: 'crm', title: 'CRM', route: '/crm', dataKey: 'crm' },
     { id: 'academics', title: 'Academics', route: '/academics', dataKey: 'academics' },
+    { id: 'schedules', title: 'Schedules', route: '/home', dataKey: 'schedules' },
   ],
 
   schedules: [
@@ -180,5 +181,16 @@ export const seedData = {
   academicMeta: [
     { id: 'semester-info', currentSemester: mockDatabase.academics.currentSemester, termEndDate: mockDatabase.academics.termEndDate },
     { id: 'coding-progress', ...mockDatabase.academics.codingProgress }
-  ]
+  ],
+  personal: {
+    profile: {
+      fullName: 'Bhuvaneshwaran',
+      displayName: 'Bhu',
+      location: 'Bengaluru, India',
+    },
+    preferences: {
+      sidebarCollapsed: false,
+      canvasZoom: 1,
+    }
+  }
 };

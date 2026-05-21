@@ -42,4 +42,11 @@ export const canvasModules = [
     visible: true,
     position: { x: 300, y: 1020 },
   },
+  {
+    id: 'schedules',
+    title: 'Schedules',
+    type: 'schedules',
+    visible: true,
+    position: { x: 980, y: 1780 },
+  },
 ];
