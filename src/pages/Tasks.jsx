@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import TaskToolbar from '../components/tasks/TaskToolbar';
-import TaskColumn from '../components/tasks/TaskColumn';
+import EntityModal from '../components/modals/EntityModal';
+import EntityForm from '../components/forms/EntityForm';
+import EntityDetailPanel from '../components/details/EntityDetailPanel';
 import { useTaskStore } from '../store/taskStore';
 import { useGoalStore } from '../store/goalStore';
 import { useScheduleStore } from '../store/scheduleStore';
@@ -105,6 +107,20 @@ export default function Tasks() {
           />
         ))}
       </div>
+
+      <EntityModal
+        isOpen={useTaskStore((s) => s.isModalOpen)}
+        onClose={() => useTaskStore.getState().closeModal()}
+        title="Task"
+        form={<EntityForm />}
+        onSubmit={(data) => useTaskStore.getState().addTask(data)}
+      />
+
+      <EntityDetailPanel
+        isOpen={useTaskStore((s) => s.isDetailPanelOpen)}
+        onClose={() => useTaskStore.getState().closeDetailPanel()}
+        entity={useTaskStore((s) => s.selectedEntity)}
+      />
     </ModulePageLayout>
   );
 }

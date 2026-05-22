@@ -1,30 +1,59 @@
 import React, { useState } from 'react';
-import FieldRenderer from './FieldRenderer';
+import { useTaskStore } from '../store/taskStore';
 
-export default function EntityForm({ entityType, initialData = {}, onSubmit, formConfig = [] }) {
-  const [state, setState] = useState({ ...initialData });
+const EntityForm = () => {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    status: 'todo',
+    priority: 'Medium',
+    energy: 'medium',
+    linkedGoalIds: [],
+    linkedSubjectIds: [],
+    linkedScheduleIds: [],
+    linkedJournalIds: [],
+    linkedFinanceIds: [],
+    linkedContactIds: [],
+    deadline: new Date().toISOString(),
+    estimatedTime: '30m',
+    tags: ['quick-capture'],
+  });
 
-  function handleChange(fieldName, val) {
-    setState(s => ({ ...s, [fieldName]: val }));
-  }
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
-  function submit(e) {
-    e?.preventDefault();
-    onSubmit?.(state);
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await useTaskStore.getState().addTask(formData);
+    useTaskStore.getState().closeModal();
+  };
 
   return (
-    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {formConfig.map((f) => (
-        <div key={f.name} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label style={{ fontSize: 13, color: '#bbb' }}>{f.label || f.name}</label>
-          <FieldRenderer field={f} value={state[f.name]} onChange={(v) => handleChange(f.name, v)} options={f.options || []} />
-        </div>
-      ))}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" onClick={() => { if (onSubmit) onSubmit(null); }} style={{ background: 'transparent', border: '1px solid #333', color: '#ddd', padding: '8px 12px', borderRadius: 6 }}>Cancel</button>
-        <button type="submit" style={{ background: '#0ea5a4', border: 'none', color: '#000', padding: '8px 12px', borderRadius: 6 }}>Save</button>
+    <form onSubmit={handleSubmit}>
+      <div className="mb-4">
+        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+          Title
+        </label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          value={formData.title}
+          onChange={handleChange}
+          required
+          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm sm:text-sm"
+        />
       </div>
+      {/* Add more form fields as needed */}
+      <button type="submit" className="bg-blue-500 text-white py-2 px-4 rounded">
+        Save
+      </button>
     </form>
   );
-}
+};
+
+export default EntityForm;

@@ -16,6 +16,9 @@ const initialState = {
     Completed: false,
   },
   expandedTaskIds: {},
+  isModalOpen: false,
+  selectedEntity: null,
+  isDetailPanelOpen: false,
   isHydrated: false,
 };
 
@@ -41,7 +44,7 @@ export const useTaskStore = create((set, get) => ({
   setSearchQuery: (value) => set({ searchQuery: value }),
   setActiveCategory: (value) => set({ activeCategory: value }),
   setActivePriority: (value) => set({ activePriority: value }),
-  
+
   toggleSectionCollapsed: (section) =>
     set((state) => ({
       collapsedSections: {
@@ -57,6 +60,13 @@ export const useTaskStore = create((set, get) => ({
         [taskId]: !state.expandedTaskIds[taskId],
       },
     })),
+
+  openModal: () => set({ isModalOpen: true }),
+  closeModal: () => set({ isModalOpen: false }),
+
+  setSelectedEntity: (entity) => set({ selectedEntity: entity }),
+  openDetailPanel: () => set({ isDetailPanelOpen: true }),
+  closeDetailPanel: () => set({ isDetailPanelOpen: false }),
 
   logActivity: async ({ action, entityId, metadata = {} }) => {
     const activityStore = useActivityStore.getState();
@@ -134,7 +144,12 @@ export const useTaskStore = create((set, get) => ({
       section: 'Today',
       category: taskData.category || 'System',
       priority: taskData.priority || 'Medium',
-      linkedGoal: taskData.linkedGoal || null,
+      linkedGoalIds: [],
+      linkedSubjectIds: [],
+      linkedScheduleIds: [],
+      linkedJournalIds: [],
+      linkedFinanceIds: [],
+      linkedContactIds: [],
       deadline: taskData.deadline || '2026-05-21T23:59:00',
       estimatedTime: taskData.estimatedTime || '30m',
       tags: taskData.tags || ['quick-capture'],
@@ -165,6 +180,5 @@ export const useTaskStore = create((set, get) => ({
       entityId: taskId,
       metadata: { title: task?.title }
     });
-  }
+  },
 }));
-

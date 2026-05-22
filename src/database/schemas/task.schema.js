@@ -8,10 +8,13 @@ export const taskSchema = {
     section: "string",
     category: "string",
     priority: "string",
+    energy: "string",
     linkedGoalIds: "array",
-    linkedScheduleIds: "array",
     linkedSubjectIds: "array",
-    linkedHabitIds: "array",
+    linkedScheduleIds: "array",
+    linkedJournalIds: "array",
+    linkedFinanceIds: "array",
+    linkedContactIds: "array",
     deadline: "date",
     estimatedTime: "string",
     tags: "array",
@@ -24,11 +27,14 @@ export const taskSchema = {
     title: "Untitled Task",
     status: "todo",
     priority: "Medium",
+    energy: "medium",
     progress: 0,
     tags: [],
     linkedGoalIds: [],
-    linkedScheduleIds: [],
     linkedSubjectIds: [],
-    linkedHabitIds: []
+    linkedScheduleIds: [],
+    linkedJournalIds: [],
+    linkedFinanceIds: [],
+    linkedContactIds: []
   }
 };

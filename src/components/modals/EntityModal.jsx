@@ -1,19 +1,31 @@
 import React from 'react';
-import BaseModal from './BaseModal';
-import EntityForm from '../forms/EntityForm';
+import { useTaskStore } from '../store/taskStore';
 
-export default function EntityModal({ open, onClose, entityType, initialData = {}, onSubmit, formConfig = [] }) {
+const EntityModal = ({ isOpen, onClose, title, form, onSubmit }) => {
+  if (!isOpen) return null;
+
   return (
-    <BaseModal open={open} onClose={onClose} size="md" ariaLabel={`${entityType} modal`}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0 }}>{initialData.id ? `Edit ${entityType}` : `New ${entityType}`}</h3>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: '#bbb', cursor: 'pointer' }}>✕</button>
-        </header>
-        <div>
-          <EntityForm entityType={entityType} initialData={initialData} onSubmit={(data) => { onSubmit?.(data); onClose?.(); }} formConfig={formConfig} />
-        </div>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+      <div className="bg-white p-4 rounded-lg shadow-md w-full max-w-md">
+        <h2 className="text-xl font-medium">{title}</h2>
+        {form}
+        <button
+          type="button"
+          onClick={onSubmit}
+          className="bg-blue-500 text-white py-2 px-4 rounded mt-4"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="bg-gray-300 text-gray-700 py-2 px-4 rounded mt-4 ml-2"
+        >
+          Cancel
+        </button>
       </div>
-    </BaseModal>
+    </div>
   );
-}
+};
+
+export default EntityModal;
