@@ -1,18 +1,29 @@
-import { memo } from 'react';
-import { ChevronDown, ChevronRight, Folder, Database, FileText } from 'lucide-react';
+import { memo, useMemo } from 'react';
+import { ChevronDown, ChevronRight, Database, FileText } from 'lucide-react';
 import VisibilityCheckbox from '../ui/VisibilityCheckbox';
 import { useUiStore } from '../../store/uiStore';
+import { useCombinedState } from '../../hooks/useCombinedState';
+import { getNestedData, formatValue } from './DatabaseNode';
 
 const MAX_DEPTH = 10;
 
-const TreeNode = memo(function TreeNode({ node, depth = 0, onToggleCheck, onToggleExpand }) {
+const TreeNode = memo(function TreeNode({ node, depth = 0, onToggleCheck, onToggleExpand, combinedState }) {
   const isExpanded = useUiStore((s) => !!s.explorerExpansion[node.id]);
   const isChecked = useUiStore((s) => s.treeChecked[node.id] !== false);
 
   const hasChildren = node.children?.length > 0;
-  const Icon = node.isModule ? Database : (hasChildren ? Folder : FileText);
+  const Icon = hasChildren ? Database : FileText;
+
+  const data = useMemo(() => {
+    if (!hasChildren && node.dataKey) {
+      return getNestedData(combinedState, node.dataKey);
+    }
+    return null;
+  }, [hasChildren, node.dataKey, combinedState]);
 
   if (depth > MAX_DEPTH) return null;
+
+  const isPrimitive = data !== null && typeof data !== 'object';
 
   return (
     <div role="treeitem" aria-expanded={hasChildren ? isExpanded : undefined}>
@@ -39,9 +50,16 @@ const TreeNode = memo(function TreeNode({ node, depth = 0, onToggleCheck, onTogg
 
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <Icon className={`h-3.5 w-3.5 shrink-0 ${isExpanded ? 'text-jarvis-text' : 'text-jarvis-muted'}`} strokeWidth={1.5} />
-          <span className={`truncate text-[13px] ${node.isModule ? 'font-semibold tracking-tight text-jarvis-text' : 'text-jarvis-muted group-hover:text-jarvis-text'}`}>
-            {node.label}
-          </span>
+          <div className="flex flex-1 items-baseline gap-1.5 min-w-0">
+            <span className={`truncate text-[13px] ${node.isModule ? 'font-semibold tracking-tight text-jarvis-text' : 'text-jarvis-muted group-hover:text-jarvis-text'}`}>
+              {node.label}
+            </span>
+            {isPrimitive && (
+              <span className="truncate text-[11px] text-jarvis-muted/60 font-normal">
+                : {formatValue(data, node.label)}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -62,6 +80,7 @@ const TreeNode = memo(function TreeNode({ node, depth = 0, onToggleCheck, onTogg
               depth={depth + 1}
               onToggleCheck={onToggleCheck}
               onToggleExpand={onToggleExpand}
+              combinedState={combinedState}
             />
           ))}
         </div>
@@ -71,6 +90,8 @@ const TreeNode = memo(function TreeNode({ node, depth = 0, onToggleCheck, onTogg
 });
 
 export default function DatabaseTree({ tree, onToggleCheck, onToggleExpand }) {
+  const combinedState = useCombinedState();
+
   if (!Array.isArray(tree) || tree.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -89,6 +110,7 @@ export default function DatabaseTree({ tree, onToggleCheck, onToggleExpand }) {
           depth={0}
           onToggleCheck={onToggleCheck}
           onToggleExpand={onToggleExpand}
+          combinedState={combinedState}
         />
       ))}
     </div>

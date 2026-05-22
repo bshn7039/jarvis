@@ -34,18 +34,18 @@ export default function EntityDetailPanel({ isOpen, onClose, entity, onEdit, onD
   const linked = useMemo(
     () => ({
       goals: buildLinks(entity?.linkedGoalIds, goals),
-      academics: buildLinks(entity?.linkedSubjectIds, subjects, 'name'),
+      academics: buildLinks(entity?.linkedAcademicIds || entity?.linkedSubjectIds, subjects, 'name'),
       schedules: buildLinks(entity?.linkedScheduleIds, schedules, 'label'),
       journals: buildLinks(entity?.linkedJournalIds, journals),
       finance: buildLinks(entity?.linkedFinanceIds, financeEntries, 'note'),
       contacts: buildLinks(entity?.linkedContactIds, contacts, 'name'),
     }),
-    [contacts, entity?.linkedContactIds, entity?.linkedFinanceIds, entity?.linkedGoalIds, entity?.linkedJournalIds, entity?.linkedScheduleIds, entity?.linkedSubjectIds, financeEntries, goals, journals, schedules, subjects],
+    [contacts, entity?.linkedAcademicIds, entity?.linkedContactIds, entity?.linkedFinanceIds, entity?.linkedGoalIds, entity?.linkedJournalIds, entity?.linkedScheduleIds, entity?.linkedSubjectIds, financeEntries, goals, journals, schedules, subjects],
   );
 
   if (!entity) return null;
 
-  const isArchived = entity.status === 'archived';
+  const isArchived = Boolean(entity.archived);
 
   return (
     <BaseModal open={isOpen} onClose={onClose} size="lg" ariaLabel="Task details">
@@ -54,24 +54,24 @@ export default function EntityDetailPanel({ isOpen, onClose, entity, onEdit, onD
           <h2 className="text-lg font-medium">{entity.title}</h2>
           <p className="text-xs text-jarvis-muted">{entity.description || 'No description'}</p>
           <div className="flex flex-wrap gap-1.5 text-[11px] text-jarvis-muted">
-            <span>Status: {entity.status}</span>
+            <span>Bucket: {entity.bucket}</span>
             <span>Progress: {entity.progress}%</span>
             <span>Priority: {entity.priority}</span>
-            <span>Energy: {entity.energy}</span>
-            <span>Due: {entity.deadline ? new Date(entity.deadline).toLocaleDateString() : 'None'}</span>
+            <span>Completed: {entity.completed ? 'Yes' : 'No'}</span>
+            <span>Due: {entity.dueDate ? new Date(entity.dueDate).toLocaleDateString() : 'None'}</span>
             <span>Created: {entity.createdAt ? new Date(entity.createdAt).toLocaleDateString() : 'Unknown'}</span>
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
             <button type="button" onClick={() => onEdit?.(entity.id)} className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-text">Edit</button>
             <button type="button" onClick={() => onDuplicate?.(entity.id)} className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-text">Duplicate</button>
-            {entity.status !== 'completed' ? (
+            {!entity.completed ? (
               <button type="button" onClick={() => onComplete?.(entity.id)} className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-text">Complete</button>
             ) : null}
-            {!isArchived ? (
+            {!isArchived && onArchive ? (
               <button type="button" onClick={() => onArchive?.(entity.id)} className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-text">Archive</button>
-            ) : (
+            ) : onRestore ? (
               <button type="button" onClick={() => onRestore?.(entity.id)} className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-text">Restore</button>
-            )}
+            ) : null}
             <button type="button" onClick={() => onDelete?.(entity.id)} className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-muted">Delete</button>
           </div>
         </header>

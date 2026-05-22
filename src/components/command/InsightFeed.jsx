@@ -11,9 +11,9 @@ export default function InsightFeed({ insights }) {
         AI Insights
       </h2>
       <div className="flex flex-col gap-2 font-mono text-[13px]">
-        {insights.map((insight) => (
+        {insights.filter(Boolean).map((insight, index) => (
           <div
-            key={insight.id}
+            key={insight.id || `insight-${index}`}
             className={[
               'rounded-lg border bg-jarvis-bg/40 px-3 py-2.5 transition-colors duration-200 hover:bg-white/[0.02]',
               typeStyles[insight.type],

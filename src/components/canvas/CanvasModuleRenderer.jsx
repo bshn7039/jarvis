@@ -19,14 +19,14 @@ function Stat({ label, value }) {
 
 function TasksPreview() {
   const tasks = useTaskStore((s) => s.tasks);
-  const today = '2026-05-21';
-  const todayTasks = tasks.filter((task) => task.deadline?.slice(0, 10) === today);
-  const completed = tasks.filter((task) => task.status === 'completed').length;
+  const today = new Date().toISOString().slice(0, 10);
+  const todayTasks = tasks.filter((task) => task.bucket === 'today');
+  const completed = tasks.filter((task) => task.completed).length;
   const overdue = tasks.filter(
-    (task) => task.status !== 'completed' && task.deadline?.slice(0, 10) < today,
+    (task) => !task.completed && task.dueDate?.slice(0, 10) < today,
   ).length;
   const completion = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
-  const priority = tasks.filter((task) => ['Critical', 'High'].includes(task.priority)).length;
+  const priority = tasks.filter((task) => ['critical', 'high'].includes(task.priority)).length;
 
   return (
     <div className="grid grid-cols-2 gap-2">

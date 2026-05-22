@@ -1,4 +1,4 @@
-export default function MessageBubble({ role, content, timestamp }) {
+export default function MessageBubble({ role, content, timestamp, model }) {
   const isUser = role === 'user';
 
   return (
@@ -16,6 +16,13 @@ export default function MessageBubble({ role, content, timestamp }) {
             : 'bg-transparent text-jarvis-text/90',
         ].join(' ')}
       >
+        {!isUser && model && (
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <span className="rounded bg-jarvis-muted/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-jarvis-muted">
+              {model}
+            </span>
+          </div>
+        )}
         <p className="whitespace-pre-wrap">{content}</p>
         {timestamp && (
           <p className="mt-2 text-[11px] text-jarvis-muted/70">{timestamp}</p>
@@ -24,3 +31,4 @@ export default function MessageBubble({ role, content, timestamp }) {
     </div>
   );
 }
+

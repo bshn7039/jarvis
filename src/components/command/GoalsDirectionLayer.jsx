@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Target } from 'lucide-react';
 import { useUiStore } from '../../store/uiStore';
 
 const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
+  if (!node || typeof node !== 'object') return null;
   const expandKey = `goals:${node.id}`;
   const expanded = useUiStore(
     (s) => s.commandCenter.collapsedSections[expandKey] ?? depth < 1,
@@ -53,8 +54,8 @@ const GoalTreeNode = memo(function GoalTreeNode({ node, depth = 0 }) {
         >
           <div className="overflow-hidden">
             <div className="flex flex-col border-l border-jarvis-border/50 ml-2.5 pl-2">
-              {node.children.map((child) => (
-                <GoalTreeNode key={child.id} node={child} depth={depth + 1} />
+              {node.children.filter(Boolean).map((child, index) => (
+                <GoalTreeNode key={child.id || `goal-node-${depth + 1}-${index}`} node={child} depth={depth + 1} />
               ))}
             </div>
           </div>
@@ -99,7 +100,11 @@ export default function GoalsDirectionLayer({ tree }) {
           <p className="mb-3 text-[10px] font-medium uppercase tracking-wider text-jarvis-muted/70">
             Strategic Roadmap
           </p>
-          <GoalTreeNode node={tree} depth={0} />
+          {tree ? (
+            <GoalTreeNode node={tree} depth={0} />
+          ) : (
+            <p className="text-sm text-jarvis-muted">No strategic goals configured.</p>
+          )}
         </div>
       </div>
     </section>

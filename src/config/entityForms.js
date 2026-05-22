@@ -4,16 +4,15 @@ export const taskEntityFormConfig = [
   { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'Task title' },
   { name: 'description', label: 'Description', type: 'textarea', placeholder: 'What needs to be done?' },
   {
-    name: 'status',
-    label: 'Status',
+    name: 'bucket',
+    label: 'Bucket',
     type: 'select',
     options: [
-      { value: 'backlog', label: 'Backlog' },
-      { value: 'planned', label: 'Planned' },
-      { value: 'active', label: 'Active' },
-      { value: 'paused', label: 'Paused' },
+      { value: 'today', label: 'Today' },
+      { value: 'week', label: 'Week' },
+      { value: 'month', label: 'Month' },
+      { value: 'undefined', label: 'Undefined' },
       { value: 'completed', label: 'Completed' },
-      { value: 'archived', label: 'Archived' },
     ],
   },
   {
@@ -27,22 +26,11 @@ export const taskEntityFormConfig = [
       { value: 'critical', label: 'Critical' },
     ],
   },
-  {
-    name: 'energy',
-    label: 'Energy',
-    type: 'select',
-    options: [
-      { value: 'low', label: 'Low' },
-      { value: 'medium', label: 'Medium' },
-      { value: 'high', label: 'High' },
-      { value: 'deep', label: 'Deep' },
-    ],
-  },
   { name: 'category', label: 'Category', type: 'text', placeholder: 'System' },
   { name: 'progress', label: 'Progress', type: 'number' },
-  { name: 'estimatedTime', label: 'Estimated Time', type: 'text', placeholder: '30m' },
-  { name: 'deadline', label: 'Due Date', type: 'date' },
-  { name: 'tags', label: 'Tags', type: 'tags', placeholder: 'comma,separated,tags' },
+  { name: 'dueDate', label: 'Due Date', type: 'date' },
+  { name: 'subTags', label: 'Subtags', type: 'tags', placeholder: 'jarvis,revision,gym' },
+  { name: 'completionNotes', label: 'Completion Notes', type: 'textarea', placeholder: 'Lessons, blockers, outcomes...' },
 ];
 
 export const entityForms = {

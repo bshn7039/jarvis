@@ -2,6 +2,9 @@ import { create } from 'zustand';
 import { BaseService } from '../database/services/baseService';
 import { STORES } from '../database/core/localDatabase';
 import { deepClone } from '../utils/deepClone';
+import { aiClient } from '../services/ai/deepseekClient';
+import { useAiStore } from './aiStore';
+import { DEFAULT_SYSTEM_PROMPT } from '../config/systemPrompts';
 
 class ChatService extends BaseService {
   constructor() {
@@ -25,7 +28,8 @@ export const useChatStore = create((set, get) => ({
       const history = await chatService.getAll();
       set({ 
         chatHistory: history.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)), 
-        isHydrated: true 
+        isHydrated: true,
+        activeChatId: null // Explicitly ensure no chat is auto-selected on load
       });
     } catch (err) {
       console.error('Failed to hydrate chats:', err);
@@ -53,6 +57,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   addMessage: async (chatId, content) => {
+    const aiStore = useAiStore.getState();
     let history = get().chatHistory;
     let chat = history.find(c => c.id === chatId);
     
@@ -71,7 +76,6 @@ export const useChatStore = create((set, get) => ({
 
     let updatedTitle = chat.title;
     if (chat.messages.length === 0) {
-      // Generate title from first message
       updatedTitle = content.trim().slice(0, 40);
       if (content.length > 40) updatedTitle += '...';
     }
@@ -85,7 +89,6 @@ export const useChatStore = create((set, get) => ({
 
     await chatService.update(updatedChat.id, updatedChat);
     
-    // Update local state and re-sort
     set(state => ({
       chatHistory: state.chatHistory
         .map(c => c.id === updatedChat.id ? updatedChat : c)
@@ -93,12 +96,23 @@ export const useChatStore = create((set, get) => ({
       activeChatId: updatedChat.id
     }));
 
-    // Mock assistant response
-    setTimeout(async () => {
+    // AI Response Flow
+    aiStore.setGenerating(true);
+    aiStore.clearError();
+
+    try {
+      const messagesForAi = [
+        { role: 'system', content: DEFAULT_SYSTEM_PROMPT },
+        ...updatedChat.messages.map(m => ({ role: m.role, content: m.content }))
+      ];
+
+      const aiResponse = await aiClient.sendMessage(messagesForAi, aiStore.currentModel);
+
       const assistantMsg = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: "AI integration coming soon.",
+        content: aiResponse.content,
+        model: aiResponse.model,
         createdAt: new Date().toISOString()
       };
       
@@ -118,7 +132,11 @@ export const useChatStore = create((set, get) => ({
           .map(c => c.id === withAssistant.id ? withAssistant : c)
           .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       }));
-    }, 1000);
+    } catch (error) {
+      aiStore.setError(error.message);
+    } finally {
+      aiStore.setGenerating(false);
+    }
   },
 
   deleteChat: async (id) => {
@@ -129,3 +147,4 @@ export const useChatStore = create((set, get) => ({
     }));
   }
 }));
+

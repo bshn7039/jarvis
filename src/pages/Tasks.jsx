@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import TaskToolbar from '../components/tasks/TaskToolbar';
 import TaskColumn from '../components/tasks/TaskColumn';
@@ -11,9 +11,19 @@ import { useGoalStore } from '../store/goalStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useEntityStore } from '../store/entityStore';
 import { useCommandPaletteStore } from '../store/commandPaletteStore';
-import { TASK_SECTIONS } from '../utils/constants';
+import { TASK_BOARD_COLUMNS } from '../utils/constants';
+
+const BUCKET_LABELS = {
+  today: 'Today',
+  week: 'Week',
+  month: 'Month',
+  overdue: 'Overdue',
+  undefined: 'Undefined',
+  completed: 'Completed',
+};
 
 export default function Tasks() {
+  const [isSavingTask, setIsSavingTask] = useState(false);
   const tasks = useTaskStore((state) => state.tasks);
   const searchQuery = useTaskStore((state) => state.searchQuery);
   const activeCategory = useTaskStore((state) => state.activeCategory);
@@ -30,12 +40,11 @@ export default function Tasks() {
   const createTask = useTaskStore((state) => state.createTask);
   const updateTask = useTaskStore((state) => state.updateTask);
   const deleteTask = useTaskStore((state) => state.deleteTask);
-  const archiveTask = useTaskStore((state) => state.archiveTask);
   const restoreTask = useTaskStore((state) => state.restoreTask);
   const duplicateTask = useTaskStore((state) => state.duplicateTask);
   const markTaskComplete = useTaskStore((state) => state.markTaskComplete);
-  const changeTaskStatus = useTaskStore((state) => state.changeTaskStatus);
   const updateTaskProgress = useTaskStore((state) => state.updateTaskProgress);
+  const moveTaskToBucket = useTaskStore((state) => state.moveTaskToBucket);
 
   const goals = useGoalStore((state) => state.goals);
   const schedules = useScheduleStore((state) => state.schedules);
@@ -76,17 +85,28 @@ export default function Tasks() {
         !query ||
         task.title.toLowerCase().includes(query) ||
         task.description.toLowerCase().includes(query) ||
-        task.tags.some((tag) => tag.toLowerCase().includes(query));
+        task.subTags.some((tag) => tag.toLowerCase().includes(query));
       const matchesCategory = activeCategory === 'All' || task.category === activeCategory;
       const matchesPriority = activePriority === 'All' || task.priority === activePriority;
       return matchesQuery && matchesCategory && matchesPriority;
     });
   }, [activeCategory, activePriority, searchQuery, tasks]);
 
-  const tasksBySection = useMemo(
-    () => Object.fromEntries(TASK_SECTIONS.map((section) => [section, filteredTasks.filter((task) => task.section === section)])),
-    [filteredTasks],
-  );
+  const tasksBySection = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const byColumn = Object.fromEntries(TASK_BOARD_COLUMNS.map((bucket) => [bucket, []]));
+
+    filteredTasks.forEach((task) => {
+      const isOverdue = !task.completed && task.dueDate?.slice(0, 10) < today;
+      if (isOverdue) {
+        byColumn.overdue.push(task);
+        return;
+      }
+      byColumn[task.bucket]?.push(task);
+    });
+
+    return byColumn;
+  }, [filteredTasks]);
 
   useEffect(() => {
     const actions = [
@@ -105,17 +125,8 @@ export default function Tasks() {
         title: 'Complete Task',
         category: 'task',
         onTrigger: () => {
-          const firstOpen = filteredTasks.find((task) => task.status !== 'completed' && task.status !== 'archived');
+          const firstOpen = filteredTasks.find((task) => !task.completed);
           if (firstOpen) markTaskComplete(firstOpen.id);
-        },
-      },
-      {
-        id: 'task.archive',
-        title: 'Archive Task',
-        category: 'task',
-        onTrigger: () => {
-          const firstOpen = filteredTasks.find((task) => task.status !== 'archived');
-          if (firstOpen) archiveTask(firstOpen.id);
         },
       },
       {
@@ -129,17 +140,23 @@ export default function Tasks() {
       },
     ];
 
-    registerActions(actions);
+    registerActions(actions.filter(Boolean));
     registerEntities(filteredTasks.map((task) => ({ id: task.id, title: task.title, type: 'task' })));
-  }, [archiveTask, duplicateTask, filteredTasks, markTaskComplete, openCreateModal, openDetailPanel, registerActions, registerEntities]);
+  }, [duplicateTask, filteredTasks, markTaskComplete, openCreateModal, openDetailPanel, registerActions, registerEntities]);
 
   const handleSubmitTask = async (data) => {
-    if (draftMode === 'edit' && selectedTask) {
-      await updateTask(selectedTask.id, data);
-    } else {
-      await createTask(data);
+    if (isSavingTask) return;
+    setIsSavingTask(true);
+    try {
+      if (draftMode === 'edit' && selectedTask) {
+        await updateTask(selectedTask.id, data);
+      } else {
+        await createTask(data);
+      }
+      closeModal();
+    } finally {
+      setIsSavingTask(false);
     }
-    closeModal();
   };
 
   return (
@@ -158,21 +175,25 @@ export default function Tasks() {
       />
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {TASK_SECTIONS.map((section) => (
+        {TASK_BOARD_COLUMNS.map((bucket) => (
           <TaskColumn
-            key={section}
-            title={section}
-            tasks={tasksBySection[section]}
-            collapsed={Boolean(collapsedSections[section])}
-            onToggleCollapsed={() => toggleSectionCollapsed(section)}
+            key={bucket}
+            title={BUCKET_LABELS[bucket]}
+            bucket={bucket}
+            tasks={tasksBySection[bucket]}
+            collapsed={Boolean(collapsedSections[bucket])}
+            onToggleCollapsed={() => toggleSectionCollapsed(bucket)}
             goalMap={goalMap}
             scheduleMap={scheduleMap}
             expandedTaskIds={expandedTaskIds}
             onToggleTaskExpanded={toggleTaskExpanded}
             onToggleTaskCompleted={toggleTaskCompletion}
             onOpenTaskDetail={(taskId) => openDetailPanel('task', taskId)}
-            onChangeTaskStatus={changeTaskStatus}
             onChangeTaskProgress={updateTaskProgress}
+            onDropTask={moveTaskToBucket}
+            droppable={bucket !== 'overdue'}
+            onDeleteTask={deleteTask}
+            onEditTask={(taskId) => openEditModal('task', taskId)}
           />
         ))}
       </div>
@@ -186,6 +207,7 @@ export default function Tasks() {
           initialData={selectedTask || {}}
           onSubmit={handleSubmitTask}
           onCancel={closeModal}
+          isSubmitting={isSavingTask}
         />
       </EntityModal>
 
@@ -195,7 +217,7 @@ export default function Tasks() {
         entity={selectedTask}
         onEdit={(taskId) => openEditModal('task', taskId)}
         onDuplicate={duplicateTask}
-        onArchive={archiveTask}
+        onArchive={null}
         onRestore={restoreTask}
         onDelete={deleteTask}
         onComplete={markTaskComplete}

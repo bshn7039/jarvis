@@ -50,8 +50,10 @@ export default function BaseModal({ open, onClose, children, size = 'md', ariaLa
     position: 'fixed',
     inset: 0,
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
+    overflowY: 'auto',
+    padding: '24px 0',
     zIndex: 10000,
   };
 
@@ -72,6 +74,8 @@ export default function BaseModal({ open, onClose, children, size = 'md', ariaLa
     width: 'calc(100% - 48px)',
     maxWidth: sizes[size]?.maxWidth,
     height: sizes[size]?.height,
+    maxHeight: 'calc(100vh - 48px)',
+    overflow: 'hidden',
   };
 
   return createPortal(

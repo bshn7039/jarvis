@@ -7,6 +7,7 @@ import { useCrmStore } from '../store/crmStore';
 import { useAcademicStore } from '../store/academicStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useProfileStore } from '../store/profileStore';
+import { useChatStore } from '../store/chatStore';
 
 export function useCombinedState() {
   const tasks = useTaskStore(s => s.tasks);
@@ -22,6 +23,7 @@ export function useCombinedState() {
   const academicSubjects = useAcademicStore(s => s.subjects);
   const schedules = useScheduleStore(s => s.schedules);
   const profile = useProfileStore(s => s.profile);
+  const chats = useChatStore(s => s.chatHistory);
 
   return {
     profile,
@@ -32,6 +34,7 @@ export function useCombinedState() {
     fitness: { workouts: fitnessWorkouts, meals: fitnessMeals, hydrationLogs: fitnessHydration },
     crm: { contacts: crmContacts },
     academics: { subjects: academicSubjects },
-    schedules
+    schedules,
+    chats
   };
 }

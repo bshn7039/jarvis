@@ -3,6 +3,7 @@ import TaskCard from './TaskCard';
 
 export default function TaskColumn({
   title,
+  bucket,
   tasks,
   collapsed,
   onToggleCollapsed,
@@ -12,34 +13,46 @@ export default function TaskColumn({
   onToggleTaskExpanded,
   onToggleTaskCompleted,
   onOpenTaskDetail,
-  onChangeTaskStatus,
   onChangeTaskProgress,
+  onDropTask,
+  droppable = true,
+  onDeleteTask,
+  onEditTask,
 }) {
+  const onDragOver = (event) => {
+    if (droppable) event.preventDefault();
+  };
+
+  const onDrop = (event) => {
+    if (!droppable) return;
+    event.preventDefault();
+    const taskId = event.dataTransfer.getData('text/task-id');
+    if (taskId) onDropTask(taskId, bucket);
+  };
+
   return (
-    <section className="rounded-2xl border border-jarvis-border bg-jarvis-panel p-3 md:p-4">
+    <section
+      className="rounded-2xl border border-jarvis-border bg-jarvis-panel p-3 md:p-4"
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+    >
       <button
         type="button"
         onClick={onToggleCollapsed}
         className="mb-3 flex w-full items-center justify-between rounded-lg px-1 py-1 text-left text-sm text-jarvis-text hover:bg-white/[0.03]"
       >
         <span className="flex items-center gap-2">
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4 text-jarvis-muted" strokeWidth={1.75} />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-jarvis-muted" strokeWidth={1.75} />
-          )}
+          {collapsed ? <ChevronRight className="h-4 w-4 text-jarvis-muted" strokeWidth={1.75} /> : <ChevronDown className="h-4 w-4 text-jarvis-muted" strokeWidth={1.75} />}
           {title}
         </span>
-        <span className="rounded-md border border-jarvis-border px-2 py-0.5 text-[11px] text-jarvis-muted">
-          {tasks.length}
-        </span>
+        <span className="rounded-md border border-jarvis-border px-2 py-0.5 text-[11px] text-jarvis-muted">{tasks.length}</span>
       </button>
 
       {!collapsed && (
         <div className="space-y-2">
           {tasks.length === 0 && (
             <p className="rounded-lg border border-dashed border-jarvis-border/70 p-3 text-xs text-jarvis-muted">
-              No tasks in this section with current filters.
+              {droppable ? 'Drop tasks here.' : 'No overdue tasks.'}
             </p>
           )}
           {tasks.map((task) => (
@@ -52,8 +65,9 @@ export default function TaskColumn({
               onToggleExpanded={onToggleTaskExpanded}
               onToggleCompleted={onToggleTaskCompleted}
               onOpenDetail={onOpenTaskDetail}
-              onStatusChange={onChangeTaskStatus}
               onProgressChange={onChangeTaskProgress}
+              onDelete={onDeleteTask}
+              onEdit={onEditTask}
             />
           ))}
         </div>

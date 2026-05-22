@@ -22,19 +22,27 @@ export const profileSchema = {
       allergies: "array",
       healthRestrictions: "string"
     },
-    academics: {
-      college: "string",
-      degree: "string",
+    diploma: {
+      collegeName: "string",
+      semester: "string",
+      courseName: "string",
+      percentage: "number",
+      targetPercentage: "number",
+      extraInfo: "string"
+    },
+    degree: {
+      collegeName: "string",
+      degreeName: "string",
       semester: "string",
       specialization: "string",
-      currentSubjects: "array",
       cgpa: "number",
-      targetCareer: "string"
+      targetCgpa: "number",
+      extraInfo: "string"
     },
     productivity: {
       wakeTime: "string",
       sleepTime: "string",
-      deepWorkHours: "number",
+      taskHoursTarget: "number",
       preferredStudyMethod: "string",
       distractionTriggers: "array"
     },
@@ -42,9 +50,9 @@ export const profileSchema = {
       hobbies: "array",
       languages: "array",
       favoriteMusic: "string",
-      favoriteBooks: "array",
-      personalityNotes: "string"
+      favoriteBooks: "array"
     },
+    personalityProfiles: "array",
     system: {
       createdAt: "string",
       updatedAt: "string"
@@ -53,8 +61,10 @@ export const profileSchema = {
   defaults: {
     id: "root-profile",
     identity: {
-      fullName: "Bhuvaneshwaran",
+      fullName: "baka",
       displayName: "Bhu",
+      email: "baka@gmail.com",
+      phone: "bakaxxxxxx",
       location: "Bengaluru, India",
       timezone: "IST"
     },
@@ -62,14 +72,36 @@ export const profileSchema = {
       heightCm: 175,
       weightKg: 72
     },
-    academics: {
-      semester: "Semester 6"
+    diploma: {
+      collegeName: "",
+      semester: "",
+      courseName: "",
+      percentage: 0,
+      targetPercentage: 0,
+      extraInfo: ""
+    },
+    degree: {
+      collegeName: "",
+      degreeName: "",
+      semester: "",
+      specialization: "",
+      cgpa: 0,
+      targetCgpa: 0,
+      extraInfo: ""
     },
     productivity: {
-      deepWorkHours: 4
+      taskHoursTarget: 4,
+      preferredStudyMethod: "Feynman Technique"
     },
     lifestyle: {
-      hobbies: ["Coding", "Fitness"]
-    }
+      hobbies: ["Coding", "Fitness"],
+      languages: [
+        { language: "English", level: "C1" },
+        { language: "Japanese", level: "A1" }
+      ]
+    },
+    personalityProfiles: [
+      { title: "Architect", description: "Analytical and strategic thinker.", tags: ["Logical", "Planner"] }
+    ]
   }
 };

@@ -8,6 +8,8 @@ import CanvasToolbar from './CanvasToolbar';
 import WorkspaceGrid from './WorkspaceGrid';
 import DraggableModule from './DraggableModule';
 import DataDetailOverlay from '../ui/DataDetailOverlay';
+import { useCombinedState } from '../../hooks/useCombinedState';
+import CanvasNodeActionModals from './CanvasNodeActionModals';
 
 const TOOLBAR_ZOOM_STEP = 0.08;
 const TOOLBAR_ZOOM_ANIMATION_MS = 250;
@@ -18,6 +20,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const [workspaceScale, setWorkspaceScale] = useState(1);
   const [isDraggingModule, setIsDraggingModule] = useState(false);
   const [transformMountKey, setTransformMountKey] = useState('pending');
+  const [nodeActionState, setNodeActionState] = useState(null);
   const persistReadyRef = useRef(false);
   const hasInitializedTransformRef = useRef(false);
   const initialTransformRef = useRef({
@@ -26,6 +29,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
     positionY: 0,
   });
 
+  const combinedState = useCombinedState();
   const scale = useUiStore((s) => sanitizeZoom(s.ui?.canvasZoom));
   const positionX = useUiStore((s) => sanitizePan(s.ui?.canvasPositionX));
   const positionY = useUiStore((s) => sanitizePan(s.ui?.canvasPositionY));
@@ -34,6 +38,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const resetCanvasView = useUiStore((s) => s.resetCanvasView);
   const toggleModuleVisibility = useUiStore((s) => s.toggleModuleVisibility);
   const updateModulePosition = useUiStore((s) => s.updateModulePosition);
+  const setActiveDetailPath = useUiStore((s) => s.setActiveDetailPath);
   const visibleModules = getEnrichedModules({ modules }).filter((module) => module.visible);
   useEffect(() => {
     if (!hydrated) {
@@ -108,6 +113,10 @@ export default function CanvasWorkspace({ onMenuClick }) {
   );
 
   const zoomPercent = Math.round(workspaceScale * 100);
+  const openNodeEdit = useCallback((path) => setNodeActionState({ mode: 'edit', path }), []);
+  const openNodeDelete = useCallback((path) => setNodeActionState({ mode: 'delete', path }), []);
+  const openNodeView = useCallback((path) => setActiveDetailPath(path), [setActiveDetailPath]);
+  const closeNodeAction = useCallback(() => setNodeActionState(null), []);
 
   if (!hydrated) {
     if (import.meta.env.DEV) {
@@ -202,6 +211,9 @@ export default function CanvasWorkspace({ onMenuClick }) {
                           }
                           onDragStart={() => setIsDraggingModule(true)}
                           onDragStop={() => setIsDraggingModule(false)}
+                          onViewNode={openNodeView}
+                          onEditNode={openNodeEdit}
+                          onDeleteNode={openNodeDelete}
                         />
                       );
                     })}
@@ -213,6 +225,11 @@ export default function CanvasWorkspace({ onMenuClick }) {
         </TransformWrapper>
       </div>
       <DataDetailOverlay />
+      <CanvasNodeActionModals
+        actionState={nodeActionState}
+        combinedState={combinedState}
+        onClose={closeNodeAction}
+      />
     </div>
   );
 }

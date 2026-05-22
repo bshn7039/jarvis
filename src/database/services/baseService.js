@@ -14,7 +14,9 @@ export class BaseService {
   }
 
   async create(data) {
-    const id = data.id || `${this.storeName.slice(0, 3)}-${Date.now()}`;
+    const id =
+      data.id ||
+      `${this.storeName.slice(0, 3)}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     return localDb.put(this.storeName, { ...data, id });
   }
 

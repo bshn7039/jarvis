@@ -5,26 +5,21 @@ import { useGoalStore } from '../../store/goalStore';
 import { useAcademicStore } from '../../store/academicStore';
 import { useScheduleStore } from '../../store/scheduleStore';
 import { useJournalStore } from '../../store/journalStore';
-import { useFinanceStore } from '../../store/financeStore';
-import { useCrmStore } from '../../store/crmStore';
 
 const defaultTaskValues = {
   title: '',
   description: '',
-  status: 'planned',
+  bucket: 'undefined',
   priority: 'medium',
-  energy: 'medium',
   category: 'System',
   progress: 0,
-  deadline: '',
-  estimatedTime: '30m',
-  tags: [],
+  dueDate: '',
+  subTags: [],
+  completionNotes: '',
   linkedGoalIds: [],
-  linkedSubjectIds: [],
+  linkedAcademicIds: [],
   linkedScheduleIds: [],
   linkedJournalIds: [],
-  linkedFinanceIds: [],
-  linkedContactIds: [],
 };
 
 function normalizeFormState(data = {}) {
@@ -32,14 +27,12 @@ function normalizeFormState(data = {}) {
     ...defaultTaskValues,
     ...data,
     progress: Number(data.progress ?? defaultTaskValues.progress),
-    tags: Array.isArray(data.tags) ? data.tags : [],
+    subTags: Array.isArray(data.subTags) ? data.subTags : [],
     linkedGoalIds: Array.from(new Set(data.linkedGoalIds || [])),
-    linkedSubjectIds: Array.from(new Set(data.linkedSubjectIds || [])),
+    linkedAcademicIds: Array.from(new Set(data.linkedAcademicIds || data.linkedSubjectIds || [])),
     linkedScheduleIds: Array.from(new Set(data.linkedScheduleIds || [])),
     linkedJournalIds: Array.from(new Set(data.linkedJournalIds || [])),
-    linkedFinanceIds: Array.from(new Set(data.linkedFinanceIds || [])),
-    linkedContactIds: Array.from(new Set(data.linkedContactIds || [])),
-    deadline: data.deadline ? String(data.deadline).slice(0, 10) : '',
+    dueDate: data.dueDate ? String(data.dueDate).slice(0, 10) : '',
   };
 }
 
@@ -123,15 +116,13 @@ function Field({ field, value, onChange }) {
   );
 }
 
-export default function EntityForm({ initialData = {}, onSubmit, onCancel }) {
+export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSubmitting = false }) {
   const [formData, setFormData] = useState(() => normalizeFormState(initialData));
 
   const goals = useGoalStore((state) => state.goals);
   const subjects = useAcademicStore((state) => state.subjects);
   const schedules = useScheduleStore((state) => state.schedules);
   const journals = useJournalStore((state) => state.entries);
-  const financeEntries = useFinanceStore((state) => state.transactions);
-  const contacts = useCrmStore((state) => state.contacts);
 
   const relationshipOptions = useMemo(
     () => ({
@@ -139,10 +130,8 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel }) {
       linkedSubjectIds: subjects.map((subject) => ({ id: subject.id, title: subject.name || subject.title || subject.id })),
       linkedScheduleIds: schedules.map((schedule) => ({ id: schedule.id, title: schedule.label || schedule.title || schedule.id })),
       linkedJournalIds: journals.map((entry) => ({ id: entry.id, title: entry.title || entry.date || entry.id })),
-      linkedFinanceIds: financeEntries.map((entry) => ({ id: entry.id, title: entry.note || entry.category || entry.id })),
-      linkedContactIds: contacts.map((contact) => ({ id: contact.id, title: contact.name || contact.title || contact.id })),
     }),
-    [contacts, financeEntries, goals, journals, schedules, subjects],
+    [goals, journals, schedules, subjects],
   );
 
   const setField = (name, value) => {
@@ -151,6 +140,7 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (isSubmitting) return;
     await onSubmit?.(formData);
   };
 
@@ -174,8 +164,8 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel }) {
         <EntityLinkSelector
           label="Academics"
           entities={relationshipOptions.linkedSubjectIds}
-          value={formData.linkedSubjectIds}
-          onChange={(value) => setField('linkedSubjectIds', value)}
+          value={formData.linkedAcademicIds}
+          onChange={(value) => setField('linkedAcademicIds', value)}
           placeholder="Link subjects"
         />
         <EntityLinkSelector
@@ -192,35 +182,23 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel }) {
           onChange={(value) => setField('linkedJournalIds', value)}
           placeholder="Link journal entries"
         />
-        <EntityLinkSelector
-          label="Finance"
-          entities={relationshipOptions.linkedFinanceIds}
-          value={formData.linkedFinanceIds}
-          onChange={(value) => setField('linkedFinanceIds', value)}
-          placeholder="Link finance entries"
-        />
-        <EntityLinkSelector
-          label="Contacts"
-          entities={relationshipOptions.linkedContactIds}
-          value={formData.linkedContactIds}
-          onChange={(value) => setField('linkedContactIds', value)}
-          placeholder="Link contacts"
-        />
       </div>
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <button
           type="button"
           onClick={onCancel}
+          disabled={isSubmitting}
           className="rounded border border-jarvis-border px-3 py-1.5 text-xs text-jarvis-muted transition hover:text-jarvis-text"
         >
           Cancel
         </button>
         <button
           type="submit"
+          disabled={isSubmitting}
           className="rounded border border-jarvis-border bg-white/10 px-3 py-1.5 text-xs text-jarvis-text transition hover:bg-white/15"
         >
-          Save Task
+          {isSubmitting ? 'Saving...' : 'Save Task'}
         </button>
       </div>
     </form>

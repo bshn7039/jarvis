@@ -18,7 +18,7 @@ const mockDatabase = {
   ],
 
   schedules: [
-    { id: 'sch-001', label: 'Morning Deep Work', date: '2026-05-21', time: '06:30', module: 'System', taskIds: ['task-001'] },
+    { id: 'sch-001', label: 'Morning Deep Work', date: '2026-05-21', time: '06:30', module: 'System', taskIds: [] },
   ],
 
   goals: [
@@ -44,11 +44,7 @@ const mockDatabase = {
     },
   ],
 
-  tasks: [
-    { id: 'task-001', title: 'Finalize Jarvis module routing', description: 'Wire all new module pages into router.', status: 'in_progress', section: 'Today', category: 'System', priority: 'Critical', linkedGoal: 'goal-1', deadline: '2026-05-21T23:00:00', estimatedTime: '120m', tags: ['jarvis'], progress: 70, scheduleId: 'sch-001' },
-    { id: 'task-002', title: 'Read 20 pages of clean code', description: 'Focus on naming and functions.', status: 'todo', section: 'Today', category: 'Skill Building', priority: 'Medium', linkedGoal: 'goal-2', deadline: '2026-05-21T22:00:00', estimatedTime: '45m', tags: ['reading'], progress: 0, scheduleId: null },
-    { id: 'task-003', title: 'Morning workout sprint', description: 'Quick 30 min session.', status: 'completed', section: 'Completed', category: 'Fitness', priority: 'High', linkedGoal: 'goal-2', deadline: '2026-05-21T08:30:00', estimatedTime: '30m', tags: ['fitness'], progress: 100, scheduleId: null },
-  ],
+  tasks: [],
 
   journal: {
     entries: [

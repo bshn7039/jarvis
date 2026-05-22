@@ -1,12 +1,12 @@
 import { memo, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Hash, List, Database, FileText, Folder } from 'lucide-react';
+import { ChevronDown, ChevronRight, Hash, List, Database, FileText, Eye, Pencil, Trash2 } from 'lucide-react';
 import { useUiStore } from '../../store/uiStore';
 import { useCombinedState } from '../../hooks/useCombinedState';
 import ProgressBar from '../ui/ProgressBar';
 
 const MAX_DEPTH = 10;
 
-function getNestedData(data, path) {
+export function getNestedData(data, path) {
   if (!path || !data) return null;
   const parts = path.split('.');
   let current = data;
@@ -48,7 +48,7 @@ const DataTable = memo(function DataTable({ value }) {
           {value.map((item, i) => (
             <tr key={i} className="border-b border-jarvis-border/20 last:border-0 hover:bg-white/[0.02] transition-colors">
               {keys.map(k => (
-                <td key={k} className="px-2 py-2 text-jarvis-text/80 truncate max-w-[150px]">
+                <td key={k} className="px-2 py-2 text-jarvis-text/80 truncate max-w-[250px]">
                   {typeof item[k] === 'object' ? 
                     (Array.isArray(item[k]) ? `[Array(${item[k].length})]` : '[Object]') 
                     : String(item[k])}
@@ -62,7 +62,7 @@ const DataTable = memo(function DataTable({ value }) {
   );
 });
 
-function formatValue(value, label = '') {
+export function formatValue(value, label = '') {
   if (value === null || value === undefined) return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   
@@ -92,6 +92,68 @@ const DataRenderer = memo(function DataRenderer({ value, depth = 0, label = '' }
   }
 
   if (depth > MAX_DEPTH) return <span className="text-jarvis-muted italic">[Max Depth]</span>;
+
+  // Chat Messages specialized renderer
+  if (label.toLowerCase() === 'messages' && Array.isArray(value)) {
+    return (
+      <div className="flex flex-col gap-3 mt-2 border-l-2 border-jarvis-border/40 pl-4 py-1">
+        {value.map((msg, i) => (
+          <div key={msg.id || i} className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className={`text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded ${
+                msg.role === 'user' ? 'bg-jarvis-accent/20 text-jarvis-accent' : 'bg-white/10 text-jarvis-text'
+              }`}>
+                {msg.role}
+              </span>
+              <span className="text-[9px] text-jarvis-muted font-mono">
+                {msg.createdAt && new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+            <p className="text-[11px] text-jarvis-text/90 leading-relaxed bg-white/[0.02] p-2 rounded-md border border-jarvis-border/30 whitespace-pre-wrap">
+              {msg.content}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Personality Profiles specialized renderer
+  if (label.toLowerCase() === 'personalityprofiles' && Array.isArray(value)) {
+    return (
+      <div className="grid gap-3 mt-2">
+        {value.map((p, i) => (
+          <div key={i} className="rounded-lg border border-jarvis-border/50 bg-white/[0.02] p-3 space-y-2">
+            <h4 className="text-[11px] font-semibold text-jarvis-text uppercase tracking-wider">{p.title}</h4>
+            <p className="text-[10px] text-jarvis-muted leading-relaxed">{p.description}</p>
+            {p.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {p.tags.map(tag => (
+                  <span key={tag} className="text-[8px] px-1.5 py-0.5 rounded-full bg-jarvis-accent/10 text-jarvis-accent border border-jarvis-accent/20">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Languages specialized renderer
+  if (label.toLowerCase() === 'languages' && Array.isArray(value)) {
+    return (
+      <div className="flex flex-wrap gap-2 mt-1">
+        {value.map((lang, i) => (
+          <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-white/5 border border-jarvis-border/30">
+            <span className="text-[10px] font-medium text-jarvis-text">{lang.language}</span>
+            <span className="text-[9px] font-mono text-jarvis-accent px-1 bg-jarvis-accent/10 rounded">{lang.level}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   // Primitive Handling
   if (typeof value !== 'object') {
@@ -170,7 +232,7 @@ const DataRenderer = memo(function DataRenderer({ value, depth = 0, label = '' }
   );
 });
 
-const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState }) {
+const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState, onViewNode, onEditNode, onDeleteNode }) {
   const toggleCanvasExpand = useUiStore((s) => s.toggleCanvasExpand);
   const setActiveDetailPath = useUiStore((s) => s.setActiveDetailPath);
   const isExpanded = useUiStore((s) => !!s.canvasExpansion[node.id]);
@@ -186,8 +248,7 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState
   const hasChildren = node.children && node.children.length > 0;
   
   const Icon = useMemo(() => {
-    if (node.isModule) return Database;
-    if (hasChildren) return Folder;
+    if (node.isModule || hasChildren) return Database;
     if (Array.isArray(data)) return List;
     if (typeof data === 'object') return Hash;
     return FileText;
@@ -203,7 +264,7 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState
     <div className="flex flex-col select-none">
       <div
         className={[
-          "flex items-center gap-2 rounded-md py-1.5 pr-2 transition-all duration-200 hover:bg-white/[0.04]",
+          "group flex items-center gap-2 rounded-md py-1.5 pr-2 transition-all duration-200 hover:bg-white/[0.04]",
           depth === 0 ? "mt-1 mb-0.5" : "my-0"
         ].join(' ')}
         style={{ paddingLeft: `${depth * 14}px` }}
@@ -228,7 +289,7 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState
         
         <div 
           className="flex min-w-0 flex-1 items-baseline gap-2 cursor-pointer group/label"
-          onClick={() => setActiveDetailPath(node.id)}
+          onClick={() => (onViewNode ? onViewNode(node.id) : setActiveDetailPath(node.id))}
         >
           <span className={[
             "truncate text-[12px] tracking-tight transition-colors duration-200",
@@ -244,18 +305,62 @@ const DatabaseNode = memo(function DatabaseNode({ node, depth = 0, combinedState
             </span>
           )}
         </div>
+
+        <div className="module-no-drag flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <button
+            type="button"
+            aria-label={`View ${node.label}`}
+            className="rounded p-1 text-jarvis-muted hover:bg-white/10 hover:text-jarvis-text"
+            onClick={(event) => {
+              event.stopPropagation();
+              if (onViewNode) onViewNode(node.id);
+              else setActiveDetailPath(node.id);
+            }}
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label={`Edit ${node.label}`}
+            className="rounded p-1 text-jarvis-muted hover:bg-white/10 hover:text-jarvis-text"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEditNode?.(node.id);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            aria-label={`Delete ${node.label}`}
+            className="rounded p-1 text-jarvis-muted hover:bg-white/10 hover:text-red-300"
+            onClick={(event) => {
+              event.stopPropagation();
+              onDeleteNode?.(node.id);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </div>
 
       {isExpanded && hasChildren && (
         <div className="flex flex-col border-l border-jarvis-border/20 ml-[7px] pl-4 mb-2">
-          {node.children.map((child) => (
-            <DatabaseNode
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              combinedState={combinedState}
-            />
-          ))}
+          {node.label.toLowerCase() === 'messages' ? (
+             <DataRenderer value={data} label={node.label} depth={depth + 1} />
+          ) : (
+            node.children.map((child) => (
+              <DatabaseNode
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                combinedState={combinedState}
+                onViewNode={onViewNode}
+                onEditNode={onEditNode}
+                onDeleteNode={onDeleteNode}
+              />
+            ))
+          )}
         </div>
       )}
 

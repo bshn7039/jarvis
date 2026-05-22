@@ -10,6 +10,9 @@ export default function DraggableModule({
   onDragStop,
   onPositionChange,
   onVisibilityToggle,
+  onViewNode,
+  onEditNode,
+  onDeleteNode,
 }) {
   const nodeRef = useRef(null);
 
@@ -50,6 +53,9 @@ export default function DraggableModule({
           moduleNode={moduleNode}
           onVisibilityToggle={onVisibilityToggle}
           onDragIntent={onDragStart}
+          onViewNode={onViewNode}
+          onEditNode={onEditNode}
+          onDeleteNode={onDeleteNode}
         />
       </div>
     </Draggable>

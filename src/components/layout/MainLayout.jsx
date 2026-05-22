@@ -5,7 +5,22 @@ import ChatWindow from '../chat/ChatWindow';
 import PromptBar from '../chat/PromptBar';
 import { useChatStore } from '../../store/chatStore';
 
-function MainLayoutContent({ showChat = false }) {
+function CenteredLandingState() {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 pb-32">
+      <div className="flex flex-col items-center text-center">
+        <div className="relative mb-4 flex items-center justify-center">
+          <div className="absolute h-12 w-12 animate-ping rounded-full bg-jarvis-text/5 duration-[3000ms]"></div>
+          <h2 className="jarvis-title text-4xl font-semibold tracking-[0.3em] text-jarvis-text/90 sm:text-5xl">
+            JARVIS
+          </h2>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MainLayoutContent() {
   const { openMobile } = useLayout();
   const chatHistory = useChatStore((s) => s.chatHistory);
   const activeChatId = useChatStore((s) => s.activeChatId);
@@ -14,19 +29,24 @@ function MainLayoutContent({ showChat = false }) {
   const messages = activeChat?.messages || [];
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-jarvis-bg">
+    <div className="flex h-screen w-full overflow-hidden bg-jarvis-bg text-jarvis-text">
       <Sidebar />
 
       <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ChatHeader
-          title={showChat ? (activeChat?.title || 'Chat') : null}
+          title={activeChatId ? (activeChat?.title || 'Conversation') : null}
           onMenuClick={openMobile}
         />
+        
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <ChatWindow
-            messages={showChat ? messages : []}
-            showEmpty={!showChat}
-          />
+          {activeChatId ? (
+            <ChatWindow
+              messages={messages}
+              showEmpty={false}
+            />
+          ) : (
+            <CenteredLandingState />
+          )}
           <PromptBar />
         </div>
       </main>
@@ -41,3 +61,4 @@ export default function MainLayout(props) {
     </LayoutProvider>
   );
 }
+

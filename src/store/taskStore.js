@@ -1,11 +1,16 @@
 import { create } from 'zustand';
 import { taskService } from '../database/services/taskService';
+import { goalService } from '../database/services/goalService';
+import { journalService } from '../database/services/journalService';
+import { financeService } from '../database/services/financeService';
+import { localDb, STORES } from '../database/core/localDatabase';
 import { deepClone } from '../utils/deepClone';
 import { useActivityStore } from './activityStore';
 
-const STATUS_VALUES = ['backlog', 'planned', 'active', 'paused', 'completed', 'archived'];
+const TASK_BUCKETS = ['today', 'week', 'month', 'undefined', 'completed'];
 const PRIORITY_VALUES = ['low', 'medium', 'high', 'critical'];
-const ENERGY_VALUES = ['low', 'medium', 'high', 'deep'];
+const DEMO_TASK_IDS = new Set(['task-001', 'task-002', 'task-003']);
+const FULL_PURGE_FLAG = 'jarvis_tasks_full_purge_v1';
 
 const initialState = {
   tasks: [],
@@ -13,12 +18,12 @@ const initialState = {
   activeCategory: 'All',
   activePriority: 'All',
   collapsedSections: {
-    Backlog: false,
-    Planned: false,
-    Active: false,
-    Paused: false,
-    Completed: false,
-    Archived: true,
+    today: false,
+    week: false,
+    month: false,
+    overdue: false,
+    undefined: false,
+    completed: false,
   },
   expandedTaskIds: {},
   isHydrated: false,
@@ -28,14 +33,15 @@ function dedupeIds(ids) {
   return Array.from(new Set((ids || []).filter(Boolean)));
 }
 
-function normalizeStatus(status, section) {
-  const next = String(status || '').toLowerCase();
-  if (STATUS_VALUES.includes(next)) return next;
-  if (section === 'Completed') return 'completed';
-  if (section === 'Someday' || section === 'Monthly') return 'backlog';
-  if (section === 'Weekly') return 'planned';
-  if (section === 'Today') return 'active';
-  return 'planned';
+function uniqueTasksById(tasks = []) {
+  const seen = new Set();
+  const out = [];
+  for (const task of tasks) {
+    if (!task?.id || seen.has(task.id)) continue;
+    seen.add(task.id);
+    out.push(task);
+  }
+  return out;
 }
 
 function normalizePriority(priority) {
@@ -43,67 +49,230 @@ function normalizePriority(priority) {
   return PRIORITY_VALUES.includes(next) ? next : 'medium';
 }
 
-function normalizeEnergy(energy) {
-  const next = String(energy || '').toLowerCase();
-  return ENERGY_VALUES.includes(next) ? next : 'medium';
+function dayKey(input) {
+  return new Date(input || Date.now()).toISOString().slice(0, 10);
 }
 
-function sectionFromStatus(status) {
-  if (status === 'backlog') return 'Backlog';
-  if (status === 'planned') return 'Planned';
-  if (status === 'active') return 'Active';
-  if (status === 'paused') return 'Paused';
-  if (status === 'completed') return 'Completed';
-  return 'Archived';
+function startOfToday() {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return now;
+}
+
+function inferBucketFromDueDate(dueDate) {
+  if (!dueDate) return 'undefined';
+  const due = new Date(dueDate);
+  if (Number.isNaN(due.getTime())) return 'undefined';
+
+  const today = startOfToday();
+  const dueStart = new Date(due);
+  dueStart.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.floor((dueStart - today) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'today';
+  if (diffDays > 0 && diffDays <= 7) return 'week';
+
+  if (
+    dueStart.getFullYear() === today.getFullYear() &&
+    dueStart.getMonth() === today.getMonth()
+  ) {
+    return 'month';
+  }
+
+  return 'month';
+}
+
+function normalizeBucket(rawBucket, dueDate, completed) {
+  if (completed) return 'completed';
+  const next = String(rawBucket || '').toLowerCase();
+  if (TASK_BUCKETS.includes(next) && next !== 'completed') return next;
+  return inferBucketFromDueDate(dueDate);
 }
 
 function normalizeTask(task = {}) {
-  const status = normalizeStatus(task.status, task.section);
-  const progress = status === 'completed' ? 100 : Math.max(0, Math.min(100, Number(task.progress) || 0));
+  const dueDate = task.dueDate || task.deadline || null;
+  const completed = Boolean(task.completed || task.status === 'completed' || task.bucket === 'completed');
+  const bucket = normalizeBucket(task.bucket || task.status, dueDate, completed);
+  const originalBucket = normalizeBucket(task.originalBucket, dueDate, false);
 
   return {
     ...task,
     title: task.title?.trim() || 'Untitled task',
     description: task.description?.trim() || '',
-    status,
-    section: sectionFromStatus(status),
-    priority: normalizePriority(task.priority),
-    energy: normalizeEnergy(task.energy),
-    progress,
-    linkedGoalIds: dedupeIds(task.linkedGoalIds || (task.linkedGoal ? [task.linkedGoal] : [])),
-    linkedSubjectIds: dedupeIds(task.linkedSubjectIds),
-    linkedScheduleIds: dedupeIds(task.linkedScheduleIds || (task.scheduleId ? [task.scheduleId] : [])),
-    linkedJournalIds: dedupeIds(task.linkedJournalIds),
-    linkedFinanceIds: dedupeIds(task.linkedFinanceIds),
-    linkedContactIds: dedupeIds(task.linkedContactIds),
-    deadline: task.deadline || null,
-    tags: Array.isArray(task.tags) ? dedupeIds(task.tags) : [],
-    archivedAt: status === 'archived' ? task.archivedAt || new Date().toISOString() : null,
     createdAt: task.createdAt || new Date().toISOString(),
+    dueDate,
+    completedAt: completed ? task.completedAt || new Date().toISOString() : null,
+    originalBucket,
+    bucket,
+    progress: completed ? 100 : Math.max(0, Math.min(100, Number(task.progress) || 0)),
+    completed,
+    priority: normalizePriority(task.priority),
+    category: task.category || 'System',
+    subTags: dedupeIds(task.subTags || task.tags || []),
+    linkedGoalIds: dedupeIds(task.linkedGoalIds || (task.linkedGoal ? [task.linkedGoal] : [])),
+    linkedJournalIds: dedupeIds(task.linkedJournalIds || (task.linkedTaskId ? [task.linkedTaskId] : [])),
+    linkedAcademicIds: dedupeIds(task.linkedAcademicIds || task.linkedSubjectIds),
+    linkedScheduleIds: dedupeIds(task.linkedScheduleIds || (task.scheduleId ? [task.scheduleId] : [])),
+    completionNotes: task.completionNotes || '',
+    archived: Boolean(task.archived),
     updatedAt: new Date().toISOString(),
   };
 }
 
-function withActivity(type, action, entityId, metadata = {}) {
-  return useActivityStore.getState().logActivity({
-    type,
-    action,
-    entityType: type,
-    entityId,
-    metadata,
-  });
+function getDropDueDate(targetBucket) {
+  const now = new Date();
+  if (targetBucket === 'today') return now.toISOString();
+  if (targetBucket === 'week') {
+    const due = new Date(now);
+    due.setDate(due.getDate() + 7);
+    return due.toISOString();
+  }
+  if (targetBucket === 'month') {
+    const due = new Date(now);
+    due.setMonth(due.getMonth() + 1);
+    return due.toISOString();
+  }
+  return null;
+}
+
+async function withActivity(action, entityId, metadata = {}) {
+  try {
+    return await useActivityStore.getState().logActivity({
+      type: 'task',
+      action,
+      entityType: 'task',
+      entityId,
+      metadata,
+    });
+  } catch (err) {
+    console.warn('Task activity log failed:', err);
+    return null;
+  }
 }
 
 export const useTaskStore = create((set, get) => ({
   ...deepClone(initialState),
 
+  refreshFromDb: async () => {
+    try {
+      const tasks = uniqueTasksById((await taskService.getAll()).map(normalizeTask));
+      set({ tasks, isHydrated: true });
+    } catch (err) {
+      console.error('Failed to refresh tasks from db:', err);
+    }
+  },
+
   hydrate: async () => {
     try {
-      const tasks = await taskService.getAll();
-      set({ tasks: tasks.map(normalizeTask), isHydrated: true });
+      let tasks = await taskService.getAll();
+      tasks = uniqueTasksById(tasks.map(normalizeTask));
+      set({ tasks, isHydrated: true });
+      await get().removeDemoTasksSafely();
+      await get().purgeAllTasksSafelyOnce();
     } catch (err) {
       console.error('Failed to hydrate tasks:', err);
     }
+  },
+
+  purgeAllTasksSafelyOnce: async () => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage.getItem(FULL_PURGE_FLAG) === 'done') {
+        return;
+      }
+      await get().purgeAllTasksSafely();
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(FULL_PURGE_FLAG, 'done');
+      }
+    } catch (err) {
+      console.error('Failed to purge all tasks safely:', err);
+    }
+  },
+
+  purgeAllTasksSafely: async () => {
+    const allTaskIds = new Set(get().tasks.map((task) => task.id).filter(Boolean));
+
+    const goals = await goalService.getAll();
+    for (const goal of goals) {
+      const linkedTaskIds = [];
+      const objectives = (goal.objectives || []).map((objective) => ({ ...objective, taskIds: [] }));
+      if ((goal.linkedTaskIds || []).length > 0 || (goal.objectives || []).some((o) => (o.taskIds || []).length > 0)) {
+        await goalService.update(goal.id, { ...goal, linkedTaskIds, objectives });
+      }
+    }
+
+    const journalEntries = await journalService.getAll();
+    for (const entry of journalEntries) {
+      if (entry.linkedTaskId) {
+        await journalService.update(entry.id, { ...entry, linkedTaskId: null });
+      }
+    }
+
+    const transactions = await financeService.getAll();
+    for (const transaction of transactions) {
+      if (transaction.linkedTaskId) {
+        await financeService.update(transaction.id, { ...transaction, linkedTaskId: null });
+      }
+    }
+
+    const schedules = await localDb.getAll(STORES.SCHEDULES);
+    for (const schedule of schedules) {
+      if ((schedule.taskIds || []).length > 0) {
+        await localDb.put(STORES.SCHEDULES, { ...schedule, taskIds: [] });
+      }
+    }
+
+    await localDb.clear(STORES.TASKS);
+    set({ tasks: [] });
+    await withActivity('deleted', 'all-tasks-purge', { removedCount: allTaskIds.size, mode: 'full-safe-purge' });
+  },
+
+  removeDemoTasksSafely: async () => {
+    const currentTasks = get().tasks;
+    const demoTasks = currentTasks.filter((task) => DEMO_TASK_IDS.has(task.id));
+    if (!demoTasks.length) return;
+
+    const demoTaskIds = new Set(demoTasks.map((task) => task.id));
+
+    const goals = await goalService.getAll();
+    for (const goal of goals) {
+      const linkedTaskIds = (goal.linkedTaskIds || []).filter((id) => !demoTaskIds.has(id));
+      const objectives = (goal.objectives || []).map((objective) => ({
+        ...objective,
+        taskIds: (objective.taskIds || []).filter((id) => !demoTaskIds.has(id)),
+      }));
+      if (linkedTaskIds.length !== (goal.linkedTaskIds || []).length || JSON.stringify(objectives) !== JSON.stringify(goal.objectives || [])) {
+        await goalService.update(goal.id, { ...goal, linkedTaskIds, objectives });
+      }
+    }
+
+    const journalEntries = await journalService.getAll();
+    for (const entry of journalEntries) {
+      if (entry.linkedTaskId && demoTaskIds.has(entry.linkedTaskId)) {
+        await journalService.update(entry.id, { ...entry, linkedTaskId: null });
+      }
+    }
+
+    const transactions = await financeService.getAll();
+    for (const transaction of transactions) {
+      if (transaction.linkedTaskId && demoTaskIds.has(transaction.linkedTaskId)) {
+        await financeService.update(transaction.id, { ...transaction, linkedTaskId: null });
+      }
+    }
+
+    const schedules = await localDb.getAll(STORES.SCHEDULES);
+    for (const schedule of schedules) {
+      const filtered = (schedule.taskIds || []).filter((id) => !demoTaskIds.has(id));
+      if (filtered.length !== (schedule.taskIds || []).length) {
+        await localDb.put(STORES.SCHEDULES, { ...schedule, taskIds: filtered });
+      }
+    }
+
+    for (const task of demoTasks) {
+      await taskService.delete(task.id);
+    }
+
+    set((state) => ({ tasks: state.tasks.filter((task) => !demoTaskIds.has(task.id)) }));
+    await withActivity('demo_tasks_purged', 'seed-cleanup', { removed: Array.from(demoTaskIds) });
   },
 
   setSearchQuery: (value) => set({ searchQuery: value }),
@@ -127,30 +296,10 @@ export const useTaskStore = create((set, get) => ({
     })),
 
   createTask: async (input) => {
-    const draft = normalizeTask({
-      title: input.title,
-      description: input.description,
-      status: input.status || 'planned',
-      category: input.category || 'System',
-      priority: input.priority,
-      energy: input.energy,
-      deadline: input.deadline || null,
-      estimatedTime: input.estimatedTime || '30m',
-      tags: input.tags || [],
-      progress: input.progress,
-      linkedGoalIds: input.linkedGoalIds,
-      linkedSubjectIds: input.linkedSubjectIds,
-      linkedScheduleIds: input.linkedScheduleIds,
-      linkedJournalIds: input.linkedJournalIds,
-      linkedFinanceIds: input.linkedFinanceIds,
-      linkedContactIds: input.linkedContactIds,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
+    const draft = normalizeTask({ ...input, createdAt: new Date().toISOString() });
     const savedTask = normalizeTask(await taskService.create(draft));
-    set((state) => ({ tasks: [savedTask, ...state.tasks] }));
-    await withActivity('task', 'created', savedTask.id, { title: savedTask.title });
+    set((state) => ({ tasks: uniqueTasksById([savedTask, ...state.tasks]) }));
+    await withActivity('created', savedTask.id, { title: savedTask.title, bucket: savedTask.bucket });
     return savedTask;
   },
 
@@ -160,87 +309,96 @@ export const useTaskStore = create((set, get) => ({
 
     const merged = normalizeTask({ ...task, ...updates, updatedAt: new Date().toISOString() });
     const savedTask = normalizeTask(await taskService.update(taskId, merged));
-    set((state) => ({
-      tasks: state.tasks.map((item) => (item.id === taskId ? savedTask : item)),
-    }));
-    await withActivity('task', 'updated', taskId, { title: savedTask.title });
+    set((state) => ({ tasks: state.tasks.map((item) => (item.id === taskId ? savedTask : item)) }));
+    await withActivity('updated', taskId, { title: savedTask.title, bucket: savedTask.bucket });
     return savedTask;
   },
 
   deleteTask: async (taskId) => {
     const task = get().tasks.find((item) => item.id === taskId);
     await taskService.delete(taskId);
-    set((state) => ({ tasks: state.tasks.filter((item) => item.id !== taskId) }));
-    await withActivity('task', 'deleted', taskId, { title: task?.title || 'Task' });
+    set((state) => {
+      const idx = state.tasks.findIndex((item) => item.id === taskId);
+      if (idx === -1) return state;
+      const next = state.tasks.slice();
+      next.splice(idx, 1);
+      return { tasks: next };
+    });
+    await withActivity('deleted', taskId, { title: task?.title || 'Task' });
   },
 
-  archiveTask: async (taskId) => {
+  markTaskComplete: async (taskId, completionNotes = '') => {
     const task = get().tasks.find((item) => item.id === taskId);
     if (!task) return null;
-    const saved = await get().updateTask(taskId, { status: 'archived', archivedAt: new Date().toISOString() });
-    await withActivity('task', 'archived', taskId, { title: task.title });
+    const saved = await get().updateTask(taskId, {
+      completed: true,
+      completedAt: new Date().toISOString(),
+      progress: 100,
+      originalBucket: task.bucket === 'completed' ? task.originalBucket || inferBucketFromDueDate(task.dueDate) : task.bucket,
+      bucket: 'completed',
+      completionNotes: completionNotes || task.completionNotes || '',
+    });
+    await withActivity('completed', taskId, { title: task.title });
     return saved;
   },
 
   restoreTask: async (taskId) => {
     const task = get().tasks.find((item) => item.id === taskId);
     if (!task) return null;
-    const saved = await get().updateTask(taskId, { status: 'planned', archivedAt: null });
-    await withActivity('task', 'restored', taskId, { title: task.title });
+    const restoredBucket = normalizeBucket(task.originalBucket, task.dueDate, false);
+    const saved = await get().updateTask(taskId, {
+      completed: false,
+      completedAt: null,
+      progress: 0,
+      bucket: restoredBucket,
+    });
+    await withActivity('restored', taskId, { title: task.title, restoredBucket });
     return saved;
+  },
+
+  toggleTaskCompletion: async (taskId) => {
+    const task = get().tasks.find((item) => item.id === taskId);
+    if (!task) return null;
+    if (task.completed || task.bucket === 'completed') return get().restoreTask(taskId);
+    return get().markTaskComplete(taskId);
+  },
+
+  moveTaskToBucket: async (taskId, targetBucket) => {
+    const task = get().tasks.find((item) => item.id === taskId);
+    if (!task || !TASK_BUCKETS.includes(targetBucket)) return null;
+
+    if (targetBucket === 'completed') {
+      return get().markTaskComplete(taskId);
+    }
+
+    const dueDate = targetBucket === 'undefined' ? null : getDropDueDate(targetBucket);
+    const saved = await get().updateTask(taskId, {
+      completed: false,
+      completedAt: null,
+      bucket: targetBucket,
+      originalBucket: targetBucket,
+      dueDate,
+    });
+    await withActivity('moved', taskId, { from: task.bucket, to: targetBucket, mode: 'drag-drop' });
+    await withActivity('drag_drop_bucket_changed', taskId, { from: task.bucket, to: targetBucket });
+    return saved;
+  },
+
+  updateTaskProgress: async (taskId, progress) => {
+    const next = Math.max(0, Math.min(100, Number(progress) || 0));
+    if (next >= 100) return get().markTaskComplete(taskId);
+    return get().updateTask(taskId, { progress: next, completed: false, completedAt: null });
   },
 
   duplicateTask: async (taskId) => {
     const task = get().tasks.find((item) => item.id === taskId);
     if (!task) return null;
-
-    const cloneInput = {
-      ...task,
-      title: `${task.title} (Copy)`,
-      status: task.status === 'archived' ? 'planned' : task.status,
-      progress: task.status === 'completed' ? 0 : task.progress,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
+    const cloneInput = { ...task, title: `${task.title} (Copy)`, createdAt: new Date().toISOString(), completed: false, completedAt: null, progress: 0, bucket: normalizeBucket(task.originalBucket, task.dueDate, false) };
     delete cloneInput.id;
     const savedTask = await get().createTask(cloneInput);
-    await withActivity('task', 'duplicated', savedTask.id, { sourceTaskId: taskId, title: savedTask.title });
+    await withActivity('duplicated', savedTask.id, { sourceTaskId: taskId, title: savedTask.title });
     return savedTask;
   },
 
-  markTaskComplete: async (taskId) => {
-    const task = get().tasks.find((item) => item.id === taskId);
-    if (!task) return null;
-    const saved = await get().updateTask(taskId, { status: 'completed', progress: 100, completedAt: new Date().toISOString() });
-    await withActivity('task', 'completed', taskId, { title: task.title });
-    return saved;
-  },
-
-  changeTaskStatus: async (taskId, status) => {
-    const normalizedStatus = normalizeStatus(status);
-    const updates = normalizedStatus === 'completed'
-      ? { status: normalizedStatus, progress: 100 }
-      : { status: normalizedStatus, completedAt: null };
-    return get().updateTask(taskId, updates);
-  },
-
-  updateTaskProgress: async (taskId, progress) => {
-    const next = Math.max(0, Math.min(100, Number(progress) || 0));
-    if (next >= 100) {
-      return get().markTaskComplete(taskId);
-    }
-    return get().updateTask(taskId, { progress: next });
-  },
-
   addTask: async (taskData) => get().createTask(taskData),
-  toggleTaskCompletion: async (taskId) => {
-    const task = get().tasks.find((item) => item.id === taskId);
-    if (!task) return;
-    if (task.status === 'completed') {
-      await get().changeTaskStatus(taskId, 'active');
-      return;
-    }
-    await get().markTaskComplete(taskId);
-  },
 }));

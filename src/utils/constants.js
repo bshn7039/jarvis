@@ -9,7 +9,8 @@ export const TASK_CATEGORIES = [
 ];
 
 export const TASK_PRIORITIES = ['critical', 'high', 'medium', 'low'];
-export const TASK_SECTIONS = ['Backlog', 'Planned', 'Active', 'Paused', 'Completed', 'Archived'];
+export const TASK_BUCKETS = ['today', 'week', 'month', 'undefined', 'completed'];
+export const TASK_BOARD_COLUMNS = ['today', 'week', 'month', 'overdue', 'undefined', 'completed'];
 
 export const MODULE_KEYS = [
   'tasks',

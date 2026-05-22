@@ -35,8 +35,22 @@ export function buildNode(data, path, depth = 0) {
     node.dataKey = path;
     if (data.length > 0 && typeof data[0] === 'object') {
       node.children = data.map((item, index) => {
-        const itemId = item.id || item.name || index;
-        return buildNode(item, `${path}.${itemId}`, depth + 1);
+        const itemPathSegment = item?.id ?? index;
+        const childNode = buildNode(item, `${path}.${itemPathSegment}`, depth + 1);
+        
+        // Smarter label selection
+        let itemLabel = item?.title || item?.name || item?.label || item?.id;
+        
+        if (!itemLabel && item?.role && item?.content) {
+          itemLabel = `${item.role}: ${item.content.slice(0, 30)}${item.content.length > 30 ? '...' : ''}`;
+        } else if (!itemLabel && item?.date) {
+          itemLabel = item.date;
+        } else if (!itemLabel) {
+          itemLabel = `Item ${index + 1}`;
+        }
+        
+        childNode.label = String(itemLabel);
+        return childNode;
       });
     }
     return node;

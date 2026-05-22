@@ -139,7 +139,10 @@ export default function Sidebar() {
               to={item.path}
               collapsed={collapsed}
               active={pathname === item.path}
-              onClick={closeMobile}
+              onClick={() => {
+                closeMobile();
+                if (item.id === 'home') setActiveChatId(null);
+              }}
             />
           ))}
         </nav>

@@ -5,7 +5,15 @@ import { useUiStore } from '../../store/uiStore';
 import { useCombinedState } from '../../hooks/useCombinedState';
 import DatabaseNode from './DatabaseNode';
 
-const ModuleCard = memo(function ModuleCard({ module, moduleNode, onVisibilityToggle, onDragIntent }) {
+const ModuleCard = memo(function ModuleCard({
+  module,
+  moduleNode,
+  onVisibilityToggle,
+  onDragIntent,
+  onViewNode,
+  onEditNode,
+  onDeleteNode,
+}) {
   const collapsed = module.collapsed;
   const toggleModuleCollapsed = useUiStore((s) => s.toggleModuleCollapsed);
   const combinedState = useCombinedState();
@@ -59,7 +67,14 @@ const ModuleCard = memo(function ModuleCard({ module, moduleNode, onVisibilityTo
             {moduleNode?.children?.length ? (
               <div className="flex flex-col gap-1">
                 {moduleNode.children.map((node) => (
-                  <DatabaseNode key={node.id} node={node} combinedState={combinedState} />
+                  <DatabaseNode
+                    key={node.id}
+                    node={node}
+                    combinedState={combinedState}
+                    onViewNode={onViewNode}
+                    onEditNode={onEditNode}
+                    onDeleteNode={onDeleteNode}
+                  />
                 ))}
               </div>
             ) : (

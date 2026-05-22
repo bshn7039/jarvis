@@ -9,9 +9,9 @@ export default function CriticalDeadlines({ deadlines }) {
       </h2>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {deadlines.length > 0 ? (
-          deadlines.map((item) => (
+          deadlines.filter(Boolean).map((item, index) => (
             <div
-              key={item.id}
+              key={item.id || `deadline-${index}`}
               className={[
                 'relative flex flex-col justify-between rounded-xl border p-4 transition-all duration-200 hover:bg-white/[0.02]',
                 item.isOverdue 
@@ -29,7 +29,7 @@ export default function CriticalDeadlines({ deadlines }) {
                   >
                     {item.category}
                   </span>
-                  {item.priority === 'Critical' && (
+                  {String(item.priority || '').toLowerCase() === 'critical' && (
                     <AlertCircle className="h-3.5 w-3.5 text-jarvis-muted" strokeWidth={1.75} />
                   )}
                 </div>

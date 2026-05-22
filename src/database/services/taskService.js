@@ -8,7 +8,7 @@ class TaskService extends BaseService {
 
   async getByStatus(status) {
     const all = await this.getAll();
-    return all.filter(t => t.status === status);
+    return all.filter((t) => t.bucket === status || t.status === status);
   }
 
   async getByGoal(goalId) {

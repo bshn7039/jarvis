@@ -12,9 +12,9 @@ export default function WarningPanel({ warnings }) {
         System Warnings
       </h2>
       <ul className="flex flex-col gap-2">
-        {warnings.map((warning) => (
+        {warnings.filter(Boolean).map((warning, index) => (
           <li
-            key={warning.id}
+            key={warning.id || `warning-${index}`}
             className={[
               'flex items-start gap-3 rounded-lg border bg-jarvis-bg/30 px-3 py-3 transition-colors duration-200 hover:bg-white/[0.02]',
               severityStyles[warning.severity],
