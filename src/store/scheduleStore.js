@@ -17,7 +17,7 @@ const initialState = {
   isHydrated: false,
 };
 
-export const useScheduleStore = create((set) => ({
+export const useScheduleStore = create((set, get) => ({
   ...deepClone(initialState),
 
   hydrate: async () => {
