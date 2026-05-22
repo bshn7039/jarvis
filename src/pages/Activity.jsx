@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Search, Filter, Clock, ArrowUpDown } from 'lucide-react';
-import PagePanel from '../components/ui/PagePanel';
+import ModulePageLayout from '../components/layout/ModulePageLayout';
 import { useActivityStore } from '../store/activityStore';
 
 const entityTypeLabels = {
@@ -88,7 +88,7 @@ export default function Activity() {
   }, [activities]);
 
   return (
-    <PagePanel
+    <ModulePageLayout
       title="Activity Timeline"
       subtitle="Track every action across your system"
     >
@@ -194,6 +194,6 @@ export default function Activity() {
           ))
         )}
       </div>
-    </PagePanel>
+    </ModulePageLayout>
   );
 }
