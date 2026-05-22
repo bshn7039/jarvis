@@ -8,6 +8,7 @@ const MODULE_KEYS = [
   'crm',
   'academics',
   'schedules',
+  'chats',
 ];
 
 function toLabel(key) {

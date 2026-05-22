@@ -9,6 +9,7 @@ import { useCrmStore } from '../crmStore';
 import { useAcademicStore } from '../academicStore';
 import { useScheduleStore } from '../scheduleStore';
 import { useProfileStore } from '../profileStore';
+import { useChatStore } from '../chatStore';
 
 export function useLiveDatabaseTree() {
   const tasks = useTaskStore(s => s.tasks);
@@ -22,6 +23,7 @@ export function useLiveDatabaseTree() {
   const academicSubjects = useAcademicStore(s => s.subjects);
   const schedules = useScheduleStore(s => s.schedules);
   const profile = useProfileStore(s => s.profile);
+  const chats = useChatStore(s => s.chatHistory);
 
   return useMemo(() => {
     const combinedState = {
@@ -37,13 +39,14 @@ export function useLiveDatabaseTree() {
       },
       crm: { contacts: crmContacts },
       academics: { subjects: academicSubjects },
-      schedules
+      schedules,
+      chats
     };
     
     return generateDatabaseTree(combinedState);
   }, [
     profile, tasks, goals, journalEntries, financeTransactions, 
     fitnessWorkouts, fitnessMeals, fitnessHydration, 
-    crmContacts, academicSubjects, schedules
+    crmContacts, academicSubjects, schedules, chats
   ]);
 }

@@ -13,7 +13,7 @@ class TaskService extends BaseService {
 
   async getByGoal(goalId) {
     const all = await this.getAll();
-    return all.filter(t => t.linkedGoal === goalId);
+    return all.filter((t) => (t.linkedGoalIds || []).includes(goalId) || t.linkedGoal === goalId);
   }
 }
 

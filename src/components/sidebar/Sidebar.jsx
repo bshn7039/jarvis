@@ -36,8 +36,12 @@ const navItems = [
   { id: 'activity', label: 'Activity', icon: ActivityIcon, path: '/activity' },
 ];
 
-function formatChatLabel({ date, title }) {
-  return `${date} - ${title}`;
+function formatChatLabel(chat) {
+  const dateValue = chat.updatedAt || chat.createdAt;
+  const dateLabel = dateValue
+    ? new Date(dateValue).toLocaleDateString()
+    : 'Unknown date';
+  return `${dateLabel} - ${chat.title}`;
 }
 
 export default function Sidebar() {
@@ -46,6 +50,7 @@ export default function Sidebar() {
   const chatHistory = useChatStore((s) => s.chatHistory);
   const setActiveChatId = useChatStore((s) => s.setActiveChatId);
   const activeChatId = useChatStore((s) => s.activeChatId);
+  const deleteChat = useChatStore((s) => s.deleteChat);
 
   const isHome = pathname === '/home';
   const isCanvas = pathname === '/canvas';
@@ -149,19 +154,41 @@ export default function Sidebar() {
               {isHome && (
                 <SidebarSection title="Recent Chats">
                   {chatHistory.map((chat) => (
-                    <button
+                    <div
                       key={chat.id}
-                      type="button"
-                      onClick={() => setActiveChatId(chat.id)}
                       className={[
-                        'w-full truncate rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors duration-200',
+                        'flex w-full items-center gap-1 rounded-lg px-1.5 py-1 transition-colors duration-200',
                         activeChatId === chat.id
-                          ? 'bg-white/10 text-jarvis-text'
-                          : 'text-jarvis-muted hover:bg-white/[0.03] hover:text-jarvis-text',
+                          ? 'bg-white/10'
+                          : 'hover:bg-white/[0.03]',
                       ].join(' ')}
                     >
-                      {formatChatLabel(chat)}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveChatId(chat.id)}
+                        className={[
+                          'min-w-0 flex-1 truncate rounded-md px-1 py-1 text-left text-[13px] transition-colors duration-200',
+                          activeChatId === chat.id
+                            ? 'text-jarvis-text'
+                            : 'text-jarvis-muted hover:text-jarvis-text',
+                        ].join(' ')}
+                        title={chat.title}
+                      >
+                        {formatChatLabel(chat)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          deleteChat(chat.id);
+                        }}
+                        className="shrink-0 rounded-md p-1 text-jarvis-muted transition-colors duration-200 hover:bg-white/10 hover:text-red-300"
+                        aria-label={`Delete chat ${chat.title}`}
+                        title="Delete chat"
+                      >
+                        <X className="h-3.5 w-3.5" strokeWidth={2} />
+                      </button>
+                    </div>
                   ))}
                 </SidebarSection>
               )}

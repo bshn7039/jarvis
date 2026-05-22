@@ -11,6 +11,9 @@ export default function TaskColumn({
   expandedTaskIds,
   onToggleTaskExpanded,
   onToggleTaskCompleted,
+  onOpenTaskDetail,
+  onChangeTaskStatus,
+  onChangeTaskProgress,
 }) {
   return (
     <section className="rounded-2xl border border-jarvis-border bg-jarvis-panel p-3 md:p-4">
@@ -43,11 +46,14 @@ export default function TaskColumn({
             <TaskCard
               key={task.id}
               task={task}
-              goalTitle={goalMap[task.linkedGoal]}
-              scheduleLabel={scheduleMap[task.scheduleId]}
+              goalTitle={goalMap[task.linkedGoalIds?.[0]]}
+              scheduleLabel={scheduleMap[task.linkedScheduleIds?.[0]]}
               isExpanded={Boolean(expandedTaskIds[task.id])}
               onToggleExpanded={onToggleTaskExpanded}
               onToggleCompleted={onToggleTaskCompleted}
+              onOpenDetail={onOpenTaskDetail}
+              onStatusChange={onChangeTaskStatus}
+              onProgressChange={onChangeTaskProgress}
             />
           ))}
         </div>

@@ -6,6 +6,7 @@ import { useFinanceStore } from '../../store/financeStore';
 import { useAcademicStore } from '../../store/academicStore';
 import { useCrmStore } from '../../store/crmStore';
 import { useJournalStore } from '../../store/journalStore';
+import { useChatStore } from '../../store/chatStore';
 
 function Stat({ label, value }) {
   return (
@@ -176,6 +177,28 @@ function JournalPreview() {
   );
 }
 
+function ChatsPreview() {
+  const chats = useChatStore((s) => s.chatHistory);
+  const totalChats = chats.length;
+  const totalMessages = chats.reduce((sum, chat) => sum + (chat.messages?.length || 0), 0);
+  const latestChat = chats[0];
+  const latestMessage =
+    latestChat?.messages?.[latestChat.messages.length - 1]?.content || 'No messages yet';
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="Chats" value={totalChats} />
+        <Stat label="Messages" value={totalMessages} />
+      </div>
+      <p className="truncate text-xs text-jarvis-muted">
+        Latest: {latestChat?.title || 'No conversations'}
+      </p>
+      <p className="truncate text-xs text-jarvis-muted">{latestMessage}</p>
+    </div>
+  );
+}
+
 export default function CanvasModuleRenderer({ type }) {
   switch (type) {
     case 'tasks':
@@ -192,6 +215,8 @@ export default function CanvasModuleRenderer({ type }) {
       return <CrmPreview />;
     case 'journal':
       return <JournalPreview />;
+    case 'chats':
+      return <ChatsPreview />;
     default:
       return <p className="text-xs text-jarvis-muted">No preview available.</p>;
   }

@@ -8,8 +8,8 @@ export const TASK_CATEGORIES = [
   'System',
 ];
 
-export const TASK_PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
-export const TASK_SECTIONS = ['Today', 'Weekly', 'Monthly', 'Someday', 'Completed'];
+export const TASK_PRIORITIES = ['critical', 'high', 'medium', 'low'];
+export const TASK_SECTIONS = ['Backlog', 'Planned', 'Active', 'Paused', 'Completed', 'Archived'];
 
 export const MODULE_KEYS = [
   'tasks',

@@ -11,6 +11,7 @@ import { useScheduleStore } from '../store/scheduleStore';
 import { useChatStore } from '../store/chatStore';
 import { useProfileStore } from '../store/profileStore';
 import { useActivityStore } from '../store/activityStore';
+import { useEntityStore } from '../store/entityStore';
 
 export function useStoreHydration() {
   const hydrateTasks = useTaskStore(s => s.hydrate);
@@ -25,6 +26,7 @@ export function useStoreHydration() {
   const hydrateChat = useChatStore(s => s.hydrate);
   const hydrateProfile = useProfileStore(s => s.hydrate);
   const hydrateActivities = useActivityStore(s => s.hydrate);
+  const hydrateEntities = useEntityStore(s => s.hydrate);
 
   useEffect(() => {
     const hydrateAll = async () => {
@@ -41,7 +43,8 @@ export function useStoreHydration() {
         hydrateSchedule(),
         hydrateChat(),
         hydrateProfile(),
-        hydrateActivities()
+        hydrateActivities(),
+        hydrateEntities()
       ]);
     };
 

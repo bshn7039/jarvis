@@ -49,4 +49,11 @@ export const canvasModules = [
     visible: true,
     position: { x: 980, y: 1780 },
   },
+  {
+    id: 'chats',
+    title: 'Chats',
+    type: 'chats',
+    visible: true,
+    position: { x: 1720, y: 1780 },
+  },
 ];

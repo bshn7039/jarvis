@@ -1,31 +1,21 @@
-import React from 'react';
-import { useTaskStore } from '../store/taskStore';
+import BaseModal from './BaseModal';
 
-const EntityModal = ({ isOpen, onClose, title, form, onSubmit }) => {
-  if (!isOpen) return null;
-
+export default function EntityModal({ isOpen, onClose, title, children }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <div className="bg-white p-4 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-xl font-medium">{title}</h2>
-        {form}
-        <button
-          type="button"
-          onClick={onSubmit}
-          className="bg-blue-500 text-white py-2 px-4 rounded mt-4"
-        >
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className="bg-gray-300 text-gray-700 py-2 px-4 rounded mt-4 ml-2"
-        >
-          Cancel
-        </button>
+    <BaseModal open={isOpen} onClose={onClose} size="lg" ariaLabel={title || 'Entity modal'}>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between border-b border-jarvis-border pb-2">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-jarvis-text">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded border border-jarvis-border px-2 py-1 text-xs text-jarvis-muted transition hover:text-jarvis-text"
+          >
+            Close
+          </button>
+        </div>
+        {children}
       </div>
-    </div>
+    </BaseModal>
   );
-};
-
-export default EntityModal;
+}

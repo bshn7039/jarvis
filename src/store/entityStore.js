@@ -1,26 +1,51 @@
 import { create } from 'zustand';
 
 const initialState = {
-  entities: [],
-  isHydrated: false,
+  activeType: null,
+  selectedId: null,
+  isModalOpen: false,
+  isDetailPanelOpen: false,
+  draftMode: 'create',
+  isHydrated: true,
 };
 
-export const useEntityStore = create((set, get) => ({
+export const useEntityStore = create((set) => ({
   ...initialState,
 
   hydrate: async () => {
-    try {
-      // Implement hydration logic for all entities
-    } catch (err) {
-      console.error('Failed to hydrate entities:', err);
-    }
+    set({ isHydrated: true });
   },
 
-  addEntity: (entity) => set((state) => ({ entities: [...state.entities, entity] })),
-  updateEntity: (id, updatedEntity) =>
-    set((state) => ({
-      entities: state.entities.map((e) => (e.id === id ? { ...e, ...updatedEntity } : e)),
-    })),
-  deleteEntity: (id) =>
-    set((state) => ({ entities: state.entities.filter((e) => e.id !== id) })),
+  openCreateModal: (entityType) =>
+    set({
+      activeType: entityType,
+      selectedId: null,
+      draftMode: 'create',
+      isModalOpen: true,
+    }),
+
+  openEditModal: (entityType, entityId) =>
+    set({
+      activeType: entityType,
+      selectedId: entityId,
+      draftMode: 'edit',
+      isModalOpen: true,
+    }),
+
+  closeModal: () => set({ isModalOpen: false }),
+
+  openDetailPanel: (entityType, entityId) =>
+    set({
+      activeType: entityType,
+      selectedId: entityId,
+      isDetailPanelOpen: true,
+    }),
+
+  closeDetailPanel: () => set({ isDetailPanelOpen: false }),
+
+  setSelectedEntity: (entityType, entityId) =>
+    set({
+      activeType: entityType,
+      selectedId: entityId,
+    }),
 }));
