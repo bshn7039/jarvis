@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { BaseService } from '../database/services/baseService';
 import { STORES } from '../database/core/localDatabase';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 class ScheduleService extends BaseService {
   constructor() {
@@ -28,8 +29,24 @@ export const useScheduleStore = create((set) => ({
     }
   },
 
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'schedule',
+      action,
+      entityType: 'schedule',
+      entityId,
+      metadata
+    });
+  },
+
   addSchedule: async (schedule) => {
     const saved = await scheduleService.create(schedule);
     set(state => ({ schedules: [...state.schedules, saved] }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: saved.id,
+      metadata: { title: saved.title }
+    });
   }
 }));

@@ -4,11 +4,14 @@ export const taskSchema = {
     id: "string",
     title: "string",
     description: "string",
-    status: "string", // todo, completed
-    section: "string", // Today, Weekly, Monthly, Someday, Completed
+    status: "string",
+    section: "string",
     category: "string",
-    priority: "string", // Critical, High, Medium, Low
-    linkedGoal: "string", // ID reference
+    priority: "string",
+    linkedGoalIds: "array",
+    linkedScheduleIds: "array",
+    linkedSubjectIds: "array",
+    linkedHabitIds: "array",
     deadline: "date",
     estimatedTime: "string",
     tags: "array",
@@ -22,6 +25,10 @@ export const taskSchema = {
     status: "todo",
     priority: "Medium",
     progress: 0,
-    tags: []
+    tags: [],
+    linkedGoalIds: [],
+    linkedScheduleIds: [],
+    linkedSubjectIds: [],
+    linkedHabitIds: []
   }
 };

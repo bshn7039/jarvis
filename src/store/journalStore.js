@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { journalService } from '../database/services/journalService';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   entries: [],
@@ -36,6 +37,17 @@ export const useJournalStore = create((set, get) => ({
   toggleCalendarPlaceholder: () =>
     set((state) => ({ calendarPlaceholderOpen: !state.calendarPlaceholderOpen })),
 
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'journal',
+      action,
+      entityType: 'journal_entry',
+      entityId,
+      metadata
+    });
+  },
+
   updateEntryContent: async (entryId, content) => {
     const entries = get().entries;
     const entry = entries.find(e => e.id === entryId);
@@ -44,6 +56,11 @@ export const useJournalStore = create((set, get) => ({
     const updatedEntry = { ...entry, content };
     await journalService.update(entryId, updatedEntry);
     set({ entries: entries.map(e => e.id === entryId ? updatedEntry : e) });
+    await get().logActivity({ 
+      action: 'updated', 
+      entityId: entryId,
+      metadata: { title: entry.title }
+    });
   },
 
   updateEntryMood: async (entryId, mood) => {
@@ -72,6 +89,11 @@ export const useJournalStore = create((set, get) => ({
       entries: [savedEntry, ...state.entries],
       selectedEntryId: savedEntry.id,
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedEntry.id,
+      metadata: { title: savedEntry.title, mood: savedEntry.mood }
+    });
   },
 }));
 

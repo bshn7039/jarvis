@@ -24,6 +24,7 @@ export const STORES = {
   ACADEMIC_PROJECTS: 'academicProjects',
   ACADEMIC_META: 'academicMeta',
   PROFILE: 'profile',
+  ACTIVITIES: 'activities',
 };
 
 class LocalDatabase {

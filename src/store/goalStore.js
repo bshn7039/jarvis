@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { goalService } from '../database/services/goalService';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   goals: [],
@@ -53,6 +54,17 @@ export const useGoalStore = create((set, get) => ({
       },
     })),
 
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'goal',
+      action,
+      entityType: 'goal',
+      entityId,
+      metadata
+    });
+  },
+
   updateGoalProgress: async (goalId, progress) => {
     const goals = get().goals;
     const goal = goals.find(g => g.id === goalId);
@@ -63,6 +75,11 @@ export const useGoalStore = create((set, get) => ({
 
     await goalService.update(goalId, updatedGoal);
     set({ goals: goals.map(g => g.id === goalId ? updatedGoal : g) });
+    await get().logActivity({ 
+      action: 'progress_updated', 
+      entityId: goalId,
+      metadata: { title: goal.title, progress: nextProgress }
+    });
   },
 
   addGoal: async (goalData) => {
@@ -78,6 +95,11 @@ export const useGoalStore = create((set, get) => ({
     };
     const savedGoal = await goalService.create(newGoal);
     set(state => ({ goals: [...state.goals, savedGoal] }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedGoal.id,
+      metadata: { title: savedGoal.title }
+    });
   }
 }));
 

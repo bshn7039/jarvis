@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { financeService } from '../database/services/financeService';
 import { savingsGoalService } from '../database/services/savingsGoalService';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   balanceOverview: {
@@ -38,6 +39,17 @@ export const useFinanceStore = create((set, get) => ({
   setSelectedTransactionType: (value) => set({ selectedTransactionType: value }),
   setSelectedCategory: (value) => set({ selectedCategory: value }),
   
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'finance',
+      action,
+      entityType: 'transaction',
+      entityId,
+      metadata
+    });
+  },
+
   addTransaction: async (transactionData) => {
     const next = {
       date: transactionData.date || '2026-05-21',
@@ -52,6 +64,15 @@ export const useFinanceStore = create((set, get) => ({
     set((state) => ({
       transactions: [savedTransaction, ...state.transactions],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedTransaction.id,
+      metadata: { 
+        amount: savedTransaction.amount, 
+        category: savedTransaction.category,
+        type: savedTransaction.type 
+      }
+    });
   },
 
   updateSavingsProgress: async (goalId, current) => {
@@ -62,6 +83,11 @@ export const useFinanceStore = create((set, get) => ({
     const updated = { ...goal, current: Math.max(0, Number(current) || 0) };
     await savingsGoalService.update(goalId, updated);
     set({ savingsGoals: goals.map(g => g.id === goalId ? updated : g) });
+    await get().logActivity({ 
+      action: 'progress_updated', 
+      entityId: goalId,
+      metadata: { title: goal.title, current: updated.current, target: goal.target }
+    });
   },
 }));
 

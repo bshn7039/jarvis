@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { taskService } from '../database/services/taskService';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   tasks: [],
@@ -57,6 +58,17 @@ export const useTaskStore = create((set, get) => ({
       },
     })),
 
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'task',
+      action,
+      entityType: 'task',
+      entityId,
+      metadata
+    });
+  },
+
   toggleTaskCompletion: async (taskId) => {
     const tasks = get().tasks;
     const task = tasks.find(t => t.id === taskId);
@@ -77,6 +89,11 @@ export const useTaskStore = create((set, get) => ({
 
     await taskService.update(taskId, updatedTask);
     set({ tasks: tasks.map(t => t.id === taskId ? updatedTask : t) });
+    await get().logActivity({ 
+      action: done ? 'completed' : 'reopened', 
+      entityId: taskId,
+      metadata: { title: task.title }
+    });
   },
 
   updateTaskProgress: async (taskId, progress) => {
@@ -94,6 +111,19 @@ export const useTaskStore = create((set, get) => ({
 
     await taskService.update(taskId, updatedTask);
     set({ tasks: tasks.map(t => t.id === taskId ? updatedTask : t) });
+    if (next >= 100) {
+      await get().logActivity({ 
+        action: 'completed', 
+        entityId: taskId,
+        metadata: { title: task.title, progress: next }
+      });
+    } else {
+      await get().logActivity({ 
+        action: 'progress_updated', 
+        entityId: taskId,
+        metadata: { title: task.title, progress: next }
+      });
+    }
   },
 
   addTask: async (taskData) => {
@@ -116,13 +146,25 @@ export const useTaskStore = create((set, get) => ({
     set((state) => ({
       tasks: [savedTask, ...state.tasks],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedTask.id,
+      metadata: { title: savedTask.title }
+    });
   },
 
   deleteTask: async (taskId) => {
+    const tasks = get().tasks;
+    const task = tasks.find(t => t.id === taskId);
     await taskService.delete(taskId);
     set((state) => ({
       tasks: state.tasks.filter(t => t.id !== taskId),
     }));
+    await get().logActivity({ 
+      action: 'deleted', 
+      entityId: taskId,
+      metadata: { title: task?.title }
+    });
   }
 }));
 

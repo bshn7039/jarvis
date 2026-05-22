@@ -11,6 +11,7 @@ import Finance from './pages/Finance';
 import Fitness from './pages/Fitness';
 import CRM from './pages/CRM';
 import Academics from './pages/Academics';
+import Activity from './pages/Activity';
 import AppErrorBoundary from './components/app/AppErrorBoundary';
 import { useStoreHydration } from './hooks/useStoreHydration';
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="/fitness" element={<Fitness />} />
           <Route path="/crm" element={<CRM />} />
           <Route path="/academics" element={<Academics />} />
+          <Route path="/activity" element={<Activity />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

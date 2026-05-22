@@ -11,6 +11,7 @@ import {
   Dumbbell,
   Handshake,
   GraduationCap,
+  Activity as ActivityIcon,
   X,
 } from 'lucide-react';
 import SidebarSection from './SidebarSection';
@@ -32,6 +33,7 @@ const navItems = [
   { id: 'fitness', label: 'Fitness', icon: Dumbbell, path: '/fitness' },
   { id: 'crm', label: 'CRM', icon: Handshake, path: '/crm' },
   { id: 'academics', label: 'Academics', icon: GraduationCap, path: '/academics' },
+  { id: 'activity', label: 'Activity', icon: ActivityIcon, path: '/activity' },
 ];
 
 function formatChatLabel({ date, title }) {

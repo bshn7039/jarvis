@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { crmService } from '../database/services/crmService';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   contacts: [],
@@ -37,6 +38,17 @@ export const useCrmStore = create((set, get) => ({
   setSearchQuery: (value) => set({ searchQuery: value }),
   setActiveTag: (value) => set({ activeTag: value }),
 
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'crm',
+      action,
+      entityType: 'contact',
+      entityId,
+      metadata
+    });
+  },
+
   updateContactNotes: async (contactId, notes) => {
     const contacts = get().contacts;
     const contact = contacts.find(c => c.id === contactId);
@@ -45,6 +57,11 @@ export const useCrmStore = create((set, get) => ({
     const updatedContact = { ...contact, notes };
     await crmService.update(contactId, updatedContact);
     set({ contacts: contacts.map(c => c.id === contactId ? updatedContact : c) });
+    await get().logActivity({ 
+      action: 'updated', 
+      entityId: contactId,
+      metadata: { name: contact.name }
+    });
   },
 
   toggleReminderStatus: async (reminderId) => {
@@ -78,6 +95,11 @@ export const useCrmStore = create((set, get) => ({
       contacts: [savedContact, ...state.contacts],
       selectedContactId: savedContact.id,
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedContact.id,
+      metadata: { name: savedContact.name, role: savedContact.role }
+    });
   },
 }));
 

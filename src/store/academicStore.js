@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { academicService } from '../database/services/academicService';
 import { localDb } from '../database/core/localDatabase';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   currentSemester: 'Semester 6',
@@ -55,6 +56,17 @@ export const useAcademicStore = create((set, get) => ({
 
   setSelectedSubjectId: (subjectId) => set({ selectedSubjectId: subjectId }),
 
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'academic',
+      action,
+      entityType: 'assignment',
+      entityId,
+      metadata
+    });
+  },
+
   updateAssignmentProgress: async (assignmentId, progress) => {
     const assignments = get().assignments;
     const assignment = assignments.find(a => a.id === assignmentId);
@@ -69,6 +81,11 @@ export const useAcademicStore = create((set, get) => ({
 
     // Ideally use assignmentService
     set({ assignments: assignments.map(a => a.id === assignmentId ? updatedAssignment : a) });
+    await get().logActivity({ 
+      action: updatedAssignment.status === 'completed' ? 'completed' : 'progress_updated', 
+      entityId: assignmentId,
+      metadata: { title: assignment.title, progress: nextProgress }
+    });
   },
 
   addRevisionLog: async (logData) => {
@@ -87,6 +104,11 @@ export const useAcademicStore = create((set, get) => ({
         ...state.revisionLogs,
       ],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: `rev-local-${Date.now()}`,
+      metadata: { topic: next.topic, subjectId: next.subjectId, hours: next.hours }
+    });
   },
 
   addSubject: async (subjectData) => {
@@ -103,6 +125,11 @@ export const useAcademicStore = create((set, get) => ({
       subjects: [...state.subjects, savedSubject],
       selectedSubjectId: savedSubject.id,
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedSubject.id,
+      metadata: { name: savedSubject.name, code: savedSubject.code }
+    });
   },
 
   addAssignment: async (assignmentData) => {
@@ -121,6 +148,11 @@ export const useAcademicStore = create((set, get) => ({
     set((state) => ({
       assignments: [...state.assignments, saved],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: saved.id,
+      metadata: { title: saved.title, subjectId: saved.subjectId }
+    });
   },
 }));
 

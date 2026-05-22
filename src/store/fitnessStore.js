@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { fitnessService } from '../database/services/fitnessService';
 import { deepClone } from '../utils/deepClone';
+import { useActivityStore } from './activityStore';
 
 const initialState = {
   targets: {
@@ -41,6 +42,17 @@ export const useFitnessStore = create((set, get) => ({
 
   setSelectedDay: (selectedDay) => set({ selectedDay }),
   
+  logActivity: async ({ action, entityId, metadata = {} }) => {
+    const activityStore = useActivityStore.getState();
+    await activityStore.logActivity({
+      type: 'fitness',
+      action,
+      entityType: 'workout',
+      entityId,
+      metadata
+    });
+  },
+
   toggleWorkoutCompleted: async (workoutId) => {
     const workouts = get().workouts;
     const workout = workouts.find(w => w.id === workoutId);
@@ -49,6 +61,11 @@ export const useFitnessStore = create((set, get) => ({
     const updatedWorkout = { ...workout, completed: !workout.completed };
     await fitnessService.update(workoutId, updatedWorkout);
     set({ workouts: workouts.map(w => w.id === workoutId ? updatedWorkout : w) });
+    await get().logActivity({ 
+      action: updatedWorkout.completed ? 'completed' : 'reopened', 
+      entityId: workoutId,
+      metadata: { title: workout.title }
+    });
   },
 
   addHydrationLog: async (amountMl) => {
@@ -62,6 +79,11 @@ export const useFitnessStore = create((set, get) => ({
     set((state) => ({
       hydrationLogs: [savedLog, ...state.hydrationLogs],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedLog.id,
+      metadata: { amountMl: savedLog.amountMl }
+    });
   },
 
   addMealLog: async (mealData) => {
@@ -78,6 +100,11 @@ export const useFitnessStore = create((set, get) => ({
     set((state) => ({
       meals: [savedLog, ...state.meals],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedLog.id,
+      metadata: { meal: savedLog.meal, calories: savedLog.calories }
+    });
   },
 
   addWorkoutLog: async (workoutData) => {
@@ -95,6 +122,11 @@ export const useFitnessStore = create((set, get) => ({
     set((state) => ({
       workouts: [savedLog, ...state.workouts],
     }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedLog.id,
+      metadata: { title: savedLog.title, duration: savedLog.duration }
+    });
   },
 
   addBodyMetricLog: async (metricData) => {
