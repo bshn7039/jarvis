@@ -2,76 +2,85 @@ import { useMemo } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import PagePanel from '../components/ui/PagePanel';
 import GoalHierarchyTree from '../components/goals/GoalHierarchyTree';
-import MilestoneBoard from '../components/goals/MilestoneBoard';
 import { useGoalStore } from '../store/goalStore';
 import { useTaskStore } from '../store/taskStore';
+import { Shield, Target, Zap, Circle } from 'lucide-react';
 
 export default function Goals() {
   const goals = useGoalStore((s) => s.goals);
   const selectedGoalId = useGoalStore((s) => s.selectedGoalId);
-  const collapsedGoalIds = useGoalStore((s) => s.collapsedGoalIds);
-  const expandedObjectives = useGoalStore((s) => s.expandedObjectives);
   const setSelectedGoalId = useGoalStore((s) => s.setSelectedGoalId);
-  const toggleGoalCollapsed = useGoalStore((s) => s.toggleGoalCollapsed);
-  const toggleObjectiveExpanded = useGoalStore((s) => s.toggleObjectiveExpanded);
   const addGoal = useGoalStore((s) => s.addGoal);
 
   const tasks = useTaskStore((s) => s.tasks);
   const tasksById = useMemo(() => Object.fromEntries(tasks.map((task) => [task.id, task])), [tasks]);
 
-  const selectedGoal = goals.find((goal) => goal.id === selectedGoalId) ?? goals[0];
+  const selectedNode = goals.find((goal) => goal.id === selectedGoalId) ?? goals.find(g => g.type === 'area');
+
+  const stats = useMemo(() => {
+    const totalAreas = goals.filter(g => g.type === 'area').length;
+    const totalGoals = goals.filter(g => g.type === 'goal').length;
+    const subGoals = goals.filter(g => g.type === 'sub_goal');
+    const totalLinkedTasks = subGoals.reduce((acc, sg) => acc + (sg.linkedTaskIds?.length || 0), 0);
+    
+    return { totalAreas, totalGoals, totalLinkedTasks };
+  }, [goals]);
 
   return (
     <ModulePageLayout
-      title="Goals"
-      subtitle="Life goal -> mission -> phase -> objectives -> tasks."
+      title="Life Direction"
+      subtitle="Strategic command tree. Life Area -> Main Goal -> Objective -> Sub Goal -> Tasks."
     >
       <PagePanel
-        title={selectedGoal?.title || 'Goal System'}
-        subtitle={selectedGoal?.mission}
+        title={selectedNode?.title || 'System Map'}
+        subtitle={selectedNode?.description || 'Strategic life architecture.'}
         actions={
           <button
             type="button"
-            onClick={() => addGoal({ title: 'New Strategic Goal', lifeGoal: 'Update life mission.' })}
-            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+            onClick={() => addGoal({ title: 'New Strategic Node', type: 'area' })}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text hover:bg-white/10"
           >
-            New Goal
+            New Area
           </button>
         }
       >
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <p className="text-xs uppercase tracking-wide text-jarvis-muted">Life Goal</p>
-            <p className="mt-1 text-sm text-jarvis-text">{selectedGoal?.lifeGoal}</p>
+            <div className="flex items-center gap-2 text-jarvis-muted">
+              <Shield className="h-3.5 w-3.5" />
+              <p className="text-[10px] uppercase tracking-widest">Life Areas</p>
+            </div>
+            <p className="mt-1 text-lg font-medium text-jarvis-text">{stats.totalAreas}</p>
           </div>
           <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <p className="text-xs uppercase tracking-wide text-jarvis-muted">Current Phase</p>
-            <p className="mt-1 text-sm text-jarvis-text">{selectedGoal?.currentPhase}</p>
+            <div className="flex items-center gap-2 text-jarvis-muted">
+              <Target className="h-3.5 w-3.5" />
+              <p className="text-[10px] uppercase tracking-widest">Main Goals</p>
+            </div>
+            <p className="mt-1 text-lg font-medium text-jarvis-text">{stats.totalGoals}</p>
           </div>
           <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <p className="text-xs uppercase tracking-wide text-jarvis-muted">Connected Tasks</p>
-            <p className="mt-1 text-sm text-jarvis-text">
-              {selectedGoal?.objectives.reduce((acc, objective) => acc + objective.taskIds.length, 0)}
-            </p>
+            <div className="flex items-center gap-2 text-jarvis-muted">
+              <Zap className="h-3.5 w-3.5" />
+              <p className="text-[10px] uppercase tracking-widest">Exec Layer</p>
+            </div>
+            <p className="mt-1 text-lg font-medium text-jarvis-text">{stats.totalLinkedTasks} Tasks</p>
+          </div>
+          <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
+            <div className="flex items-center gap-2 text-jarvis-muted">
+              <Circle className="h-3.5 w-3.5" />
+              <p className="text-[10px] uppercase tracking-widest">Architecture</p>
+            </div>
+            <p className="mt-1 text-xs text-jarvis-text">Recursive Tree</p>
           </div>
         </div>
       </PagePanel>
 
-      <PagePanel title="Goal Hierarchy" subtitle="Expandable relationship tree with linked task nodes.">
+      <PagePanel title="Strategic Hierarchy" subtitle="Recursive command map with task-derived progress.">
         <GoalHierarchyTree
           goals={goals}
           tasksById={tasksById}
-          collapsedGoalIds={collapsedGoalIds}
-          expandedObjectives={expandedObjectives}
-          selectedGoalId={selectedGoalId}
-          onSelectGoal={setSelectedGoalId}
-          onToggleGoalCollapsed={toggleGoalCollapsed}
-          onToggleObjectiveExpanded={toggleObjectiveExpanded}
         />
-      </PagePanel>
-
-      <PagePanel title="Milestone Roadmap" subtitle="Operational checkpoints across all active goals.">
-        <MilestoneBoard goals={goals} />
       </PagePanel>
     </ModulePageLayout>
   );

@@ -11,6 +11,7 @@ const plusDaysKey = (days) => {
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 };
+const isTaskCompleted = (task) => Boolean(task?.completed || task?.bucket === 'completed' || task?.status === 'completed');
 
 export const useTaskMetrics = () => {
   const tasks = useTaskStore((s) => s.tasks);
@@ -47,10 +48,24 @@ export const useFitnessMetrics = () => {
     const waterMl = hydrationLogs.filter((log) => log.date === TODAY).reduce((sum, log) => sum + log.amountMl, 0);
     const studyHours = revisionLogs.filter((log) => log.date === TODAY).reduce((sum, log) => sum + log.hours, 0);
     const workoutDone = workouts.some((w) => w.date === TODAY && w.completed);
-    const mood = journalEntries.find((e) => e.date === TODAY)?.mood ?? (journalEntries[0]?.mood ?? 0);
-    const todayTasks = tasks.filter((t) => t.bucket === 'today');
-    const completedTasksToday = todayTasks.filter((t) => t.completed).length;
-    const totalTasksToday = todayTasks.length || 1;
+    
+    // Aggregated mood for today
+    const todayEntries = journalEntries.filter((e) => e.entryDate === TODAY);
+    const moods = todayEntries.map(e => e.mood).filter(m => m !== null);
+    const moodAverage = moods.length > 0 ? Math.round(moods.reduce((a, b) => a + b, 0) / moods.length) : null;
+    const moodDisplay = moodAverage !== null ? `${moodAverage}/10` : '-';
+    const moodTrendUp = moodAverage !== null && moodAverage >= 7;
+
+    const todayTasks = tasks.filter(
+      (t) =>
+        t?.bucket === 'today' ||
+        t?.originalBucket === 'today' ||
+        t?.dueDate?.slice(0, 10) === TODAY ||
+        (isTaskCompleted(t) && t?.completedAt?.slice(0, 10) === TODAY),
+    );
+    const completedTasksToday = todayTasks.filter((t) => isTaskCompleted(t)).length;
+    const totalTasksToday = todayTasks.length;
+    const taskProgressPercent = totalTasksToday > 0 ? Math.round((completedTasksToday / totalTasksToday) * 100) : 0;
 
     return [
       { id: 'calories', label: 'Calories', value: `${calories}`, trend: `${fitnessTargets.calories} target`, trendUp: calories >= fitnessTargets.calories * 0.75, icon: 'Flame' },
@@ -58,8 +73,8 @@ export const useFitnessMetrics = () => {
       { id: 'water', label: 'Water', value: `${(waterMl / 1000).toFixed(1)}L`, trend: `${Math.round((waterMl / (fitnessTargets.hydrationMl || 1)) * 100)}%`, trendUp: waterMl >= fitnessTargets.hydrationMl * 0.7, icon: 'Droplets' },
       { id: 'study', label: 'Study Hours', value: `${studyHours.toFixed(1)}h`, trend: 'Today', trendUp: studyHours >= 2, icon: 'BookOpen' },
       { id: 'workout', label: 'Workout', value: workoutDone ? 'Done' : 'Pending', trend: 'Today', trendUp: workoutDone, icon: 'Dumbbell' },
-      { id: 'mood', label: 'Mood', value: `${mood}/10`, trend: 'Latest', trendUp: mood >= 7, icon: 'Smile' },
-      { id: 'tasks', label: 'Tasks Done', value: `${completedTasksToday}/${totalTasksToday}`, trend: `${Math.round((completedTasksToday / totalTasksToday) * 100)}%`, trendUp: completedTasksToday / totalTasksToday >= 0.5, icon: 'CheckSquare' },
+      { id: 'mood', label: 'Mood', value: moodDisplay, trend: 'Daily Avg', trendUp: moodTrendUp, icon: 'Smile' },
+      { id: 'tasks', label: 'Tasks Done', value: `${completedTasksToday}/${totalTasksToday}`, trend: `${taskProgressPercent}%`, trendUp: taskProgressPercent >= 50, icon: 'CheckSquare' },
     ];
   }, [tasks, meals, hydrationLogs, fitnessTargets, workouts, journalEntries, revisionLogs]);
 };

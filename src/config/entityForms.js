@@ -33,6 +33,15 @@ export const taskEntityFormConfig = [
   { name: 'completionNotes', label: 'Completion Notes', type: 'textarea', placeholder: 'Lessons, blockers, outcomes...' },
 ];
 
+export const journalEntityFormConfig = [
+  { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'Entry title' },
+  { name: 'entryDate', label: 'Date', type: 'date', required: true },
+  { name: 'type', label: 'Type', type: 'text', placeholder: 'Reflection, Log, Thoughts...' },
+  { name: 'mood', label: 'Mood (1-10)', type: 'number', placeholder: '1-10' },
+  { name: 'tags', label: 'Tags', type: 'tags', placeholder: 'coding, productivity, health' },
+  { name: 'aspects', label: 'Aspects', type: 'tags', placeholder: 'Academics, Fitness, Personal' },
+];
+
 export const entityForms = {
   task: EntityForm,
 };

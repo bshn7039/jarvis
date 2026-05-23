@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useMemo } from 'react';
 import { journalService } from '../database/services/journalService';
 import { deepClone } from '../utils/deepClone';
 import { useActivityStore } from './activityStore';
@@ -20,7 +21,7 @@ export const useJournalStore = create((set, get) => ({
     try {
       const entries = await journalService.getAll();
       set({ 
-        entries: entries.sort((a, b) => b.date.localeCompare(a.date)), 
+        entries: entries.sort((a, b) => b.entryDate.localeCompare(a.entryDate)), 
         selectedEntryId: entries[0]?.id ?? null,
         isHydrated: true 
       });
@@ -48,45 +49,54 @@ export const useJournalStore = create((set, get) => ({
     });
   },
 
-  updateEntryContent: async (entryId, content) => {
+  updateEntry: async (entryId, updates) => {
     const entries = get().entries;
     const entry = entries.find(e => e.id === entryId);
     if (!entry) return;
 
-    const updatedEntry = { ...entry, content };
+    const updatedEntry = { ...entry, ...updates, updatedAt: new Date().toISOString() };
     await journalService.update(entryId, updatedEntry);
     set({ entries: entries.map(e => e.id === entryId ? updatedEntry : e) });
-    await get().logActivity({ 
-      action: 'updated', 
-      entityId: entryId,
-      metadata: { title: entry.title }
-    });
+    
+    if (updates.content !== undefined || updates.title !== undefined) {
+      await get().logActivity({ 
+        action: 'updated', 
+        entityId: entryId,
+        metadata: { title: updatedEntry.title }
+      });
+    }
   },
 
-  updateEntryMood: async (entryId, mood) => {
-    const entries = get().entries;
-    const entry = entries.find(e => e.id === entryId);
-    if (!entry) return;
-
-    const updatedEntry = { ...entry, mood: Math.max(1, Math.min(10, Number(mood) || 1)) };
-    await journalService.update(entryId, updatedEntry);
-    set({ entries: entries.map(e => e.id === entryId ? updatedEntry : e) });
+  deleteEntry: async (entryId) => {
+    await journalService.delete(entryId);
+    set((state) => ({
+      entries: state.entries.filter((e) => e.id !== entryId),
+      selectedEntryId: state.selectedEntryId === entryId ? null : state.selectedEntryId
+    }));
+    await get().logActivity({ action: 'deleted', entityId: entryId });
   },
 
   addEntry: async (partial) => {
+    const today = new Date().toISOString().slice(0, 10);
     const next = {
-      date: partial.date || '2026-05-21',
-      type: partial.type || 'Thoughts',
-      title: partial.title || 'Quick Note',
-      mood: partial.mood || 6,
-      tags: partial.tags || ['quick'],
-      linkedTaskId: partial.linkedTaskId || null,
-      content: partial.content || 'Captured from Journal module.',
+      date: today,
+      entryDate: partial.entryDate || today,
+      type: partial.type || 'undefined',
+      title: partial.title || 'Untitled Entry',
+      mood: partial.mood ?? null,
+      tags: partial.tags || ['undefined'],
+      aspects: partial.aspects || [],
+      linkedTaskIds: partial.linkedTaskIds || [],
+      linkedGoalIds: partial.linkedGoalIds || [],
+      attachments: partial.attachments || [],
+      archived: partial.archived || false,
+      favorite: partial.favorite || false,
+      content: partial.content || '',
     };
     
     const savedEntry = await journalService.create(next);
     set((state) => ({
-      entries: [savedEntry, ...state.entries],
+      entries: [savedEntry, ...state.entries].sort((a, b) => b.entryDate.localeCompare(a.entryDate)),
       selectedEntryId: savedEntry.id,
     }));
     await get().logActivity({ 
@@ -96,4 +106,27 @@ export const useJournalStore = create((set, get) => ({
     });
   },
 }));
+
+export const useDailyMoods = () => {
+  const entries = useJournalStore((s) => s.entries);
+  return useMemo(() => {
+    const groups = entries.reduce((acc, entry) => {
+      const date = entry.entryDate;
+      if (!acc[date]) acc[date] = [];
+      if (entry.mood !== null) acc[date].push(entry.mood);
+      return acc;
+    }, {});
+
+    const averages = {};
+    Object.keys(groups).forEach(date => {
+      const moods = groups[date];
+      if (moods.length === 0) {
+        averages[date] = null;
+      } else {
+        averages[date] = Math.round(moods.reduce((a, b) => a + b, 0) / moods.length);
+      }
+    });
+    return averages;
+  }, [entries]);
+};
 

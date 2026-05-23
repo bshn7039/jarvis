@@ -8,7 +8,7 @@ class JournalService extends BaseService {
 
   async getByDate(date) {
     const all = await this.getAll();
-    return all.find(e => e.date === date);
+    return all.filter(e => e.entryDate === date);
   }
 }
 

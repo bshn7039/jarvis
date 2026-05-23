@@ -30,6 +30,40 @@ export function buildNode(data, path, depth = 0) {
     expanded: false,
   };
 
+  // Special handling for Goals to nest them correctly
+  if (path === 'goals' && Array.isArray(data)) {
+    const rootAreas = data.filter(g => !g.parentId);
+    node.type = 'folder';
+    node.children = rootAreas.map(area => buildGoalTreeNode(area, data, `goals.${area.id}`));
+    return node;
+  }
+
+  // Special handling for Journal to group by date
+  if (path === 'journal' && data?.entries) {
+    const entries = data.entries;
+    const dates = [...new Set(entries.map(e => e.entryDate))].sort((a, b) => b.localeCompare(a));
+    
+    node.type = 'folder';
+    node.children = dates.map(date => {
+      const [y, m, d] = date.split('-');
+      const displayDate = `${parseInt(d)}-${parseInt(m)}-${y}`;
+      const dayEntries = entries.filter(e => e.entryDate === date);
+      return {
+        id: `journal.${date}`,
+        label: `Day (${displayDate})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: dayEntries.map(entry => {
+          const entryNode = buildNode(entry, `journal.entries.${entry.id}`, depth + 2);
+          entryNode.label = entry.title || 'Untitled Entry';
+          return entryNode;
+        })
+      };
+    });
+    return node;
+  }
+
   if (Array.isArray(data)) {
     node.type = 'data';
     node.dataKey = path;
@@ -70,6 +104,30 @@ export function buildNode(data, path, depth = 0) {
 
   node.type = 'data';
   node.dataKey = path;
+  return node;
+}
+
+/**
+ * Helper to build recursive goal nodes for the tree
+ */
+function buildGoalTreeNode(goal, allGoals, path) {
+  const children = allGoals.filter(g => g.parentId === goal.id);
+  const node = {
+    id: path,
+    label: goal.title,
+    checked: true,
+    expanded: false,
+    value: goal.progress !== undefined ? `${goal.progress}%` : undefined
+  };
+
+  if (children.length > 0) {
+    node.type = 'folder';
+    node.children = children.map(child => buildGoalTreeNode(child, allGoals, `${path}.${child.id}`));
+  } else {
+    node.type = 'data';
+    node.dataKey = path;
+  }
+
   return node;
 }
 

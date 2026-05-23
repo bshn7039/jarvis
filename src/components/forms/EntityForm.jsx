@@ -124,15 +124,39 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSub
   const schedules = useScheduleStore((state) => state.schedules);
   const journals = useJournalStore((state) => state.entries);
 
-  const relationshipOptions = useMemo(
-    () => ({
-      linkedGoalIds: goals.map((goal) => ({ id: goal.id, title: goal.title || goal.name || goal.id })),
-      linkedSubjectIds: subjects.map((subject) => ({ id: subject.id, title: subject.name || subject.title || subject.id })),
-      linkedScheduleIds: schedules.map((schedule) => ({ id: schedule.id, title: schedule.label || schedule.title || schedule.id })),
-      linkedJournalIds: journals.map((entry) => ({ id: entry.id, title: entry.title || entry.date || entry.id })),
-    }),
-    [goals, journals, schedules, subjects],
-  );
+  const relationshipOptions = useMemo(() => {
+    // Helper to build a title with hierarchical context
+    const getGoalPath = (goal, allGoals) => {
+      const parts = [goal.title];
+      let current = goal;
+      while (current.parentId) {
+        const parent = allGoals.find((g) => g.id === current.parentId);
+        if (!parent) break;
+        parts.unshift(parent.title);
+        current = parent;
+      }
+      return parts.join(' → ');
+    };
+
+    return {
+      linkedGoalIds: goals.map((goal) => ({
+        id: goal.id,
+        title: getGoalPath(goal, goals),
+      })),
+      linkedSubjectIds: subjects.map((subject) => ({
+        id: subject.id,
+        title: subject.name || subject.title || subject.id,
+      })),
+      linkedScheduleIds: schedules.map((schedule) => ({
+        id: schedule.id,
+        title: schedule.label || schedule.title || schedule.id,
+      })),
+      linkedJournalIds: journals.map((entry) => ({
+        id: entry.id,
+        title: entry.title || entry.date || entry.id,
+      })),
+    };
+  }, [goals, journals, schedules, subjects]);
 
   const setField = (name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));

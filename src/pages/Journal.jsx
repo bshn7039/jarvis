@@ -1,10 +1,14 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import PagePanel from '../components/ui/PagePanel';
-import JournalTimeline from '../components/journal/JournalTimeline';
+import JournalCalendar from '../components/journal/JournalCalendar';
+import JournalDayPanel from '../components/journal/JournalDayPanel';
 import JournalEditor from '../components/journal/JournalEditor';
+import JournalEntryForm from '../components/journal/JournalEntryForm';
+import EntityModal from '../components/modals/EntityModal';
 import { useJournalStore } from '../store/journalStore';
 import { useJournalStreak } from '../store/selectors/metrics.selectors';
+import { formatDateKey } from '../utils/dateUtils';
 
 export default function Journal() {
   const entries = useJournalStore((s) => s.entries);
@@ -12,16 +16,18 @@ export default function Journal() {
   const searchQuery = useJournalStore((s) => s.searchQuery);
   const activeType = useJournalStore((s) => s.activeType);
   const activeTag = useJournalStore((s) => s.activeTag);
-  const calendarPlaceholderOpen = useJournalStore((s) => s.calendarPlaceholderOpen);
 
   const setSelectedEntryId = useJournalStore((s) => s.setSelectedEntryId);
   const setSearchQuery = useJournalStore((s) => s.setSearchQuery);
   const setActiveType = useJournalStore((s) => s.setActiveType);
   const setActiveTag = useJournalStore((s) => s.setActiveTag);
-  const toggleCalendarPlaceholder = useJournalStore((s) => s.toggleCalendarPlaceholder);
-  const updateEntryContent = useJournalStore((s) => s.updateEntryContent);
-  const updateEntryMood = useJournalStore((s) => s.updateEntryMood);
+  const updateEntry = useJournalStore((s) => s.updateEntry);
   const addEntry = useJournalStore((s) => s.addEntry);
+  const deleteEntry = useJournalStore((s) => s.deleteEntry);
+
+  const [selectedDate, setSelectedDate] = useState(formatDateKey());
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [initialFormData, setInitialFormData] = useState({});
 
   const entryTypes = useMemo(
     () => ['All', ...new Set(entries.map((entry) => entry.type))],
@@ -42,10 +48,39 @@ export default function Journal() {
     });
   }, [entries, searchQuery, activeType, activeTag]);
 
+  const handleAddEntry = (data = {}) => {
+    setInitialFormData(data);
+    setIsModalOpen(true);
+  };
+
+  const handleFormSubmit = async (formData) => {
+    try {
+      console.log('Submitting journal entry:', formData);
+      await addEntry(formData);
+      console.log('Journal entry created, closing modal');
+      setIsModalOpen(false);
+    } catch (err) {
+      console.error('Failed to create journal entry:', err);
+      // Still close if user expects it, or show error
+      setIsModalOpen(false);
+    }
+  };
+
+  const dayEntries = useMemo(() => {
+    return filteredEntries.filter(e => e.entryDate === selectedDate);
+  }, [filteredEntries, selectedDate]);
+
   const selectedEntry =
-    filteredEntries.find((entry) => entry.id === selectedEntryId) ?? filteredEntries[0] ?? null;
+    entries.find((entry) => entry.id === selectedEntryId) ?? null;
 
   const streak = useJournalStreak();
+
+  // If selectedEntryId is null but dayEntries has items, select the first one
+  useEffect(() => {
+    if (!selectedEntryId && dayEntries.length > 0) {
+      setSelectedEntryId(dayEntries[0].id);
+    }
+  }, [dayEntries, selectedEntryId, setSelectedEntryId]);
 
   return (
     <ModulePageLayout title="Journal" subtitle="Reflection, emotional awareness, and personal feedback loop.">
@@ -55,14 +90,14 @@ export default function Journal() {
         actions={
           <button
             type="button"
-            onClick={() => addEntry({ type: 'Thoughts', title: 'Quick thought' })}
-            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+            onClick={() => handleAddEntry({ entryDate: selectedDate })}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text hover:bg-white/10"
           >
             New Entry
           </button>
         }
       >
-        <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto]">
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
@@ -91,32 +126,47 @@ export default function Journal() {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={toggleCalendarPlaceholder}
-            className="rounded-xl border border-jarvis-border bg-black/20 px-3 py-2 text-sm text-jarvis-muted"
-          >
-            Calendar {calendarPlaceholderOpen ? 'On' : 'Off'}
-          </button>
         </div>
         <p className="mt-3 text-xs text-jarvis-muted">Reflection streak: {streak} days</p>
       </PagePanel>
 
-      <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
-        <PagePanel title="Timeline" subtitle={`${filteredEntries.length} entries`}>
-          <JournalTimeline
-            entries={filteredEntries}
-            selectedEntryId={selectedEntry?.id}
-            onSelectEntry={setSelectedEntryId}
+      <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
+        <div className="flex flex-col gap-6">
+          <JournalCalendar 
+            entries={filteredEntries} 
+            onSelectDay={setSelectedDate}
+            selectedDate={selectedDate}
+            onAddEntry={handleAddEntry}
+          />
+          
+          <JournalEditor
+            entry={selectedEntry}
+            onUpdate={(updates) => updateEntry(selectedEntry.id, updates)}
+          />
+        </div>
+
+        <PagePanel title="Day Explorer" subtitle={`Selected: ${selectedDate}`}>
+          <JournalDayPanel
+            date={selectedDate}
+            entries={dayEntries}
+            onEdit={setSelectedEntryId}
+            onDelete={deleteEntry}
+            selectedEntryId={selectedEntryId}
           />
         </PagePanel>
-
-        <JournalEditor
-          entry={selectedEntry}
-          onContentChange={updateEntryContent}
-          onMoodChange={updateEntryMood}
-        />
       </div>
+
+      <EntityModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="New Journal Entry"
+      >
+        <JournalEntryForm 
+          initialData={initialFormData}
+          onSubmit={handleFormSubmit}
+          onCancel={() => setIsModalOpen(false)}
+        />
+      </EntityModal>
     </ModulePageLayout>
   );
 }

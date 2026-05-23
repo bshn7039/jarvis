@@ -2,22 +2,21 @@ export const goalSchema = {
   entity: "goals",
   fields: {
     id: "string",
+    parentId: "string", // null for root life areas
+    type: "string", // 'area', 'goal', 'objective', 'sub_goal'
     title: "string",
-    lifeGoal: "string",
-    mission: "string",
-    currentPhase: "string",
+    description: "string",
     progress: "number",
-    objectives: "array", // [{ id, label, completed }]
-    milestones: "array", // [{ id, title, completed, deadline }]
     linkedTaskIds: "array",
     createdAt: "date",
     updatedAt: "date"
   },
   defaults: {
-    title: "New Goal",
+    parentId: null,
+    type: "goal",
+    title: "New Node",
+    description: "",
     progress: 0,
-    objectives: [],
-    milestones: [],
     linkedTaskIds: []
   }
 };

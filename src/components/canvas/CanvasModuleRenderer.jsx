@@ -40,28 +40,38 @@ function TasksPreview() {
 
 function GoalsPreview() {
   const goals = useGoalStore((s) => s.goals);
-  const activeGoals = goals.length;
-  const avgProgress = activeGoals
-    ? Math.round(goals.reduce((sum, goal) => sum + (goal.progress || 0), 0) / activeGoals)
-    : 0;
-  const milestoneProgress = useMemo(() => {
-    const milestones = goals.flatMap((goal) => goal.milestones || []);
-    if (!milestones.length) return 0;
-    return Math.round(
-      milestones.reduce((sum, milestone) => sum + (milestone.progress || 0), 0) /
-        milestones.length,
-    );
-  }, [goals]);
-  const currentObjective = goals[0]?.currentPhase ?? 'No active phase';
+  const rootAreas = goals.filter((g) => g.parentId === null);
+  
+  if (rootAreas.length === 0) {
+    return <p className="text-xs text-jarvis-muted">No strategic goals defined.</p>;
+  }
 
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Active" value={activeGoals} />
-        <Stat label="Progress" value={`${avgProgress}%`} />
-        <Stat label="Milestones" value={`${milestoneProgress}%`} />
-      </div>
-      <p className="truncate text-xs text-jarvis-muted">Objective: {currentObjective}</p>
+    <div className="space-y-3">
+      {rootAreas.map((area) => {
+        const childGoals = goals.filter(g => g.parentId === area.id);
+        return (
+          <div key={area.id} className="rounded-lg border border-jarvis-border/50 bg-black/20 p-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-jarvis-accent">{area.title}</p>
+              <span className="text-[10px] text-jarvis-muted">{area.progress}%</span>
+            </div>
+            {childGoals.length > 0 && (
+              <div className="mt-1.5 space-y-1 pl-2 border-l border-jarvis-border/30">
+                {childGoals.slice(0, 2).map(goal => (
+                  <div key={goal.id} className="flex items-center justify-between text-[10px]">
+                    <span className="truncate text-jarvis-text/80">{goal.title}</span>
+                    <span className="text-jarvis-muted">{goal.progress}%</span>
+                  </div>
+                ))}
+                {childGoals.length > 2 && (
+                  <p className="text-[9px] text-jarvis-muted italic">+{childGoals.length - 2} more goals</p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
