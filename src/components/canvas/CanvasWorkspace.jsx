@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import { useUiStore, getEnrichedModules } from '../../store/uiStore';
 import { useStoreHydrated } from '../../hooks/useStoreHydrated';
@@ -39,7 +39,11 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const toggleModuleVisibility = useUiStore((s) => s.toggleModuleVisibility);
   const updateModulePosition = useUiStore((s) => s.updateModulePosition);
   const setActiveDetailPath = useUiStore((s) => s.setActiveDetailPath);
-  const visibleModules = getEnrichedModules({ modules }).filter((module) => module.visible);
+  const visibleModules = useMemo(() => 
+    getEnrichedModules({ modules }).filter((module) => module.visible),
+    [modules]
+  );
+
   useEffect(() => {
     if (!hydrated) {
       persistReadyRef.current = false;
@@ -117,6 +121,11 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const openNodeDelete = useCallback((path) => setNodeActionState({ mode: 'delete', path }), []);
   const openNodeView = useCallback((path) => setActiveDetailPath(path), [setActiveDetailPath]);
   const closeNodeAction = useCallback(() => setNodeActionState(null), []);
+
+  const handleVisibilityToggle = useCallback((id) => toggleModuleVisibility(id), [toggleModuleVisibility]);
+  const handlePositionChange = useCallback((id, x, y) => updateModulePosition(id, x, y), [updateModulePosition]);
+  const handleDragStart = useCallback(() => setIsDraggingModule(true), []);
+  const handleDragStop = useCallback(() => setIsDraggingModule(false), []);
 
   if (!hydrated) {
     if (import.meta.env.DEV) {
@@ -205,12 +214,12 @@ export default function CanvasWorkspace({ onMenuClick }) {
                           module={module}
                           moduleNode={moduleNode}
                           scale={workspaceScale}
-                          onVisibilityToggle={() => toggleModuleVisibility(module.id)}
+                          onVisibilityToggle={() => handleVisibilityToggle(module.id)}
                           onPositionChange={(x, y) =>
-                            updateModulePosition(module.id, x, y)
+                            handlePositionChange(module.id, x, y)
                           }
-                          onDragStart={() => setIsDraggingModule(true)}
-                          onDragStop={() => setIsDraggingModule(false)}
+                          onDragStart={handleDragStart}
+                          onDragStop={handleDragStop}
                           onViewNode={openNodeView}
                           onEditNode={openNodeEdit}
                           onDeleteNode={openNodeDelete}

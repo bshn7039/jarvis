@@ -10,8 +10,12 @@ import { useUiStore } from '../store/uiStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useChatStore } from '../store/chatStore';
 import { useProfileStore } from '../store/profileStore';
+import { usePersonalStore } from '../store/personalStore';
 import { useActivityStore } from '../store/activityStore';
 import { useEntityStore } from '../store/entityStore';
+import { useTrashStore } from '../store/trashStore';
+import { useAuthStore } from '../store/authStore';
+import { localDb } from '../database/core/localDatabase';
 
 export function useStoreHydration() {
   const hydrateTasks = useTaskStore(s => s.hydrate);
@@ -25,29 +29,47 @@ export function useStoreHydration() {
   const hydrateSchedule = useScheduleStore(s => s.hydrate);
   const hydrateChat = useChatStore(s => s.hydrate);
   const hydrateProfile = useProfileStore(s => s.hydrate);
+  const hydratePersonal = usePersonalStore(s => s.hydrate);
   const hydrateActivities = useActivityStore(s => s.hydrate);
   const hydrateEntities = useEntityStore(s => s.hydrate);
+  const hydrateTrash = useTrashStore(s => s.hydrate);
+  const initAuth = useAuthStore(s => s.init);
+  const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
     const hydrateAll = async () => {
-      // Hydrate in order if needed, but parallel is usually fine
-      await Promise.all([
-        hydrateTasks(),
-        hydrateGoals(),
-        hydrateJournal(),
-        hydrateFinance(),
-        hydrateFitness(),
-        hydrateCrm(),
-        hydrateAcademics(),
-        hydrateUi(),
-        hydrateSchedule(),
-        hydrateChat(),
-        hydrateProfile(),
-        hydrateActivities(),
-        hydrateEntities()
-      ]);
+      await initAuth();
+
+      // Only hydrate data stores if authenticated
+      if (isAuthenticated && user?.userId) {
+        localDb.setUserId(user.userId);
+
+        await Promise.all([
+          hydrateTasks(),
+          hydrateGoals(),
+          hydrateJournal(),
+          hydrateFinance(),
+          hydrateFitness(),
+          hydrateCrm(),
+          hydrateAcademics(),
+          hydrateUi(),
+          hydrateSchedule(),
+          hydrateChat(),
+          hydrateProfile(),
+          hydratePersonal(),
+          hydrateActivities(),
+          hydrateEntities(),
+          hydrateTrash()
+        ]);
+      } else {
+        // Still hydrate UI and Entities as they might be needed for login UI
+        await Promise.all([
+          hydrateUi(),
+          hydrateEntities()
+        ]);
+      }
     };
 
     hydrateAll();
-  }, []);
+  }, [isAuthenticated, user]);
 }

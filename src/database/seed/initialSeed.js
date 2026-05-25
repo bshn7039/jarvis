@@ -216,20 +216,30 @@ const mockDatabase = {
   },
 
   academics: {
-    currentSemester: 'Semester 6',
-    termEndDate: '2026-07-30',
+    currentSemester: 'Sem 1',
+    termEndDate: '2026-12-30',
     subjects: [
-      { id: 'sub-001', name: 'Data Structures', code: 'CS601', progress: 68 },
-      { id: 'sub-002', name: 'Operating Systems', code: 'CS602', progress: 62 },
+      { id: 'sub-001', name: 'Data Structures', code: 'CS301', status: 'Ongoing', credits: 4, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-002', name: 'Computer Networks', code: 'CS302', status: 'Ongoing', credits: 4, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-003', name: 'Operating Systems', code: 'CS303', status: 'Ongoing', credits: 4, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-004', name: 'Database Management', code: 'CS304', status: 'Ongoing', credits: 4, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-005', name: 'Discrete Mathematics', code: 'CS305', status: 'Ongoing', credits: 4, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-006', name: 'Java / Python', code: 'CS306', status: 'Ongoing', credits: 3, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-007', name: 'Engineering Mathematics', code: 'CS307', status: 'Ongoing', credits: 4, attendance: 0, revisionStatus: 'Not Started' },
+      { id: 'sub-008', name: 'Mini Project', code: 'CS308', status: 'Ongoing', credits: 2, attendance: 0, revisionStatus: 'Not Started' },
     ],
     assignments: [],
     practicals: [],
     revisionLogs: [],
     codingProgress: {
-      solvedProblems: 184,
-      targetProblems: 260,
-      streakDays: 12,
-      weeklySolved: 19,
+      solvedProblems: 0,
+      targetProblems: 500,
+      streakDays: 0,
+      weeklySolved: 0,
+      currentTopic: '',
+      weakTopics: [],
+      revisionQueue: [],
+      contestHistory: [],
     },
     projects: [],
   },
@@ -246,7 +256,15 @@ const mockDatabase = {
       weightKg: 72
     },
     academics: {
-      semester: 'Semester 6'
+      semester: 'Sem 1'
+    },
+    degree: {
+      collegeName: "Pillai College",
+      degreeName: "B.Tech Computer Engineering",
+      semester: "Sem 1",
+      academicGoal: "Adapt to degree-level workload",
+      cgpa: 0,
+      targetCgpa: 10,
     },
     productivity: {
       deepWorkHours: 4

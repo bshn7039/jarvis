@@ -1,132 +1,218 @@
-import { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
-import PagePanel from '../components/ui/PagePanel';
-import SubjectCard from '../components/academics/SubjectCard';
-import AssignmentBoard from '../components/academics/AssignmentBoard';
-import RevisionLogTable from '../components/academics/RevisionLogTable';
-import ProgressBar from '../components/ui/ProgressBar';
-import { useAcademicStore } from '../store/academicStore';
+import GrowthOverview from '../components/academics/GrowthOverview';
+import DiplomaDegreeSection from '../components/academics/DiplomaDegreeSection';
+import CodingSystem from '../components/academics/CodingSystem';
+import CareerSystem from '../components/academics/CareerSystem';
+import ProductivityDiscipline from '../components/academics/ProductivityDiscipline';
+import StudyExecution from '../components/academics/StudyExecution';
+import AiInsightsPanel from '../components/academics/AiInsightsPanel';
 
-function daysUntil(dateValue) {
-  const today = new Date('2026-05-21T00:00:00');
-  const date = new Date(`${dateValue}T00:00:00`);
-  return Math.max(0, Math.ceil((date - today) / (1000 * 60 * 60 * 24)));
-}
+import EntityModal from '../components/modals/EntityModal';
+import EntityForm from '../components/forms/EntityForm';
+import { useEntityStore } from '../store/entityStore';
+import { useAcademicStore } from '../store/academicStore';
+import { useProfileStore } from '../store/profileStore';
+import { useTaskStore } from '../store/taskStore';
 
 export default function Academics() {
-  const currentSemester = useAcademicStore((s) => s.currentSemester);
-  const termEndDate = useAcademicStore((s) => s.termEndDate);
-  const subjects = useAcademicStore((s) => s.subjects);
-  const assignments = useAcademicStore((s) => s.assignments);
-  const practicals = useAcademicStore((s) => s.practicals);
-  const revisionLogs = useAcademicStore((s) => s.revisionLogs);
-  const codingProgress = useAcademicStore((s) => s.codingProgress);
-  const projects = useAcademicStore((s) => s.projects);
-  const selectedSubjectId = useAcademicStore((s) => s.selectedSubjectId);
-  const setSelectedSubjectId = useAcademicStore((s) => s.setSelectedSubjectId);
-  const updateAssignmentProgress = useAcademicStore((s) => s.updateAssignmentProgress);
-  const addSubject = useAcademicStore((s) => s.addSubject);
-  const addAssignment = useAcademicStore((s) => s.addAssignment);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const { 
+    isModalOpen, 
+    activeType, 
+    selectedId, 
+    draftMode, 
+    closeModal, 
+    initialData 
+  } = useEntityStore(useShallow(s => ({
+    isModalOpen: s.isModalOpen,
+    activeType: s.activeType,
+    selectedId: s.selectedId,
+    draftMode: s.draftMode,
+    closeModal: s.closeModal,
+    initialData: s.initialData
+  })));
 
-  const subjectMap = useMemo(
-    () => Object.fromEntries(subjects.map((subject) => [subject.id, subject.name])),
-    [subjects],
-  );
-  const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId) ?? subjects[0];
-  const selectedAssignments = assignments.filter((assignment) => assignment.subjectId === selectedSubject?.id);
-  const selectedRevision = revisionLogs.filter((log) => log.subjectId === selectedSubject?.id);
-  const completedPracticals = practicals.filter((practical) => practical.status === 'completed').length;
-  const codingPct = Math.round(
-    (codingProgress.solvedProblems / Math.max(codingProgress.targetProblems, 1)) * 100,
-  );
+  const { 
+    skills, 
+    projects, 
+    subjects,
+    techStack, 
+    activeLearning, 
+    dsaQuestions, 
+    codingProgress,
+    certifications, 
+    portfolio,
+    addSkill,
+    updateSkill,
+    addProject,
+    updateProject,
+    addSubject,
+    updateSubject,
+    addTechStack,
+    updateTechStack,
+    addActiveLearning,
+    updateActiveLearning,
+    addDsaQuestion,
+    updateDsaQuestion,
+    updateCodingProgress,
+    addCertification,
+    updateCertification,
+    addPortfolioItem,
+    updatePortfolioItem
+  } = useAcademicStore(useShallow(s => ({
+    skills: s.skills,
+    projects: s.projects,
+    subjects: s.subjects,
+    techStack: s.techStack,
+    activeLearning: s.activeLearning,
+    dsaQuestions: s.dsaQuestions,
+    codingProgress: s.codingProgress,
+    certifications: s.certifications,
+    portfolio: s.portfolio,
+    addSkill: s.addSkill,
+    updateSkill: s.updateSkill,
+    addProject: s.addProject,
+    updateProject: s.updateProject,
+    addSubject: s.addSubject,
+    updateSubject: s.updateSubject,
+    addTechStack: s.addTechStack,
+    updateTechStack: s.updateTechStack,
+    addActiveLearning: s.addActiveLearning,
+    updateActiveLearning: s.updateActiveLearning,
+    addDsaQuestion: s.addDsaQuestion,
+    updateDsaQuestion: s.updateDsaQuestion,
+    updateCodingProgress: s.updateCodingProgress,
+    addCertification: s.addCertification,
+    updateCertification: s.updateCertification,
+    addPortfolioItem: s.addPortfolioItem,
+    updatePortfolioItem: s.updatePortfolioItem
+  })));
+
+  const profile = useProfileStore(s => s.profile);
+  const updateProfile = useProfileStore(s => s.updateProfile);
+  
+  const { createTask, updateTask, tasks } = useTaskStore(useShallow(s => ({
+    createTask: s.createTask,
+    updateTask: s.updateTask,
+    tasks: s.tasks
+  })));
+
+  const selectedEntity = useMemo(() => {
+    if (!selectedId && activeType !== 'dsaProgress') return initialData;
+    
+    switch (activeType) {
+      case 'skill': return skills.find(s => s.id === selectedId);
+      case 'project': return projects.find(p => p.id === selectedId);
+      case 'subject': return subjects.find(s => s.id === selectedId);
+      case 'techStack': return techStack.find(t => t.id === selectedId);
+      case 'activeLearning': return activeLearning.find(l => l.id === selectedId);
+      case 'dsa': return dsaQuestions.find(q => q.id === selectedId);
+      case 'dsaProgress': return codingProgress;
+      case 'certification': return certifications.find(c => c.id === selectedId);
+      case 'portfolio': return portfolio.find(p => p.id === selectedId);
+      case 'profile': return profile;
+      case 'task': return tasks.find(t => t.id === selectedId);
+      default: return null;
+    }
+  }, [activeType, selectedId, skills, projects, subjects, techStack, activeLearning, dsaQuestions, codingProgress, certifications, portfolio, profile, tasks, initialData]);
+
+  const handleSubmit = async (data) => {
+    setIsSaving(true);
+    try {
+      if (draftMode === 'create') {
+        switch (activeType) {
+          case 'skill': await addSkill(data); break;
+          case 'project': await addProject(data); break;
+          case 'subject': await addSubject(data); break;
+          case 'techStack': await addTechStack(data.name); break;
+          case 'activeLearning': await addActiveLearning(data); break;
+          case 'dsa': await addDsaQuestion(data); break;
+          case 'certification': await addCertification(data); break;
+          case 'portfolio': await addPortfolioItem(data); break;
+          case 'task': await createTask(data); break;
+        }
+      } else {
+        switch (activeType) {
+          case 'skill': await updateSkill(selectedId, data); break;
+          case 'project': await updateProject(selectedId, data); break;
+          case 'subject': await updateSubject(selectedId, data); break;
+          case 'techStack': await updateTechStack(selectedId, data); break;
+          case 'activeLearning': await updateActiveLearning(selectedId, data); break;
+          case 'dsa': await updateDsaQuestion(selectedId, data); break;
+          case 'dsaProgress': await updateCodingProgress(data); break;
+          case 'certification': await updateCertification(selectedId, data); break;
+          case 'portfolio': await updatePortfolioItem(selectedId, data); break;
+          case 'profile': await updateProfile(data); break;
+          case 'task': await updateTask(selectedId, data); break;
+        }
+      }
+      closeModal();
+    } catch (err) {
+      console.error('Failed to save entity:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const academicEntityTypes = ['skill', 'project', 'subject', 'techStack', 'activeLearning', 'dsa', 'dsaProgress', 'certification', 'portfolio', 'profile', 'task'];
 
   return (
-    <ModulePageLayout title="Academics" subtitle="Semester control center for CS progress and revision discipline.">
-      <PagePanel title={currentSemester} subtitle={`Term ends on ${termEndDate} (${daysUntil(termEndDate)} days left)`}>
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <p className="text-xs text-jarvis-muted">Coding Tracker</p>
-            <p className="mt-1 text-sm text-jarvis-text">
-              {codingProgress.solvedProblems} / {codingProgress.targetProblems} solved
-            </p>
-            <div className="mt-2">
-              <ProgressBar value={codingPct} />
-            </div>
-          </div>
-          <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <p className="text-xs text-jarvis-muted">Problem Solving Streak</p>
-            <p className="mt-1 text-sm text-jarvis-text">{codingProgress.streakDays} days</p>
-          </div>
-          <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <p className="text-xs text-jarvis-muted">Practicals Completed</p>
-            <p className="mt-1 text-sm text-jarvis-text">
-              {completedPracticals} / {practicals.length}
-            </p>
-          </div>
-        </div>
-      </PagePanel>
+    <ModulePageLayout 
+      title="Growth Engine" 
+      subtitle="Unified operational system for academics, coding, and career progression."
+    >
+      <div className="space-y-8 pb-10">
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">01. Growth Overview</h2>
+          <GrowthOverview />
+        </section>
 
-      <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
-        <PagePanel 
-          title="Subjects"
-          actions={
-            <button
-              type="button"
-              onClick={() => addSubject({ name: 'Computer Networks', code: 'CS601' })}
-              className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
-            >
-              New Subject
-            </button>
-          }
-        >
-          <div className="space-y-2">
-            {subjects.map((subject) => (
-              <SubjectCard
-                key={subject.id}
-                subject={subject}
-                selected={subject.id === selectedSubject?.id}
-                onSelect={setSelectedSubjectId}
-              />
-            ))}
-          </div>
-        </PagePanel>
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">02 & 03. Academic Systems</h2>
+          <DiplomaDegreeSection />
+        </section>
 
-        <div className="space-y-4">
-          <PagePanel
-            title={`${selectedSubject?.name || 'Subject'} Assignments`}
-            subtitle="Assignments, practicals, and project progress."
-            actions={
-              <button
-                type="button"
-                onClick={() => addAssignment({ title: 'New Lab Work' })}
-                className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
-              >
-                New Assignment
-              </button>
-            }
-          >
-            <AssignmentBoard
-              assignments={selectedAssignments}
-              onUpdateProgress={updateAssignmentProgress}
-            />
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {projects.map((project) => (
-                <article key={project.id} className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-                  <p className="text-sm text-jarvis-text">{project.name}</p>
-                  <p className="mt-1 text-xs text-jarvis-muted">Status: {project.status}</p>
-                  <div className="mt-2">
-                    <ProgressBar value={project.progress} />
-                  </div>
-                </article>
-              ))}
-            </div>
-          </PagePanel>
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">04. Coding & Development</h2>
+          <CodingSystem />
+        </section>
 
-          <PagePanel title="Revision Tracker" subtitle="Logs, confidence, and study-hour trail.">
-            <RevisionLogTable logs={selectedRevision} subjectMap={subjectMap} />
-          </PagePanel>
-        </div>
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">05. Career System</h2>
+          <CareerSystem />
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">06. Productivity & Discipline</h2>
+          <ProductivityDiscipline />
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">07. Study Execution Layer</h2>
+          <StudyExecution />
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">08. AI Insights</h2>
+          <AiInsightsPanel />
+        </section>
       </div>
+
+      <EntityModal
+        isOpen={isModalOpen && academicEntityTypes.includes(activeType)}
+        onClose={closeModal}
+        title={`${draftMode === 'create' ? 'Create' : 'Edit'} ${activeType}`}
+      >
+        <EntityForm
+          initialData={selectedEntity}
+          onSubmit={handleSubmit}
+          onCancel={closeModal}
+          isSubmitting={isSaving}
+        />
+      </EntityModal>
     </ModulePageLayout>
   );
 }

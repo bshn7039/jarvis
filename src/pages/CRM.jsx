@@ -1,9 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import PagePanel from '../components/ui/PagePanel';
 import ContactList from '../components/crm/ContactList';
 import ContactDetail from '../components/crm/ContactDetail';
 import { useCrmStore } from '../store/crmStore';
+import { useEntityStore } from '../store/entityStore';
+import EntityModal from '../components/modals/EntityModal';
+import EntityForm from '../components/forms/EntityForm';
 
 export default function CRM() {
   const contacts = useCrmStore((s) => s.contacts);
@@ -12,14 +15,18 @@ export default function CRM() {
   const selectedContactId = useCrmStore((s) => s.selectedContactId);
   const searchQuery = useCrmStore((s) => s.searchQuery);
   const activeTag = useCrmStore((s) => s.activeTag);
+  
   const setSelectedContactId = useCrmStore((s) => s.setSelectedContactId);
   const setSearchQuery = useCrmStore((s) => s.setSearchQuery);
   const setActiveTag = useCrmStore((s) => s.setActiveTag);
-  const updateContactNotes = useCrmStore((s) => s.updateContactNotes);
-  const toggleReminderStatus = useCrmStore((s) => s.toggleReminderStatus);
   const addContact = useCrmStore((s) => s.addContact);
+  const updateContact = useCrmStore((s) => s.updateContact);
+  const deleteContact = useCrmStore((s) => s.deleteContact);
 
-  const tags = useMemo(() => ['all', ...new Set(contacts.flatMap((contact) => contact.tags))], [contacts]);
+  const { isModalOpen, closeModal, activeType, selectedId, draftMode, openCreateModal, mode } = useEntityStore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const tags = useMemo(() => ['all', ...new Set(contacts.flatMap((contact) => contact.tags || []))], [contacts]);
 
   const filteredContacts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -27,15 +34,32 @@ export default function CRM() {
       const queryMatch =
         !query ||
         contact.name.toLowerCase().includes(query) ||
-        contact.connectionContext.toLowerCase().includes(query);
-      const tagMatch = activeTag === 'all' || contact.tags.includes(activeTag);
+        (contact.nickname && contact.nickname.toLowerCase().includes(query)) ||
+        (contact.notes && contact.notes.toLowerCase().includes(query));
+      const tagMatch = activeTag === 'all' || (contact.tags && contact.tags.includes(activeTag));
       return queryMatch && tagMatch;
     });
   }, [contacts, searchQuery, activeTag]);
 
-  const selectedContact = filteredContacts.find((c) => c.id === selectedContactId) ?? filteredContacts[0] ?? null;
+  const selectedContact = contacts.find((c) => c.id === (selectedId || selectedContactId)) ?? filteredContacts[0] ?? null;
   const selectedReminders = reminders.filter((reminder) => reminder.contactId === selectedContact?.id);
   const selectedInteractions = interactionLog.filter((item) => item.contactId === selectedContact?.id);
+
+  const handleFormSubmit = async (data) => {
+    setIsSubmitting(true);
+    try {
+      if (draftMode === 'create') {
+        await addContact(data);
+      } else {
+        await updateContact(selectedId, data);
+      }
+      closeModal();
+    } catch (error) {
+      console.error('Failed to save contact:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <ModulePageLayout
@@ -47,8 +71,8 @@ export default function CRM() {
         actions={
           <button
             type="button"
-            onClick={() => addContact({ name: 'New Lead', role: 'Strategic Partner' })}
-            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text"
+            onClick={() => openCreateModal('crm')}
+            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text hover:bg-white/10"
           >
             New Contact
           </button>
@@ -88,10 +112,22 @@ export default function CRM() {
           contact={selectedContact}
           reminders={selectedReminders}
           interactions={selectedInteractions}
-          onNotesChange={updateContactNotes}
-          onToggleReminder={toggleReminderStatus}
+          onDelete={() => selectedContact && deleteContact(selectedContact.id)}
         />
       </div>
+
+      <EntityModal
+        isOpen={isModalOpen && activeType === 'crm'}
+        onClose={closeModal}
+        title={draftMode === 'create' ? 'New Contact' : mode === 'view' ? 'View Contact Notes' : mode === 'notes' ? 'Edit Contact Notes' : 'Edit Contact'}
+      >
+        <EntityForm
+          initialData={draftMode === 'edit' ? selectedContact : {}}
+          onSubmit={handleFormSubmit}
+          onCancel={closeModal}
+          isSubmitting={isSubmitting}
+        />
+      </EntityModal>
     </ModulePageLayout>
   );
 }

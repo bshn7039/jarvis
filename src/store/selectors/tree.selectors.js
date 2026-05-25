@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { generateDatabaseTree } from '../../data/databaseTree';
 import { useTaskStore } from '../taskStore';
 import { useGoalStore } from '../goalStore';
@@ -12,15 +13,19 @@ import { useProfileStore } from '../profileStore';
 import { useChatStore } from '../chatStore';
 
 export function useLiveDatabaseTree() {
-  const tasks = useTaskStore(s => s.tasks);
-  const repetitiveTasks = useTaskStore(s => s.repetitiveTasks);
-  const repetitiveHistory = useTaskStore(s => s.repetitiveHistory);
+  const { tasks, repetitiveTasks, repetitiveHistory } = useTaskStore(useShallow(s => ({
+    tasks: s.tasks,
+    repetitiveTasks: s.repetitiveTasks,
+    repetitiveHistory: s.repetitiveHistory
+  })));
   const goals = useGoalStore(s => s.goals);
   const journalEntries = useJournalStore(s => s.entries);
   const financeTransactions = useFinanceStore(s => s.transactions);
-  const fitnessWorkouts = useFitnessStore(s => s.workouts);
-  const fitnessMeals = useFitnessStore(s => s.meals);
-  const fitnessHydration = useFitnessStore(s => s.hydrationLogs);
+  const { fitnessWorkouts, fitnessMeals, fitnessHydration } = useFitnessStore(useShallow(s => ({
+    fitnessWorkouts: s.workouts,
+    fitnessMeals: s.meals,
+    fitnessHydration: s.hydrationLogs
+  })));
   const crmContacts = useCrmStore(s => s.contacts);
   const academicSubjects = useAcademicStore(s => s.subjects);
   const schedules = useScheduleStore(s => s.schedules);

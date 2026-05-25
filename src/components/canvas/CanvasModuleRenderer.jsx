@@ -7,6 +7,7 @@ import { useAcademicStore } from '../../store/academicStore';
 import { useCrmStore } from '../../store/crmStore';
 import { useJournalStore } from '../../store/journalStore';
 import { useChatStore } from '../../store/chatStore';
+import { usePersonalStore } from '../../store/personalStore';
 
 function Stat({ label, value }) {
   return (
@@ -132,13 +133,15 @@ function AcademicsPreview() {
   const assignments = useAcademicStore((s) => s.assignments);
   const revisionLogs = useAcademicStore((s) => s.revisionLogs);
   const codingProgress = useAcademicStore((s) => s.codingProgress);
+  const dsaQuestions = useAcademicStore((s) => s.dsaQuestions);
   const upcoming = assignments.filter((item) => item.status !== 'completed').slice(0, 3).length;
   const studyHours = revisionLogs.reduce((sum, log) => sum + (log.hours || 0), 0).toFixed(1);
-  const revisionStatus = Math.round((codingProgress.solvedProblems / codingProgress.targetProblems) * 100);
+  const solvedCount = dsaQuestions.length;
+  const revisionStatus = Math.round((solvedCount / (codingProgress.targetProblems || 1)) * 100);
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Stat label="Semester" value={semester} />
+      <Stat label="Semester" value={semester || '—'} />
       <Stat label="Assignments" value={upcoming} />
       <Stat label="Study Hours" value={`${studyHours}h`} />
       <Stat label="Revision" value={`${revisionStatus}%`} />
@@ -209,6 +212,23 @@ function ChatsPreview() {
   );
 }
 
+function PersonalPreview() {
+  const { selfCare, reading, music, vault } = usePersonalStore();
+  const activeReading = reading.filter((b) => b.status === 'Reading').length;
+  const vaultIdeas = vault.length;
+  const selfCarePending = selfCare.filter((s) => s.status !== 'completed').length;
+  const musicLogs = music.length;
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <Stat label="Self Care" value={`${selfCarePending} pending`} />
+      <Stat label="Reading" value={`${activeReading} books`} />
+      <Stat label="Creative" value={`${vaultIdeas} ideas`} />
+      <Stat label="Music" value={`${musicLogs} logs`} />
+    </div>
+  );
+}
+
 export default function CanvasModuleRenderer({ type }) {
   switch (type) {
     case 'tasks':
@@ -227,7 +247,10 @@ export default function CanvasModuleRenderer({ type }) {
       return <JournalPreview />;
     case 'chats':
       return <ChatsPreview />;
+    case 'personal':
+      return <PersonalPreview />;
     default:
       return <p className="text-xs text-jarvis-muted">No preview available.</p>;
   }
 }
+

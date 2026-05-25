@@ -9,6 +9,7 @@ const MODULE_KEYS = [
   'academics',
   'schedules',
   'chats',
+  'trash',
 ];
 
 function toLabel(key) {
@@ -186,6 +187,30 @@ export function buildNode(data, path, depth = 0) {
         })
       };
     });
+    return node;
+  }
+
+  // Special handling for Trash to group by original entity type
+  if (path === 'trash' && Array.isArray(data)) {
+    const types = [...new Set(data.map(item => item.entityType))];
+    node.type = 'folder';
+    node.children = types.map(type => ({
+      id: `trash.${type}`,
+      label: toLabel(type),
+      type: 'folder',
+      checked: true,
+      expanded: false,
+      children: data.filter(item => item.entityType === type).map(item => {
+        const itemNode = buildNode(item.data, `trash.${type}.${item.id}`, depth + 2);
+        itemNode.label = item.entityTitle || item.id;
+        itemNode.metadata = { 
+          deletedAt: item.deletedAt, 
+          trashId: item.id,
+          originalStore: item.entityType
+        };
+        return itemNode;
+      })
+    }));
     return node;
   }
 

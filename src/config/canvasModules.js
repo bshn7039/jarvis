@@ -56,4 +56,12 @@ export const canvasModules = [
     visible: true,
     position: { x: 1720, y: 1780 },
   },
+  {
+    id: 'personal',
+    title: 'Personal',
+    type: 'personal',
+    visible: true,
+    position: { x: 300, y: 1780 },
+  },
 ];
+

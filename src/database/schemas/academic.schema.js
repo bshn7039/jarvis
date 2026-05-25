@@ -6,13 +6,24 @@ export const academicSchema = {
     name: "string",
     credits: "number",
     status: "string",
-    grade: "string",
+    syllabus: "string",
+    notes: "string",
+    revisionStatus: "string",
+    weakTopics: "array",
+    importantQuestions: "string",
+    attendance: "number",
+    internalMarks: "string",
+    practicals: "string",
+    vivaPrep: "string",
     linkedAssignmentIds: "array",
     createdAt: "date",
     updatedAt: "date"
   },
   defaults: {
     status: "Ongoing",
-    linkedAssignmentIds: []
+    revisionStatus: "Not Started",
+    attendance: 0,
+    linkedAssignmentIds: [],
+    weakTopics: []
   }
 };

@@ -1,12 +1,27 @@
 import { useState } from 'react';
-import { User, Activity, GraduationCap, Target, Heart, ChevronDown, ChevronRight, Briefcase, Zap, Plus, Trash2, Languages, Shield } from 'lucide-react';
+import { User, Activity, GraduationCap, Target, Heart, ChevronDown, ChevronRight, Briefcase, Zap, Plus, Trash2, Languages, Shield, Info, LogOut } from 'lucide-react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import { useProfileStore } from '../store/profileStore';
+import { useAuthStore } from '../store/authStore';
+import { useNavigate } from 'react-router-dom';
 
-function ProfileField({ label, value, onChange, type = "text", placeholder = "", readOnly = false }) {
+function ProfileField({ label, value, onChange, type = "text", placeholder = "", readOnly = false, infoUrl = null }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[10px] uppercase tracking-wider text-jarvis-muted">{label}</label>
+      <div className="flex items-center justify-between">
+        <label className="text-[10px] uppercase tracking-wider text-jarvis-muted">{label}</label>
+        {infoUrl && (
+          <a 
+            href={infoUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-jarvis-muted hover:text-jarvis-accent transition-colors"
+            title="Calculator Tool"
+          >
+            <Info className="h-3 w-3" />
+          </a>
+        )}
+      </div>
       <input
         type={type}
         value={value || ''}
@@ -45,8 +60,15 @@ const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 export default function Profile() {
   const profile = useProfileStore((s) => s.profile);
   const updateSection = useProfileStore((s) => s.updateSection);
+  const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
 
   if (!profile) return null;
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const handleUpdateLanguage = (index, field, value) => {
     const newLanguages = [...(profile.lifestyle?.languages || [])];
@@ -84,6 +106,23 @@ export default function Profile() {
     <ModulePageLayout title="User Profile" subtitle="Permanent identity core and lifestyle metadata.">
       <div className="mx-auto max-w-4xl space-y-6 pb-20">
         
+        {/* ACCOUNT INFO */}
+        <SectionWrapper title="Account" icon={Shield}>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-jarvis-text">{user?.username || 'Unknown User'}</p>
+              <p className="text-[10px] text-jarvis-muted uppercase tracking-widest">ID: {user?.userId}</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 rounded-lg border border-red-900/30 bg-red-900/10 px-4 py-2 text-xs font-medium text-red-400 transition-colors hover:bg-red-900/20"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Logout Session
+            </button>
+          </div>
+        </SectionWrapper>
+
         {/* IDENTITY */}
         <SectionWrapper title="Identity" icon={User}>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -136,7 +175,13 @@ export default function Profile() {
           <div className="grid gap-4 sm:grid-cols-2">
             <ProfileField label="Height (cm)" type="number" value={profile.physical?.heightCm} onChange={(v) => updateSection('physical', { heightCm: v })} />
             <ProfileField label="Weight (kg)" type="number" value={profile.physical?.weightKg} onChange={(v) => updateSection('physical', { weightKg: v })} />
-            <ProfileField label="Body Fat %" type="number" value={profile.physical?.bodyFat} onChange={(v) => updateSection('physical', { bodyFat: v })} />
+            <ProfileField 
+              label="Body Fat %" 
+              type="number" 
+              value={profile.physical?.bodyFat} 
+              onChange={(v) => updateSection('physical', { bodyFat: v })} 
+              infoUrl="https://www.fittr.com/tools/body-fat-calculator/"
+            />
             <ProfileField label="Body Type" value={profile.physical?.bodyType} onChange={(v) => updateSection('physical', { bodyType: v })} />
             <ProfileField label="Fitness Goal" value={profile.physical?.fitnessGoal} onChange={(v) => updateSection('physical', { fitnessGoal: v })} />
             <ProfileField label="Allergies" value={profile.physical?.allergies?.join(', ')} onChange={(v) => updateSection('physical', { allergies: v.split(',').map(s => s.trim()) })} />

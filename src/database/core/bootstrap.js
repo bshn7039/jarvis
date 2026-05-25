@@ -1,17 +1,25 @@
 import { localDb, STORES } from './localDatabase';
 import { seedData } from '../seed/initialSeed';
+import { runMigrations } from './migrations';
 
-export async function bootstrapDatabase() {
+export async function bootstrapDatabase(userId = null) {
   try {
-    const db = await localDb.init();
+    if (userId) {
+      localDb.setUserId(userId);
+    }
     
-    // Simple check: if tasks store is empty, assume first launch
-    const existingTasks = await localDb.getAll(STORES.TASKS);
+    await localDb.init();
     
-    if (existingTasks.length === 0) {
-      console.log('[DB] Bootstrap: Initializing IndexedDB with seed data...');
+    // 1. Run Migrations
+    await runMigrations();
+
+    // 2. Metadata check
+    const metadata = await localDb.getById(STORES.METADATA, 'app-status') || { id: 'app-status', initialized: false };
+    
+    if (!metadata.initialized) {
+      console.log('[DB] Bootstrap: Initializing first launch seed data...');
       
-      await Promise.all([
+      const seedPromises = [
         localDb.bulkPut(STORES.TASKS, seedData.tasks || []),
         localDb.bulkPut(STORES.GOALS, seedData.goals || []),
         localDb.bulkPut(STORES.JOURNAL_ENTRIES, seedData.journalEntries || []),
@@ -37,14 +45,23 @@ export async function bootstrapDatabase() {
         localDb.bulkPut(STORES.CRM_INTERACTIONS, seedData.crmInteractions || []),
         localDb.bulkPut(STORES.ACADEMIC_PROJECTS, seedData.academicProjects || []),
         localDb.bulkPut(STORES.ACADEMIC_META, seedData.academicMeta || [])
-      ]);
+      ];
       
-      console.log('[DB] Bootstrap: Database initialization complete.');
+      await Promise.all(seedPromises);
+      
+      await localDb.put(STORES.METADATA, { 
+        id: 'app-status', 
+        initialized: true, 
+        userId: userId || 'default',
+        createdAt: new Date().toISOString() 
+      });
+      
+      console.log('[DB] Bootstrap: Initialization complete.');
     } else {
-      console.log('[DB] Bootstrap: Database already exists, skipping seed.');
+      console.log('[DB] Bootstrap: User data already exists, skipping seed.');
     }
   } catch (error) {
     console.error('[DB] Bootstrap: Failed to initialize database:', error);
-    throw error; // Re-throw to be caught by main.jsx
+    throw error;
   }
 }

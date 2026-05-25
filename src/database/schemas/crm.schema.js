@@ -3,18 +3,34 @@ export const crmSchema = {
   fields: {
     id: "string",
     name: "string",
-    role: "string",
-    organization: "string",
-    tags: "array",
+    nickname: "string",
+    relationshipType: "string",
+    phone: "string",
+    email: "string",
+    socialLinks: "array",
+    birthday: "date",
+    location: "string",
     notes: "string",
-    lastInteraction: "date",
+    tags: "array",
+    priority: "string",
     linkedEntityIds: "array",
+    lastInteraction: "date",
     createdAt: "date",
     updatedAt: "date"
   },
   defaults: {
     name: "New Contact",
+    nickname: "",
+    relationshipType: "other",
+    phone: "",
+    email: "",
+    socialLinks: [],
+    birthday: "",
+    location: "",
+    notes: "",
     tags: [],
-    linkedEntityIds: []
+    priority: "medium",
+    linkedEntityIds: [],
+    lastInteraction: ""
   }
 };

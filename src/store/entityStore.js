@@ -16,20 +16,23 @@ export const useEntityStore = create((set) => ({
     set({ isHydrated: true });
   },
 
-  openCreateModal: (entityType) =>
+  openCreateModal: (entityType, mode = 'full', initialData = null) =>
     set({
       activeType: entityType,
       selectedId: null,
       draftMode: 'create',
       isModalOpen: true,
+      mode,
+      initialData,
     }),
 
-  openEditModal: (entityType, entityId) =>
+  openEditModal: (entityType, entityId, mode = 'full') =>
     set({
       activeType: entityType,
       selectedId: entityId,
       draftMode: 'edit',
       isModalOpen: true,
+      mode,
     }),
 
   closeModal: () => set({ isModalOpen: false }),

@@ -108,68 +108,6 @@ async function logActivity(action, entityType, entityId, metadata) {
   });
 }
 
-async function cleanupEntityReferences(removedId) {
-  if (!removedId) return;
-  const stores = Object.values(STORES);
-  const linkedKeys = new Set([
-    'linkedGoalIds',
-    'linkedTaskIds',
-    'linkedScheduleIds',
-    'linkedJournalIds',
-    'linkedEntityIds',
-  ]);
-
-  for (const storeName of stores) {
-    const rows = await localDb.getAll(storeName);
-    for (const row of rows) {
-      const next = cleanupObjectReferences(row, removedId, linkedKeys);
-      if (next !== row) {
-        await localDb.put(storeName, next);
-      }
-    }
-  }
-}
-
-function cleanupObjectReferences(input, removedId, linkedKeys) {
-  if (Array.isArray(input)) {
-    let changed = false;
-    const mapped = input.map((entry) => {
-      const cleaned = cleanupObjectReferences(entry, removedId, linkedKeys);
-      if (cleaned !== entry) changed = true;
-      return cleaned;
-    });
-    return changed ? mapped : input;
-  }
-
-  if (!input || typeof input !== 'object') return input;
-
-  let changed = false;
-  const out = { ...input };
-  for (const [key, value] of Object.entries(input)) {
-    if (Array.isArray(value) && linkedKeys.has(key)) {
-      const filtered = value.filter((id) => id !== removedId);
-      if (filtered.length !== value.length) {
-        out[key] = filtered;
-        changed = true;
-      }
-      continue;
-    }
-    if (typeof value === 'string' && key.toLowerCase().endsWith('id') && value === removedId) {
-      out[key] = null;
-      changed = true;
-      continue;
-    }
-    if (value && typeof value === 'object') {
-      const cleaned = cleanupObjectReferences(value, removedId, linkedKeys);
-      if (cleaned !== value) {
-        out[key] = cleaned;
-        changed = true;
-      }
-    }
-  }
-  return changed ? out : input;
-}
-
 async function refreshAllStores() {
   await Promise.all([
     useTaskStore.getState().refreshFromDb(),

@@ -24,10 +24,8 @@ export const profileSchema = {
     },
     diploma: {
       collegeName: "string",
-      semester: "string",
       courseName: "string",
-      percentage: "number",
-      targetPercentage: "number",
+      completionStatus: "string",
       extraInfo: "string"
     },
     degree: {
@@ -37,6 +35,14 @@ export const profileSchema = {
       specialization: "string",
       cgpa: "number",
       targetCgpa: "number",
+      entry: "string",
+      durationYears: "number",
+      totalSemesters: "number",
+      status: "string",
+      academicNotes: "string",
+      transitionGoals: "string",
+      placementPrepNotes: "string",
+      higherStudiesNotes: "string",
       extraInfo: "string"
     },
     productivity: {
@@ -73,20 +79,27 @@ export const profileSchema = {
       weightKg: 72
     },
     diploma: {
-      collegeName: "",
-      semester: "",
-      courseName: "",
-      percentage: 0,
-      targetPercentage: 0,
-      extraInfo: ""
+      collegeName: "Government Polytechnic",
+      courseName: "Computer Engineering",
+      completionStatus: "Completed",
+      extraInfo: "Diploma Completed Successfully"
     },
     degree: {
-      collegeName: "",
-      degreeName: "",
-      semester: "",
+      collegeName: "Pillai College",
+      degreeName: "B.Tech Computer Engineering",
+      semester: "Sem 1",
       specialization: "",
       cgpa: 0,
-      targetCgpa: 0,
+      targetCgpa: 10,
+      entry: "Direct Second Year",
+      durationYears: 3,
+      totalSemesters: 6,
+      status: "Active",
+      academicGoal: "Adapt to degree-level workload",
+      academicNotes: "",
+      transitionGoals: "",
+      placementPrepNotes: "",
+      higherStudiesNotes: "",
       extraInfo: ""
     },
     productivity: {

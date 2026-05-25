@@ -9,7 +9,7 @@ export default function EnterButton({ onTransitionStart }) {
     if (isExiting) return;
     setIsExiting(true);
     onTransitionStart?.();
-    window.setTimeout(() => navigate('/home'), 1000);
+    window.setTimeout(() => navigate('/login'), 1000);
   };
 
   return (

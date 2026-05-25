@@ -12,6 +12,7 @@ import {
   Handshake,
   GraduationCap,
   Activity as ActivityIcon,
+  Smile,
   X,
 } from 'lucide-react';
 import SidebarSection from './SidebarSection';
@@ -26,6 +27,7 @@ const navItems = [
   { id: 'canvas', label: 'Canvas', icon: LayoutGrid, path: '/canvas' },
   { id: 'command', label: 'Command Center', icon: LayoutDashboard, path: '/command' },
   { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
+  { id: 'personal', label: 'Personal', icon: Smile, path: '/personal' },
   { id: 'tasks', label: 'Tasks', icon: ClipboardList, path: '/tasks' },
   { id: 'goals', label: 'Goals', icon: Target, path: '/goals' },
   { id: 'journal', label: 'Journal', icon: NotebookText, path: '/journal' },
@@ -35,6 +37,7 @@ const navItems = [
   { id: 'academics', label: 'Academics', icon: GraduationCap, path: '/academics' },
   { id: 'activity', label: 'Activity', icon: ActivityIcon, path: '/activity' },
 ];
+
 
 function formatChatLabel(chat) {
   const dateValue = chat.updatedAt || chat.createdAt;

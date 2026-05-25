@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { fitnessService } from '../database/services/fitnessService';
+import { localDb } from '../database/core/localDatabase';
 import { deepClone } from '../utils/deepClone';
 import { useActivityStore } from './activityStore';
 
@@ -142,6 +143,54 @@ export const useFitnessStore = create((set, get) => ({
     set((state) => ({
       bodyMetrics: [savedLog, ...state.bodyMetrics],
     }));
+  },
+
+  deleteLog: async (id) => {
+    const item = [...get().workouts, ...get().meals, ...get().hydrationLogs, ...get().bodyMetrics].find(i => i.id === id);
+    if (!item) return;
+
+    await fitnessService.delete(id);
+    set((state) => ({
+      workouts: state.workouts.filter(w => w.id !== id),
+      meals: state.meals.filter(m => m.id !== id),
+      hydrationLogs: state.hydrationLogs.filter(h => h.id !== id),
+      bodyMetrics: state.bodyMetrics.filter(b => b.id !== id),
+    }));
+    await get().logActivity({ 
+      action: 'deleted', 
+      entityId: id,
+      metadata: { type: item.type, title: item.title || item.meal || item.type }
+    });
+  },
+
+  updateBodyMetricLog: async (id, updates) => {
+    const metrics = get().bodyMetrics;
+    const metric = metrics.find(m => m.id === id);
+    if (!metric) return;
+
+    const updated = { ...metric, ...updates, updatedAt: new Date().toISOString() };
+    await fitnessService.update(id, updated);
+    set({ bodyMetrics: metrics.map(m => m.id === id ? updated : m) });
+  },
+
+  updateMealLog: async (id, updates) => {
+    const meals = get().meals;
+    const meal = meals.find(m => m.id === id);
+    if (!meal) return;
+
+    const updated = { ...meal, ...updates, updatedAt: new Date().toISOString() };
+    await fitnessService.update(id, updated);
+    set({ meals: meals.map(m => m.id === id ? updated : m) });
+  },
+
+  updateWorkoutLog: async (id, updates) => {
+    const workouts = get().workouts;
+    const workout = workouts.find(w => w.id === id);
+    if (!workout) return;
+
+    const updated = { ...workout, ...updates, updatedAt: new Date().toISOString() };
+    await fitnessService.update(id, updated);
+    set({ workouts: workouts.map(w => w.id === id ? updated : w) });
   },
 }));
 

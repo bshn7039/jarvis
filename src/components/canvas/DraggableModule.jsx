@@ -1,8 +1,8 @@
-import { useRef } from 'react';
+import { memo, useRef } from 'react';
 import Draggable from 'react-draggable';
 import ModuleCard from './ModuleCard';
 
-export default function DraggableModule({
+const DraggableModule = memo(function DraggableModule({
   module,
   moduleNode,
   scale = 1,
@@ -60,4 +60,6 @@ export default function DraggableModule({
       </div>
     </Draggable>
   );
-}
+});
+
+export default DraggableModule;

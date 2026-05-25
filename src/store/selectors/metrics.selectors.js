@@ -146,6 +146,8 @@ export const useSystemWarnings = () => {
   const tasks = useTaskStore((s) => s.tasks);
   const transactions = useFinanceStore((s) => s.transactions);
   const repetitiveTasks = useTaskStore(s => s.repetitiveTasks);
+  const fitnessStore = useFitnessStore();
+  const journalEntries = useJournalStore((s) => s.entries);
 
   return useMemo(() => {
     const TODAY = todayKey();
@@ -160,6 +162,26 @@ export const useSystemWarnings = () => {
     const brokenStreaks = repetitiveTasks.filter(t => t.active && !t.completionHistory.includes(TODAY) && t.streak > 5);
     if (brokenStreaks.length > 0) {
        warnings.push({ id: 'rep-streak-risk', text: `${brokenStreaks.length} routines at risk of breaking streak`, severity: 'medium' });
+    }
+
+    // Fitness warnings
+    const hydrationToday = fitnessStore.hydrationLogs.filter(l => l.date === TODAY).reduce((s, l) => s + l.amountMl, 0);
+    if (hydrationToday < fitnessStore.targets.hydrationMl * 0.5) {
+      warnings.push({ id: 'f-dehydration', text: 'Critical hydration levels. Drink water.', severity: 'medium' });
+    }
+
+    const lastWorkout = fitnessStore.workouts.filter(w => w.completed).sort((a, b) => b.date.localeCompare(a.date))[0];
+    if (lastWorkout) {
+      const daysSinceWorkout = (new Date(TODAY) - new Date(lastWorkout.date)) / (1000 * 60 * 60 * 24);
+      if (daysSinceWorkout >= 3) {
+        warnings.push({ id: 'f-inactivity', text: `No workout in ${Math.floor(daysSinceWorkout)} days. Recovery window closing.`, severity: 'medium' });
+      }
+    }
+
+    // Recovery/Mood warnings
+    const dayJournal = journalEntries.find(e => e.entryDate === TODAY);
+    if (dayJournal && dayJournal.mood !== null && dayJournal.mood < 4) {
+      warnings.push({ id: 'j-recovery', text: 'Low energy/mood detected. Prioritize recovery.', severity: 'medium' });
     }
 
     // Finance warnings
@@ -180,7 +202,7 @@ export const useSystemWarnings = () => {
     }
 
     return warnings;
-  }, [tasks, transactions]);
+  }, [tasks, transactions, repetitiveTasks, fitnessStore, journalEntries]);
 };
 
 export const useAiInsights = () => [{ id: 'i-ok', text: 'System operating within parameters.', type: 'neutral' }];

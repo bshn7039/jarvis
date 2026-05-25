@@ -8,6 +8,14 @@ import { academicSchema } from './academic.schema';
 import { profileSchema } from './profile.schema';
 import { chatSchema } from './chat.schema';
 import { repetitiveTaskSchema, repetitiveHistorySchema } from './repetitiveTask.schema';
+import { selfCareRoutineSchema } from './selfCareRoutine.schema';
+import { communicationPracticeSchema } from './communicationPractice.schema';
+import { socialGrowthRecordSchema } from './socialGrowthRecord.schema';
+import { publicPersonaItemSchema } from './publicPersonaItem.schema';
+import { musicPracticeLogSchema } from './musicPracticeLog.schema';
+import { creativeEntrySchema } from './creativeEntry.schema';
+import { readingItemSchema } from './readingItem.schema';
+import { creativeVaultIdeaSchema } from './creativeVaultIdea.schema';
 
 export const schemas = {
   tasks: taskSchema,
@@ -20,7 +28,15 @@ export const schemas = {
   profile: profileSchema,
   chats: chatSchema,
   repetitiveTasks: repetitiveTaskSchema,
-  repetitiveHistory: repetitiveHistorySchema
+  repetitiveHistory: repetitiveHistorySchema,
+  selfCareRoutines: selfCareRoutineSchema,
+  communicationPractices: communicationPracticeSchema,
+  socialGrowthRecords: socialGrowthRecordSchema,
+  publicPersonaItems: publicPersonaItemSchema,
+  musicPracticeLogs: musicPracticeLogSchema,
+  creativeEntries: creativeEntrySchema,
+  readingItems: readingItemSchema,
+  creativeVaultIdeas: creativeVaultIdeaSchema,
 };
 
 export {
@@ -34,5 +50,13 @@ export {
   profileSchema,
   chatSchema,
   repetitiveTaskSchema,
-  repetitiveHistorySchema
+  repetitiveHistorySchema,
+  selfCareRoutineSchema,
+  communicationPracticeSchema,
+  socialGrowthRecordSchema,
+  publicPersonaItemSchema,
+  musicPracticeLogSchema,
+  creativeEntrySchema,
+  readingItemSchema,
+  creativeVaultIdeaSchema,
 };
