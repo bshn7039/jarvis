@@ -30,11 +30,136 @@ export function buildNode(data, path, depth = 0) {
     expanded: false,
   };
 
-  // Special handling for Goals to nest them correctly
-  if (path === 'goals' && Array.isArray(data)) {
-    const rootAreas = data.filter(g => !g.parentId);
+  // Special handling for Finance to group by Accounts and Transactions
+  if (path === 'finance' && data) {
+    const transactions = data.transactions || [];
+    const accounts = [...new Set(transactions.map(t => t.account || 'cash'))];
+    
     node.type = 'folder';
-    node.children = rootAreas.map(area => buildGoalTreeNode(area, data, `goals.${area.id}`));
+    node.children = [
+      {
+        id: 'finance.accounts-group',
+        label: 'Accounts',
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: accounts.map(acc => {
+          const accTransactions = transactions.filter(t => (t.account || 'cash') === acc);
+          const balance = accTransactions.reduce((sum, t) => sum + (t.type === 'credit' ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
+          return {
+            id: `finance.accounts.${acc}`,
+            label: `${toLabel(acc)} (₹${balance.toLocaleString()})`,
+            type: 'folder',
+            checked: true,
+            expanded: false,
+            children: accTransactions.map(t => {
+              const tNode = buildNode(t, `finance.transactions.${t.id}`, depth + 2);
+              tNode.id = `finance.accounts.${acc}.txn.${t.id}`; // Ensure unique ID for this view
+              tNode.label = `${t.type === 'credit' ? '+' : '-'} ₹${(t.amount || 0).toLocaleString()} - ${t.title || t.category}`;
+              return tNode;
+            })
+          };
+        })
+      },
+      {
+        id: 'finance.transactions-group',
+        label: 'All Transactions',
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: transactions.map(t => {
+          const tNode = buildNode(t, `finance.transactions.${t.id}`, depth + 2);
+          tNode.label = `${t.type === 'credit' ? '+' : '-'} ₹${(t.amount || 0).toLocaleString()} - ${t.title || t.category}`;
+          return tNode;
+        })
+      }
+    ];
+    return node;
+  }
+
+  // Special handling for Tasks to group by Repetitive and Operational
+  if (path === 'tasks' && data) {
+    const tasks = Array.isArray(data) ? data : (data.tasks || []);
+    const repetitiveTasks = data.repetitiveTasks || [];
+    const repetitiveHistory = data.repetitiveHistory || [];
+
+    node.type = 'folder';
+    node.children = [
+      {
+        id: 'tasks.operational',
+        label: 'Operational Tasks',
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: ['today', 'week', 'month', 'undefined', 'completed'].map(bucket => ({
+          id: `tasks.operational.${bucket}`,
+          label: bucket.charAt(0).toUpperCase() + bucket.slice(1),
+          type: 'folder',
+          checked: true,
+          expanded: false,
+          children: tasks.filter(t => t.bucket === bucket).map(t => {
+             const tNode = buildNode(t, `tasks.operational.${bucket}.${t.id}`, depth + 2);
+             tNode.label = t.title;
+             return tNode;
+          })
+        }))
+      },
+      {
+        id: 'tasks.repetitive-group',
+        label: 'Repeatative Tasks',
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: [
+          {
+            id: 'tasks.repetitive.active',
+            label: 'Active Routines',
+            type: 'folder',
+            checked: true,
+            expanded: false,
+            children: repetitiveTasks.filter(t => !t.archived).map(t => {
+               const tNode = buildNode(t, `tasks.repetitive.active.${t.id}`, depth + 3);
+               tNode.label = `${t.title} (Streak: ${t.streak})`;
+               return tNode;
+            })
+          },
+          {
+            id: 'tasks.repetitive.history',
+            label: 'Completion History',
+            type: 'folder',
+            checked: true,
+            expanded: false,
+            children: repetitiveHistory.map(day => ({
+              id: `tasks.repetitive.history.${day.id}`,
+              label: day.date,
+              type: 'folder',
+              checked: true,
+              expanded: false,
+              children: [
+                {
+                  id: `tasks.repetitive.history.${day.id}.completed`,
+                  label: `Completed (${day.completedIds.length})`,
+                  type: 'folder',
+                  children: day.completedIds.map(id => {
+                    const t = day.snapshot.find(x => x.id === id);
+                    return { id: `tasks.repetitive.history.${day.id}.completed.${id}`, label: t?.title || 'Unknown', type: 'leaf' };
+                  })
+                },
+                {
+                  id: `tasks.repetitive.history.${day.id}.missed`,
+                  label: `Missed (${day.missedIds.length})`,
+                  type: 'folder',
+                  children: day.missedIds.map(id => {
+                    const t = day.snapshot.find(x => x.id === id);
+                    return { id: `tasks.repetitive.history.${day.id}.missed.${id}`, label: t?.title || 'Unknown', type: 'leaf' };
+                  })
+                }
+              ]
+            }))
+          }
+        ]
+      }
+    ];
     return node;
   }
 

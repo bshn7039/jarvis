@@ -2,18 +2,27 @@ export const financeSchema = {
   entity: "financeTransactions",
   fields: {
     id: "string",
-    date: "string",
-    type: "string", // income, expense
-    category: "string",
+    type: "string", // "credit" | "debit"
     amount: "number",
-    note: "string",
-    linkedTaskId: "string",
+    title: "string",
+    description: "string",
+    category: "string",
+    account: "string",
     createdAt: "date",
+    transactionDate: "date",
+    linkedTaskId: "string",
+    tags: "array",
+    archived: "boolean",
+    metadata: "object",
     updatedAt: "date"
   },
   defaults: {
-    type: "expense",
+    type: "debit",
     amount: 0,
-    category: "Miscellaneous"
+    category: "Miscellaneous",
+    account: "cash",
+    archived: false,
+    tags: [],
+    metadata: {}
   }
 };

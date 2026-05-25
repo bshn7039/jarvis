@@ -13,6 +13,8 @@ import { useChatStore } from '../chatStore';
 
 export function useLiveDatabaseTree() {
   const tasks = useTaskStore(s => s.tasks);
+  const repetitiveTasks = useTaskStore(s => s.repetitiveTasks);
+  const repetitiveHistory = useTaskStore(s => s.repetitiveHistory);
   const goals = useGoalStore(s => s.goals);
   const journalEntries = useJournalStore(s => s.entries);
   const financeTransactions = useFinanceStore(s => s.transactions);
@@ -28,7 +30,7 @@ export function useLiveDatabaseTree() {
   return useMemo(() => {
     const combinedState = {
       profile,
-      tasks,
+      tasks: { tasks, repetitiveTasks, repetitiveHistory },
       goals,
       journal: { entries: journalEntries },
       finance: { transactions: financeTransactions },
@@ -45,7 +47,7 @@ export function useLiveDatabaseTree() {
     
     return generateDatabaseTree(combinedState);
   }, [
-    profile, tasks, goals, journalEntries, financeTransactions, 
+    profile, tasks, repetitiveTasks, repetitiveHistory, goals, journalEntries, financeTransactions, 
     fitnessWorkouts, fitnessMeals, fitnessHydration, 
     crmContacts, academicSubjects, schedules, chats
   ]);

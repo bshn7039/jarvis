@@ -84,24 +84,103 @@ export const useStreaks = () => {
   const workouts = useFitnessStore((s) => s.workouts);
   const journalEntries = useJournalStore((s) => s.entries);
   const tasks = useTaskStore((s) => s.tasks);
+  const repetitiveTasks = useTaskStore((s) => s.repetitiveTasks);
 
-  return useMemo(() => [
-    { id: 'coding', label: 'Coding', days: codingProgress.streakDays || 0 },
-    { id: 'gym', label: 'Gym', days: workouts.filter((w) => w.completed).length },
-    { id: 'journal', label: 'Journal', days: journalEntries.length },
-    { id: 'tasks', label: 'Tasks', days: tasks.filter((t) => t.completed).length % 15 },
-  ], [codingProgress, workouts, journalEntries, tasks]);
+  return useMemo(() => {
+    const maxRepStreak = Math.max(0, ...repetitiveTasks.map(t => t.streak));
+    
+    return [
+      { id: 'coding', label: 'Coding', days: codingProgress.streakDays || 0 },
+      { id: 'gym', label: 'Gym', days: workouts.filter((w) => w.completed).length },
+      { id: 'journal', label: 'Journal', days: journalEntries.length },
+      { id: 'routine', label: 'Routines', days: maxRepStreak },
+    ];
+  }, [codingProgress, workouts, journalEntries, tasks, repetitiveTasks]);
 };
 
-export const useWeeklyProgress = () => [];
+export const useWeeklyProgress = () => {
+  const overview = useFinanceStore(s => s.balanceOverview);
+  const codingProgress = useAcademicStore(s => s.codingProgress);
+  const repetitiveHistory = useTaskStore(s => s.repetitiveHistory);
+  
+  return useMemo(() => {
+    const budgetPercent = Math.round((overview.monthlySpending / 30000) * 100);
+    const codingPercent = Math.round((codingProgress.solvedProblems / (codingProgress.targetProblems || 1)) * 100);
+    
+    // Repetitive consistency (last 7 days)
+    const last7Days = repetitiveHistory.slice(0, 7);
+    const totalPossible = last7Days.reduce((sum, day) => sum + (day.snapshot?.length || 0), 0);
+    const totalCompleted = last7Days.reduce((sum, day) => sum + (day.completedIds?.length || 0), 0);
+    const repConsistency = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
+
+    return [
+      { 
+        id: 'wp-1', 
+        label: 'Monthly Budget', 
+        value: `₹${overview.monthlySpending.toLocaleString()}`, 
+        target: '₹30,000',
+        percent: Math.min(100, budgetPercent),
+        bars: [40, 60, 45, 70, 50, 65, budgetPercent % 100] 
+      },
+      { 
+        id: 'wp-2', 
+        label: 'Coding Target', 
+        value: `${codingProgress.solvedProblems} Solved`, 
+        target: `${codingProgress.targetProblems}`,
+        percent: Math.min(100, codingPercent),
+        bars: [20, 35, 50, 40, 60, 55, codingPercent % 100]
+      },
+      { 
+        id: 'wp-3', 
+        label: 'Routine Consistency', 
+        value: `${repConsistency}%`, 
+        target: '100%',
+        percent: repConsistency,
+        bars: last7Days.map(d => (d.completedIds.length / (d.snapshot.length || 1)) * 100).reverse()
+      },
+    ];
+  }, [overview, codingProgress, repetitiveHistory]);
+};
 
 export const useSystemWarnings = () => {
   const tasks = useTaskStore((s) => s.tasks);
+  const transactions = useFinanceStore((s) => s.transactions);
+  const repetitiveTasks = useTaskStore(s => s.repetitiveTasks);
+
   return useMemo(() => {
     const TODAY = todayKey();
+    const warnings = [];
+    
     const overdueCount = tasks.filter((t) => !t.completed && t.dueDate?.slice(0, 10) < TODAY).length;
-    return overdueCount > 3 ? [{ id: 'w3', text: `${overdueCount} tasks currently overdue`, severity: 'medium' }] : [];
-  }, [tasks]);
+    if (overdueCount > 3) {
+      warnings.push({ id: 'w3', text: `${overdueCount} tasks currently overdue`, severity: 'medium' });
+    }
+
+    // Repetitive warnings
+    const brokenStreaks = repetitiveTasks.filter(t => t.active && !t.completionHistory.includes(TODAY) && t.streak > 5);
+    if (brokenStreaks.length > 0) {
+       warnings.push({ id: 'rep-streak-risk', text: `${brokenStreaks.length} routines at risk of breaking streak`, severity: 'medium' });
+    }
+
+    // Finance warnings
+    if (transactions.length > 0) {
+      const lastTxnDate = transactions[0].transactionDate;
+      const daysSinceLastTxn = (new Date(TODAY) - new Date(lastTxnDate)) / (1000 * 60 * 60 * 24);
+      if (daysSinceLastTxn >= 7) {
+        warnings.push({ id: 'f-inactivity', text: `No finance tracking in ${Math.floor(daysSinceLastTxn)} days`, severity: 'medium' });
+      }
+
+      const thisWeekSpending = transactions
+        .filter(t => t.type === 'debit' && (new Date(TODAY) - new Date(t.transactionDate)) / (1000 * 60 * 60 * 24) < 7)
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      if (thisWeekSpending > 10000) {
+         warnings.push({ id: 'f-high-spend', text: `High spending this week: ₹${thisWeekSpending.toLocaleString()}`, severity: 'high' });
+      }
+    }
+
+    return warnings;
+  }, [tasks, transactions]);
 };
 
 export const useAiInsights = () => [{ id: 'i-ok', text: 'System operating within parameters.', type: 'neutral' }];
@@ -144,4 +223,21 @@ export const useCriticalDeadlines = () => {
 
 export const useStrategicGoals = () => null;
 export const useJournalStreak = () => 0;
-export const useBrief = () => ({ primary: 'Review daily objectives', secondary: 'Maintain streaks', watchOuts: 'No critical system alerts' });
+export const useBrief = () => {
+  const overview = useFinanceStore(s => s.balanceOverview);
+  const tasks = useTaskMetrics();
+  
+  return useMemo(() => {
+    let primary = 'Review daily objectives and maintain system discipline.';
+    if (tasks.today > 5) primary = `Focus on clearing your ${tasks.today} tasks for today.`;
+    
+    let secondary = 'Keep up with your streaks and consistency.';
+    if (overview.monthlySpending > 20000) secondary = `Monthly spending is at ₹${overview.monthlySpending.toLocaleString()}. Review your budget.`;
+    
+    return {
+      primary,
+      secondary,
+      watchOuts: 'Maintain active monitoring of financial and task metrics.'
+    };
+  }, [overview, tasks]);
+};

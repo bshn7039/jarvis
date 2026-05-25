@@ -172,18 +172,13 @@ const mockDatabase = {
 
   finance: {
     balanceOverview: {
-      totalBalance: 42500,
-      checking: 12400,
-      savings: 28500,
-      cash: 1600,
+      totalBalance: 0,
+      checking: 0,
+      savings: 0,
+      cash: 0,
     },
-    transactions: [
-      { id: 'txn-001', date: '2026-05-21', type: 'expense', category: 'Food', amount: 220, note: 'Oats and fruits' },
-      { id: 'txn-002', date: '2026-05-20', type: 'expense', category: 'Subscriptions', amount: 499, note: 'Cloud storage' },
-    ],
-    savingsGoals: [
-      { id: 'save-1', title: 'Emergency Fund', target: 100000, current: 28500, dueDate: '2026-12-31' },
-    ],
+    transactions: [],
+    savingsGoals: [],
   },
 
   fitness: {

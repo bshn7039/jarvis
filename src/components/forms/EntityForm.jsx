@@ -5,6 +5,8 @@ import { useGoalStore } from '../../store/goalStore';
 import { useAcademicStore } from '../../store/academicStore';
 import { useScheduleStore } from '../../store/scheduleStore';
 import { useJournalStore } from '../../store/journalStore';
+import { useEntityStore } from '../../store/entityStore';
+import RepetitiveTaskForm from './RepetitiveTaskForm';
 
 const defaultTaskValues = {
   title: '',
@@ -117,6 +119,7 @@ function Field({ field, value, onChange }) {
 }
 
 export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSubmitting = false }) {
+  const activeType = useEntityStore((state) => state.activeType);
   const [formData, setFormData] = useState(() => normalizeFormState(initialData));
 
   const goals = useGoalStore((state) => state.goals);
@@ -163,10 +166,25 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSub
   };
 
   const handleSubmit = async (event) => {
+    if (activeType === 'repetitiveTask') {
+       await onSubmit?.(event); // For repetitiveTaskForm, event IS the data
+       return;
+    }
     event.preventDefault();
     if (isSubmitting) return;
     await onSubmit?.(formData);
   };
+
+  if (activeType === 'repetitiveTask') {
+    return (
+      <RepetitiveTaskForm 
+        initialData={initialData} 
+        onSubmit={onSubmit} 
+        onCancel={onCancel} 
+        isSubmitting={isSubmitting} 
+      />
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">

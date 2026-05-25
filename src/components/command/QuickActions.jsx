@@ -8,7 +8,7 @@ const iconMap = {
   Zap,
 };
 
-export default function QuickActions({ actions }) {
+export default function QuickActions({ actions, onAction }) {
   return (
     <section className="rounded-2xl border border-jarvis-border bg-jarvis-panel p-5 md:p-6">
       <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-jarvis-muted">
@@ -21,6 +21,7 @@ export default function QuickActions({ actions }) {
             <button
               key={action.id}
               type="button"
+              onClick={() => onAction?.(action.id)}
               className={[
                 'flex flex-col items-center justify-center gap-3 rounded-xl border border-jarvis-border bg-jarvis-bg/40 px-4 py-4 text-center text-xs text-jarvis-text',
                 'transition-all duration-200 hover:border-jarvis-muted/40 hover:bg-white/[0.04] active:scale-[0.99]',

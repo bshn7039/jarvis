@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import TaskToolbar from '../components/tasks/TaskToolbar';
 import TaskColumn from '../components/tasks/TaskColumn';
+import RepetitiveTaskColumn from '../components/tasks/RepetitiveTaskColumn';
+import RepetitiveHistory from '../components/tasks/RepetitiveHistory';
 import EntityModal from '../components/modals/EntityModal';
 import EntityForm from '../components/forms/EntityForm';
 import EntityDetailPanel from '../components/details/EntityDetailPanel';
@@ -25,6 +27,8 @@ const BUCKET_LABELS = {
 export default function Tasks() {
   const [isSavingTask, setIsSavingTask] = useState(false);
   const tasks = useTaskStore((state) => state.tasks);
+  const repetitiveTasks = useTaskStore((state) => state.repetitiveTasks);
+  const repetitiveHistory = useTaskStore((state) => state.repetitiveHistory);
   const searchQuery = useTaskStore((state) => state.searchQuery);
   const activeCategory = useTaskStore((state) => state.activeCategory);
   const activePriority = useTaskStore((state) => state.activePriority);
@@ -45,11 +49,17 @@ export default function Tasks() {
   const markTaskComplete = useTaskStore((state) => state.markTaskComplete);
   const updateTaskProgress = useTaskStore((state) => state.updateTaskProgress);
   const moveTaskToBucket = useTaskStore((state) => state.moveTaskToBucket);
+  
+  const createRepetitiveTask = useTaskStore(s => s.createRepetitiveTask);
+  const toggleRepetitiveTaskCompletion = useTaskStore(s => s.toggleRepetitiveTaskCompletion);
+  const deleteRepetitiveTask = useTaskStore(s => s.deleteRepetitiveTask);
+  const deleteRepetitiveHistoryEntry = useTaskStore(s => s.deleteRepetitiveHistoryEntry);
 
   const goals = useGoalStore((state) => state.goals);
   const schedules = useScheduleStore((state) => state.schedules);
 
   const isModalOpen = useEntityStore((state) => state.isModalOpen);
+  const activeType = useEntityStore((state) => state.activeType);
   const isDetailPanelOpen = useEntityStore((state) => state.isDetailPanelOpen);
   const selectedId = useEntityStore((state) => state.selectedId);
   const draftMode = useEntityStore((state) => state.draftMode);
@@ -62,7 +72,12 @@ export default function Tasks() {
   const registerActions = useCommandPaletteStore((state) => state.registerActions);
   const registerEntities = useCommandPaletteStore((state) => state.registerEntities);
 
-  const selectedTask = useMemo(() => tasks.find((task) => task.id === selectedId) || null, [selectedId, tasks]);
+  const selectedTask = useMemo(() => {
+    if (activeType === 'repetitiveTask') {
+      return repetitiveTasks.find(t => t.id === selectedId) || null;
+    }
+    return tasks.find((task) => task.id === selectedId) || null;
+  }, [selectedId, tasks, repetitiveTasks, activeType]);
 
   const goalMap = useMemo(() => Object.fromEntries(goals.map((goal) => [goal.id, goal.title])), [goals]);
 
@@ -108,9 +123,20 @@ export default function Tasks() {
     return byColumn;
   }, [filteredTasks]);
 
+  const filteredRepetitive = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return repetitiveTasks.filter(t => {
+       const matchesQuery = !query || t.title.toLowerCase().includes(query) || t.description.toLowerCase().includes(query);
+       const matchesCategory = activeCategory === 'All' || t.category === activeCategory;
+       const matchesPriority = activePriority === 'All' || t.priority === activePriority;
+       return matchesQuery && matchesCategory && matchesPriority;
+    });
+  }, [activeCategory, activePriority, searchQuery, repetitiveTasks]);
+
   useEffect(() => {
     const actions = [
       { id: 'task.create', title: 'Create Task', category: 'task', onTrigger: () => openCreateModal('task') },
+      { id: 'task.createRepetitive', title: 'Create Repetitive Task', category: 'task', onTrigger: () => openCreateModal('repetitiveTask') },
       {
         id: 'task.open',
         title: 'Open Task',
@@ -141,19 +167,32 @@ export default function Tasks() {
     ];
 
     registerActions(actions.filter(Boolean));
-    registerEntities(filteredTasks.map((task) => ({ id: task.id, title: task.title, type: 'task' })));
-  }, [duplicateTask, filteredTasks, markTaskComplete, openCreateModal, openDetailPanel, registerActions, registerEntities]);
+    registerEntities([
+      ...filteredTasks.map((task) => ({ id: task.id, title: task.title, type: 'task' })),
+      ...filteredRepetitive.map(t => ({ id: t.id, title: t.title, type: 'repetitiveTask' }))
+    ]);
+  }, [duplicateTask, filteredTasks, filteredRepetitive, markTaskComplete, openCreateModal, openDetailPanel, registerActions, registerEntities]);
 
   const handleSubmitTask = async (data) => {
     if (isSavingTask) return;
     setIsSavingTask(true);
     try {
-      if (draftMode === 'edit' && selectedTask) {
-        await updateTask(selectedTask.id, data);
+      if (activeType === 'repetitiveTask') {
+         if (draftMode === 'edit' && selectedId) {
+           // Not implemented update for repetitive yet, let's just create for now
+         } else {
+           await createRepetitiveTask(data);
+         }
       } else {
-        await createTask(data);
+        if (draftMode === 'edit' && selectedTask) {
+          await updateTask(selectedTask.id, data);
+        } else {
+          await createTask(data);
+        }
       }
       closeModal();
+    } catch (err) {
+      console.error('Failed to save task:', err);
     } finally {
       setIsSavingTask(false);
     }
@@ -174,7 +213,19 @@ export default function Tasks() {
         onQuickAdd={() => openCreateModal('task')}
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {/* Repetitive Section */}
+        <div className="md:col-span-2 xl:col-span-3">
+           <RepetitiveTaskColumn 
+             tasks={filteredRepetitive}
+             collapsed={Boolean(collapsedSections.repetitive)}
+             onToggleCollapsed={() => toggleSectionCollapsed('repetitive')}
+             onToggleCompletion={toggleRepetitiveTaskCompletion}
+             onQuickAdd={() => openCreateModal('repetitiveTask')}
+             onDelete={deleteRepetitiveTask}
+           />
+        </div>
+
         {TASK_BOARD_COLUMNS.map((bucket) => (
           <TaskColumn
             key={bucket}
@@ -196,12 +247,21 @@ export default function Tasks() {
             onEditTask={(taskId) => openEditModal('task', taskId)}
           />
         ))}
+
+        <div className="md:col-span-2 xl:col-span-3">
+           <RepetitiveHistory 
+             history={repetitiveHistory}
+             collapsed={Boolean(collapsedSections.repetitiveHistory)}
+             onToggleCollapsed={() => toggleSectionCollapsed('repetitiveHistory')}
+             onDeleteEntry={deleteRepetitiveHistoryEntry}
+           />
+        </div>
       </div>
 
       <EntityModal
         isOpen={isModalOpen}
         onClose={closeModal}
-        title={draftMode === 'edit' ? 'Edit Task' : 'Create Task'}
+        title={draftMode === 'edit' ? `Edit ${activeType === 'repetitiveTask' ? 'Repetitive Task' : 'Task'}` : `Create ${activeType === 'repetitiveTask' ? 'Repetitive Task' : 'Task'}`}
       >
         <EntityForm
           initialData={selectedTask || {}}
@@ -215,12 +275,12 @@ export default function Tasks() {
         isOpen={isDetailPanelOpen}
         onClose={closeDetailPanel}
         entity={selectedTask}
-        onEdit={(taskId) => openEditModal('task', taskId)}
-        onDuplicate={duplicateTask}
+        onEdit={(taskId) => openEditModal(activeType || 'task', taskId)}
+        onDuplicate={activeType === 'task' ? duplicateTask : null}
         onArchive={null}
-        onRestore={restoreTask}
-        onDelete={deleteTask}
-        onComplete={markTaskComplete}
+        onRestore={activeType === 'task' ? restoreTask : null}
+        onDelete={activeType === 'task' ? deleteTask : deleteRepetitiveTask}
+        onComplete={activeType === 'task' ? markTaskComplete : null}
       />
 
       <CommandPalette />

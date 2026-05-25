@@ -1,9 +1,9 @@
 export default function FinanceOverviewCards({ overview }) {
   const cards = [
     { id: 'total', label: 'Total Balance', value: overview?.totalBalance ?? 0 },
-    { id: 'checking', label: 'Checking', value: overview?.checking ?? 0 },
-    { id: 'savings', label: 'Savings', value: overview?.savings ?? 0 },
-    { id: 'cash', label: 'Cash', value: overview?.cash ?? 0 },
+    { id: 'spending', label: 'Monthly Spending', value: overview?.monthlySpending ?? 0 },
+    { id: 'credits', label: 'Monthly Credits', value: overview?.monthlyCredits ?? 0 },
+    { id: 'savings', label: 'Savings Total', value: overview?.savingsTotal ?? 0 },
   ];
 
   return (

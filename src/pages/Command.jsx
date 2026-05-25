@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { LayoutProvider, useLayout } from '../context/LayoutContext';
 import Sidebar from '../components/sidebar/Sidebar';
 import CommandHeader from '../components/command/CommandHeader';
@@ -13,7 +13,13 @@ import WarningPanel from '../components/command/WarningPanel';
 import QuickActions from '../components/command/QuickActions';
 import TodaySchedule from '../components/command/TodaySchedule';
 import GoalsDirectionLayer from '../components/command/GoalsDirectionLayer';
+import EntityModal from '../components/modals/EntityModal';
+import EntityForm from '../components/forms/EntityForm';
+import TransactionModal from '../components/finance/TransactionModal';
 import { useUiStore } from '../store/uiStore';
+import { useTaskStore } from '../store/taskStore';
+import { useFinanceStore } from '../store/financeStore';
+import { useEntityStore } from '../store/entityStore';
 import { RefreshCcw } from 'lucide-react';
 import {
   useTaskMetrics,
@@ -43,12 +49,47 @@ function CommandDashboard() {
   const brief = useBrief();
   const goalsTree = useStrategicGoals();
 
+  const createTask = useTaskStore(s => s.createTask);
+  const addTransaction = useFinanceStore(s => s.addTransaction);
+
+  const [activeModal, setActiveModal] = useState(null); // 'task' | 'expense' | null
+  const [isSaving, setIsSaving] = useState(false);
+
   const quickActions = [
     { id: 'expense', label: 'Add Expense', icon: 'Wallet' },
     { id: 'workout', label: 'Log Workout', icon: 'Dumbbell' },
     { id: 'journal', label: 'Add Journal Entry', icon: 'PenLine' },
     { id: 'task', label: 'Add Task', icon: 'Plus' },
   ];
+
+  const handleAction = (id) => {
+    if (id === 'expense') setActiveModal('expense');
+    if (id === 'task') {
+       // Use entityStore to ensure EntityForm knows it's a task
+       useEntityStore.getState().openCreateModal('task');
+       setActiveModal('task');
+    }
+  };
+
+  const handleSubmitTask = async (data) => {
+    setIsSaving(true);
+    try {
+      await createTask(data);
+      setActiveModal(null);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSubmitExpense = async (data) => {
+    setIsSaving(true);
+    try {
+      await addTransaction(data);
+      setActiveModal(null);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleRefreshBrief = useCallback(() => {
     console.log('[Command] Refreshing AI Brief...');
@@ -109,7 +150,7 @@ function CommandDashboard() {
 
           <div className="grid gap-6 xl:grid-cols-3">
             <div className="xl:col-span-2">
-              <QuickActions actions={quickActions} />
+              <QuickActions actions={quickActions} onAction={handleAction} />
             </div>
             <TodaySchedule schedule={todaySchedule} />
           </div>
@@ -117,6 +158,25 @@ function CommandDashboard() {
           <GoalsDirectionLayer tree={goalsTree} />
         </div>
       </div>
+
+      <EntityModal 
+        isOpen={activeModal === 'task'} 
+        onClose={() => setActiveModal(null)} 
+        title="Quick Task"
+      >
+        <EntityForm 
+          onSubmit={handleSubmitTask} 
+          onCancel={() => setActiveModal(null)} 
+          isSubmitting={isSaving} 
+        />
+      </EntityModal>
+
+      <TransactionModal 
+        open={activeModal === 'expense'} 
+        onClose={() => setActiveModal(null)} 
+        type="debit" 
+        onSubmit={handleSubmitExpense} 
+      />
     </div>
   );
 }

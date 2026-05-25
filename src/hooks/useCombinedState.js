@@ -11,6 +11,8 @@ import { useChatStore } from '../store/chatStore';
 
 export function useCombinedState() {
   const tasks = useTaskStore(s => s.tasks);
+  const repetitiveTasks = useTaskStore(s => s.repetitiveTasks);
+  const repetitiveHistory = useTaskStore(s => s.repetitiveHistory);
   const goals = useGoalStore(s => s.goals);
   const journalEntries = useJournalStore(s => s.entries);
   const journalStreak = useJournalStore(s => s.streak);
@@ -27,7 +29,7 @@ export function useCombinedState() {
 
   return {
     profile,
-    tasks,
+    tasks: { tasks, repetitiveTasks, repetitiveHistory },
     goals,
     journal: { entries: journalEntries, streak: journalStreak },
     finance: { transactions: financeTransactions, balanceOverview },

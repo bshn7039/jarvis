@@ -1,5 +1,5 @@
 const DB_NAME = 'JARVIS_DB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORES = {
   TASKS: 'tasks',
@@ -25,6 +25,8 @@ export const STORES = {
   ACADEMIC_META: 'academicMeta',
   PROFILE: 'profile',
   ACTIVITIES: 'activities',
+  REPETITIVE_TASKS: 'repetitiveTasks',
+  REPETITIVE_HISTORY: 'repetitiveHistory',
 };
 
 class LocalDatabase {
