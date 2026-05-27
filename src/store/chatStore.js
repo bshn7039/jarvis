@@ -6,7 +6,8 @@ import { useAiStore } from './aiStore';
 import { deepSeekService } from '../ai/services/deepseekService';
 import { buildAiContext } from '../ai/context/contextResolver';
 import { buildSystemPrompt } from '../ai/prompts/promptBuilder';
-import { TOOL_SCHEMAS, TOOL_PERMISSIONS, PERMISSION_LEVELS, executeToolAction } from '../ai/tools/toolRegistry';
+import { TOOL_SCHEMAS, TOOL_PERMISSIONS, PERMISSION_LEVELS, TOOL_ALIASES } from '../ai/tools/toolRegistry';
+import { executeAiTool } from '../ai/execution/toolExecutor';
 
 class ChatService extends BaseService {
   constructor() {
@@ -118,143 +119,168 @@ export const useChatStore = create((set, get) => ({
     const aiStore = useAiStore.getState();
     const model = aiStore.currentModel;
     
+    aiStore.setExecutionStatus('analyzing');
+    aiStore.clearError();
+
     const { contextSummary, formattedString } = buildAiContext(promptText);
     const systemPrompt = buildSystemPrompt(formattedString);
 
     const historyMessages = currentMessages.slice(-15);
 
-    const response = await deepSeekService.sendMessage(historyMessages, {
-      systemPrompt,
-      tools: TOOL_SCHEMAS,
-      model
-    });
-
-    const chat = get().chatHistory.find(c => c.id === chatId);
-    const cumulativeTokens = {
-      promptTokens: (chat.tokenUsage?.promptTokens || 0) + (response.usage?.prompt_tokens || 0),
-      completionTokens: (chat.tokenUsage?.completionTokens || 0) + (response.usage?.completion_tokens || 0),
-      totalTokens: (chat.tokenUsage?.totalTokens || 0) + (response.usage?.total_tokens || 0)
-    };
-
-    const assistantMsg = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: response.content,
-      createdAt: new Date().toISOString(),
-      contextReferences: contextSummary,
-      toolCalls: response.toolCalls ? response.toolCalls.map(tc => {
-        const perm = TOOL_PERMISSIONS[tc.function.name] || PERMISSION_LEVELS.READ_ONLY;
-        return {
-          id: tc.id,
-          name: tc.function.name,
-          args: JSON.parse(tc.function.arguments || '{}'),
-          status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
-          result: null
-        };
-      }) : null
-    };
-
-    let updatedChat = {
-      ...chat,
-      messages: [...chat.messages, assistantMsg],
-      contextSummary: Array.from(new Set([...(chat.contextSummary || []), ...contextSummary])),
-      tokenUsage: cumulativeTokens,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const hasPendingConfirmation = assistantMsg.toolCalls?.some(tc => tc.status === 'pending_confirmation');
-
-    if (hasPendingConfirmation) {
-      await chatService.update(chatId, updatedChat);
-      set(state => ({
-        chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
-      }));
-      return;
-    }
-
-    if (assistantMsg.toolCalls && assistantMsg.toolCalls.length > 0) {
-      let aiActionsPerformed = [...(chat.aiActionsPerformed || [])];
-      
-      for (const tc of assistantMsg.toolCalls) {
-        if (tc.status === 'pending_execution') {
-          try {
-            const result = await executeToolAction(tc.name, tc.args);
-            tc.status = 'executed';
-            tc.result = result;
-            aiActionsPerformed.push(tc.name);
-          } catch (err) {
-            tc.status = 'error';
-            tc.result = { error: err.message };
-          }
-        }
-      }
-
-      updatedChat.aiActionsPerformed = Array.from(new Set(aiActionsPerformed));
-
-      await chatService.update(chatId, updatedChat);
-      set(state => ({
-        chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
-      }));
-
-      const messagesWithTools = [
-        ...historyMessages.map(m => ({ role: m.role, content: m.content, toolCalls: m.toolCalls })),
-        {
-          role: 'assistant',
-          content: assistantMsg.content,
-          tool_calls: assistantMsg.toolCalls.map(tc => ({
-            id: tc.id,
-            type: 'function',
-            function: {
-              name: tc.name,
-              arguments: JSON.stringify(tc.args)
-            }
-          }))
-        },
-        ...assistantMsg.toolCalls.map(tc => ({
-          role: 'tool',
-          name: tc.name,
-          tool_call_id: tc.id,
-          content: JSON.stringify(tc.result)
-        }))
-      ];
-
-      const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
+    try {
+      const response = await deepSeekService.sendMessage(historyMessages, {
         systemPrompt,
+        tools: TOOL_SCHEMAS,
         model
       });
 
-      const finalChat = get().chatHistory.find(c => c.id === chatId);
-      const finalCumulativeTokens = {
-        promptTokens: (finalChat.tokenUsage?.promptTokens || 0) + (nextResponse.usage?.prompt_tokens || 0),
-        completionTokens: (finalChat.tokenUsage?.completionTokens || 0) + (nextResponse.usage?.completion_tokens || 0),
-        totalTokens: (finalChat.tokenUsage?.totalTokens || 0) + (nextResponse.usage?.total_tokens || 0)
+      const chat = get().chatHistory.find(c => c.id === chatId);
+      const cumulativeTokens = {
+        promptTokens: (chat.tokenUsage?.promptTokens || 0) + (response.usage?.prompt_tokens || 0),
+        completionTokens: (chat.tokenUsage?.completionTokens || 0) + (response.usage?.completion_tokens || 0),
+        totalTokens: (chat.tokenUsage?.totalTokens || 0) + (response.usage?.total_tokens || 0)
       };
 
-      const finalAssistantMsg = {
+      const assistantMsg = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: nextResponse.content,
+        content: response.content,
         createdAt: new Date().toISOString(),
-        contextReferences: contextSummary
+        contextReferences: contextSummary,
+        toolCalls: response.toolCalls ? response.toolCalls.map(tc => {
+          const resolvedName = TOOL_ALIASES[tc.function.name] || tc.function.name;
+          const perm = TOOL_PERMISSIONS[resolvedName] || PERMISSION_LEVELS.READ_ONLY;
+          return {
+            id: tc.id,
+            name: tc.function.name,
+            args: JSON.parse(tc.function.arguments || '{}'),
+            status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
+            result: null
+          };
+        }) : null
       };
 
-      const finalChatUpdated = {
-        ...finalChat,
-        messages: [...finalChat.messages, finalAssistantMsg],
-        tokenUsage: finalCumulativeTokens,
-        updatedAt: new Date().toISOString()
+      let updatedChat = {
+        ...chat,
+        messages: [...chat.messages, assistantMsg],
+        contextSummary: Array.from(new Set([...(chat.contextSummary || []), ...contextSummary])),
+        tokenUsage: cumulativeTokens,
+        updatedAt: new Date().toISOString(),
       };
 
-      await chatService.update(chatId, finalChatUpdated);
-      set(state => ({
-        chatHistory: state.chatHistory.map(c => c.id === chatId ? finalChatUpdated : c)
-      }));
+      const hasPendingConfirmation = assistantMsg.toolCalls?.some(tc => tc.status === 'pending_confirmation');
 
-    } else {
-      await chatService.update(chatId, updatedChat);
-      set(state => ({
-        chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
-      }));
+      if (hasPendingConfirmation) {
+        aiStore.setExecutionStatus('idle');
+        await chatService.update(chatId, updatedChat);
+        set(state => ({
+          chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
+        }));
+        return;
+      }
+
+      if (assistantMsg.toolCalls && assistantMsg.toolCalls.length > 0) {
+        aiStore.setExecutionStatus('executing');
+        let aiActionsPerformed = [...(chat.aiActionsPerformed || [])];
+        
+        for (const tc of assistantMsg.toolCalls) {
+          if (tc.status === 'pending_execution') {
+            // Check Cooldown & Duplicate
+            if (aiStore.isToolOnCooldown(tc.name)) {
+              tc.status = 'error';
+              tc.result = { error: `Tool '${tc.name}' is on cooldown. Please wait.` };
+              continue;
+            }
+
+            try {
+              aiStore.addPendingTool(tc);
+              const result = await executeAiTool(tc.name, tc.args);
+              tc.status = 'executed';
+              tc.result = result;
+              aiActionsPerformed.push(tc.name);
+              aiStore.updateToolStatus(tc.id, 'executed', result);
+              aiStore.setToolCooldown(tc.name);
+            } catch (err) {
+              tc.status = 'error';
+              tc.result = { error: err.message };
+              aiStore.updateToolStatus(tc.id, 'error', { error: err.message });
+            }
+          }
+        }
+
+        updatedChat.aiActionsPerformed = Array.from(new Set(aiActionsPerformed));
+
+        await chatService.update(chatId, updatedChat);
+        set(state => ({
+          chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
+        }));
+
+        const messagesWithTools = [
+          ...historyMessages.map(m => ({ role: m.role, content: m.content, toolCalls: m.toolCalls })),
+          {
+            role: 'assistant',
+            content: assistantMsg.content,
+            tool_calls: assistantMsg.toolCalls.map(tc => ({
+              id: tc.id,
+              type: 'function',
+              function: {
+                name: tc.name,
+                arguments: JSON.stringify(tc.args)
+              }
+            }))
+          },
+          ...assistantMsg.toolCalls.map(tc => ({
+            role: 'tool',
+            name: tc.name,
+            tool_call_id: tc.id,
+            content: JSON.stringify(tc.result)
+          }))
+        ];
+
+        const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
+          systemPrompt,
+          model
+        });
+
+        const finalChat = get().chatHistory.find(c => c.id === chatId);
+        const finalCumulativeTokens = {
+          promptTokens: (finalChat.tokenUsage?.promptTokens || 0) + (nextResponse.usage?.prompt_tokens || 0),
+          completionTokens: (finalChat.tokenUsage?.completionTokens || 0) + (nextResponse.usage?.completion_tokens || 0),
+          totalTokens: (finalChat.tokenUsage?.totalTokens || 0) + (nextResponse.usage?.total_tokens || 0)
+        };
+
+        const finalAssistantMsg = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: nextResponse.content,
+          createdAt: new Date().toISOString(),
+          contextReferences: contextSummary
+        };
+
+        const finalChatUpdated = {
+          ...finalChat,
+          messages: [...finalChat.messages, finalAssistantMsg],
+          tokenUsage: finalCumulativeTokens,
+          updatedAt: new Date().toISOString()
+        };
+
+        await chatService.update(chatId, finalChatUpdated);
+        set(state => ({
+          chatHistory: state.chatHistory.map(c => c.id === chatId ? finalChatUpdated : c)
+        }));
+        aiStore.setExecutionStatus('completed');
+
+      } else {
+        await chatService.update(chatId, updatedChat);
+        set(state => ({
+          chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
+        }));
+        aiStore.setExecutionStatus('completed');
+      }
+    } catch (error) {
+      aiStore.setError(error.message);
+      aiStore.setExecutionStatus('failed');
+      throw error;
     }
   },
 
@@ -288,7 +314,7 @@ export const useChatStore = create((set, get) => ({
     let result;
     let newStatus = 'executed';
     try {
-      result = await executeToolAction(tc.name, tc.args);
+      result = await executeAiTool(tc.name, tc.args);
     } catch (err) {
       result = { error: err.message };
       newStatus = 'error';

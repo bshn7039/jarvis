@@ -14,9 +14,24 @@ export const PERMISSION_LEVELS = {
   SYSTEM_RESTRICTED: 'SYSTEM_RESTRICTED',
 };
 
+// Map of aliases to standard snake_case tool names
+export const TOOL_ALIASES = {
+  createTask: 'create_task',
+  updateTask: 'update_task',
+  completeTask: 'complete_task',
+  createGoal: 'create_goal',
+  createJournalEntry: 'create_journal_entry',
+  addMeal: 'log_meal',
+  logWorkout: 'log_workout',
+  addTransaction: 'create_finance_transaction',
+  createSchedule: 'create_schedule',
+  createCRMContact: 'create_crm_entry',
+};
+
 export const TOOL_PERMISSIONS = {
   create_task: PERMISSION_LEVELS.SAFE_WRITE,
   update_task: PERMISSION_LEVELS.SAFE_WRITE,
+  complete_task: PERMISSION_LEVELS.SAFE_WRITE,
   delete_task: PERMISSION_LEVELS.CONFIRM_REQUIRED,
   
   create_goal: PERMISSION_LEVELS.SAFE_WRITE,
@@ -84,6 +99,21 @@ export const TOOL_SCHEMAS = [
           }
         },
         required: ['id', 'updates']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'complete_task',
+      description: 'Complete/Mark a task done in the system.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'The task ID' },
+          completionNotes: { type: 'string', description: 'Optional completion notes' }
+        },
+        required: ['id']
       }
     }
   },
@@ -244,18 +274,21 @@ export const TOOL_SCHEMAS = [
 ];
 
 export async function executeToolAction(name, args) {
-  const perm = TOOL_PERMISSIONS[name];
+  // Resolve alias if mapped
+  const resolvedName = TOOL_ALIASES[name] || name;
+
+  const perm = TOOL_PERMISSIONS[resolvedName];
   if (!perm) {
-    throw new Error(`Tool '${name}' is not registered.`);
+    throw new Error(`Tool '${name}' (resolved as '${resolvedName}') is not registered.`);
   }
 
   if (perm === PERMISSION_LEVELS.SYSTEM_RESTRICTED) {
     throw new Error(`Action '${name}' is restricted by system security policies.`);
   }
 
-  const sanitizedArgs = sanitizeToolArgs(name, args);
+  const sanitizedArgs = sanitizeToolArgs(resolvedName, args);
 
-  switch (name) {
+  switch (resolvedName) {
     case 'create_task': {
       const store = useTaskStore.getState();
       const task = await store.createTask(sanitizedArgs);
@@ -271,6 +304,17 @@ export async function executeToolAction(name, args) {
       await trashService.createSnapshot('tasks', existing, 'modified');
       const updated = await store.updateTask(sanitizedArgs.id, sanitizedArgs.updates);
       return { success: true, message: `Task '${updated.title}' updated successfully.`, entityId: updated.id };
+    }
+
+    case 'complete_task': {
+      const store = useTaskStore.getState();
+      const existing = store.tasks.find(t => t.id === sanitizedArgs.id);
+      if (!existing) {
+        return { success: false, message: `Task with ID ${sanitizedArgs.id} not found.` };
+      }
+      await trashService.createSnapshot('tasks', existing, 'modified');
+      const completed = await store.markTaskComplete(sanitizedArgs.id, sanitizedArgs.completionNotes || '');
+      return { success: true, message: `Task '${completed.title}' marked as completed.`, entityId: completed.id };
     }
 
     case 'delete_task': {
@@ -346,7 +390,7 @@ export async function executeToolAction(name, args) {
     }
 
     default:
-      throw new Error(`Tool execution for '${name}' is not implemented.`);
+      throw new Error(`Tool execution for '${resolvedName}' (requested as '${name}') is not implemented.`);
   }
 }
 

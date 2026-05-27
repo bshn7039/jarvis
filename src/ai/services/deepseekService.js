@@ -39,6 +39,7 @@ export class DeepSeekService {
     }
 
     let lastError = null;
+    const startTime = Date.now();
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       const controller = new AbortController();
@@ -69,10 +70,11 @@ export class DeepSeekService {
         }
 
         const data = await response.json();
+        const responseTime = Date.now() - startTime;
         
         // Log token usage
         if (data.usage) {
-          console.log(`[DeepSeek API Token Usage] Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens}`);
+          console.log(`[DeepSeek API Token Usage] Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens}, Time: ${responseTime}ms`);
         }
 
         return {
@@ -81,6 +83,7 @@ export class DeepSeekService {
           toolCalls: data.choices[0].message?.tool_calls || null,
           model: data.model,
           usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },
+          responseTime,
           role: 'assistant',
           createdAt: new Date().toISOString(),
         };
@@ -111,3 +114,4 @@ export class DeepSeekService {
 }
 
 export const deepSeekService = new DeepSeekService();
+

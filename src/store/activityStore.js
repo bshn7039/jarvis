@@ -5,6 +5,11 @@ import { deepClone } from '../utils/deepClone';
 const initialState = {
   activities: [],
   isHydrated: false,
+  filter: {
+    type: 'all',
+    severity: 'all',
+    search: ''
+  }
 };
 
 export const useActivityStore = create((set, get) => ({
@@ -22,12 +27,37 @@ export const useActivityStore = create((set, get) => ({
     }
   },
 
-  logActivity: async ({ type, action, entityType, entityId, metadata = {} }) => {
-    const saved = await activityService.logActivity({ type, action, entityType, entityId, metadata });
+  logActivity: async ({ type, action, entityType, entityId, metadata = {}, severity = 'info' }) => {
+    const saved = await activityService.logActivity({ 
+      type, 
+      action, 
+      entityType, 
+      entityId, 
+      metadata,
+      severity 
+    });
     set((state) => ({
       activities: [saved, ...state.activities],
     }));
     return saved;
+  },
+
+  setFilter: (newFilter) => set((state) => ({
+    filter: { ...state.filter, ...newFilter }
+  })),
+
+  getFilteredActivities: () => {
+    const { activities, filter } = get();
+    return activities.filter(a => {
+      const matchType = filter.type === 'all' || a.type === filter.type;
+      const matchSeverity = filter.severity === 'all' || a.severity === filter.severity;
+      const matchSearch = !filter.search || 
+        a.action.toLowerCase().includes(filter.search.toLowerCase()) ||
+        a.entityType?.toLowerCase().includes(filter.search.toLowerCase()) ||
+        (a.metadata?.title || '').toLowerCase().includes(filter.search.toLowerCase());
+      
+      return matchType && matchSeverity && matchSearch;
+    });
   },
 
   getRecentActivities: (limit = 50) => {
@@ -45,5 +75,10 @@ export const useActivityStore = create((set, get) => ({
 
   getActivitiesByEntityType: (entityType) => {
     return get().activities.filter(a => a.entityType === entityType);
+  },
+
+  clearHistory: async () => {
+    await activityService.clear();
+    set({ activities: [] });
   }
 }));

@@ -177,6 +177,20 @@ export const useAcademicStore = create((set, get) => ({
     set(state => ({ subjects: state.subjects.map(s => s.id === id ? next : s) }));
   },
 
+  deleteSubject: async (id) => {
+    const existing = get().subjects.find(s => s.id === id);
+    if (existing) {
+      const { trashService } = await import('../database/services/trashService');
+      await trashService.moveToTrash('academicSubjects', existing);
+    }
+    await academicService.delete(id);
+    set(state => ({ 
+      subjects: state.subjects.filter(s => s.id !== id),
+      selectedSubjectId: state.selectedSubjectId === id ? (state.subjects.find(s => s.id !== id)?.id || null) : state.selectedSubjectId
+    }));
+    await get().logActivity({ action: 'deleted', entityType: 'subject', entityId: id, metadata: { name: existing?.name } });
+  },
+
   addAssignment: async (assignmentData) => {
     const next = {
       subjectId: assignmentData.subjectId || get().selectedSubjectId,
@@ -197,6 +211,17 @@ export const useAcademicStore = create((set, get) => ({
       entityId: saved.id,
       metadata: { title: saved.title, subjectId: saved.subjectId }
     });
+  },
+
+  deleteAssignment: async (id) => {
+    const existing = get().assignments.find(a => a.id === id);
+    if (existing) {
+      const { trashService } = await import('../database/services/trashService');
+      await trashService.moveToTrash('academicAssignments', existing);
+    }
+    await localDb.delete('academicAssignments', id);
+    set(state => ({ assignments: state.assignments.filter(a => a.id !== id) }));
+    await get().logActivity({ action: 'deleted', entityType: 'assignment', entityId: id, metadata: { title: existing?.title } });
   },
 
   // GROWTH ENGINE ACTIONS

@@ -7,7 +7,7 @@ class ActivityService extends BaseService {
     super(STORES.ACTIVITIES);
   }
 
-  async logActivity({ type, action, entityType, entityId, metadata = {} }) {
+  async logActivity({ type, action, entityType, entityId, metadata = {}, severity = 'info' }) {
     const authState = useAuthStore.getState?.() || {};
     const currentUserId = authState.user?.userId || null;
     const timestamp = new Date().toISOString();
@@ -18,6 +18,7 @@ class ActivityService extends BaseService {
       action,
       entityType,
       entityId,
+      severity,
       // New fields for richer operational history
       actionType: action,
       entityTitle: metadata.title || metadata.name || metadata.entityTitle || null,

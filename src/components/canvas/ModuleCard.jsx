@@ -1,8 +1,8 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import VisibilityCheckbox from '../ui/VisibilityCheckbox';
 import { useUiStore } from '../../store/uiStore';
-import { useCombinedState } from '../../hooks/useCombinedState';
+import { useModuleData } from '../../hooks/useModuleData';
 import DatabaseNode from './DatabaseNode';
 
 const ModuleCard = memo(function ModuleCard({
@@ -16,7 +16,13 @@ const ModuleCard = memo(function ModuleCard({
 }) {
   const collapsed = module.collapsed;
   const toggleModuleCollapsed = useUiStore((s) => s.toggleModuleCollapsed);
-  const combinedState = useCombinedState();
+  const moduleData = useModuleData(module.id);
+
+  // For DatabaseNode, we provide the full combinedState only if necessary, 
+  // but here we can pass the moduleData as the root state for this branch.
+  const rootState = useMemo(() => ({
+    [module.id]: moduleData
+  }), [module.id, moduleData]);
 
   return (
     <div
@@ -70,7 +76,7 @@ const ModuleCard = memo(function ModuleCard({
                   <DatabaseNode
                     key={node.id}
                     node={node}
-                    combinedState={combinedState}
+                    combinedState={rootState}
                     onViewNode={onViewNode}
                     onEditNode={onEditNode}
                     onDeleteNode={onDeleteNode}

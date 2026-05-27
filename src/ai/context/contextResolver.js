@@ -8,6 +8,7 @@ import { getCrmContext } from './providers/crmContextProvider';
 import { getActivityContext } from './providers/activityContextProvider';
 import { getProfileContext } from './providers/profileContextProvider';
 import { getPersonalContext } from './providers/personalContextProvider';
+import { enforceBudget } from './contextBudgetManager';
 
 const PROVIDERS = {
   task: getTaskContext,
@@ -54,7 +55,7 @@ export function detectContextTypes(prompt) {
 
 export function buildAiContext(prompt, options = {}) {
   const matchedTypes = detectContextTypes(prompt);
-  const contextData = {};
+  let contextData = {};
 
   matchedTypes.forEach(type => {
     const provider = PROVIDERS[type];
@@ -67,19 +68,10 @@ export function buildAiContext(prompt, options = {}) {
     }
   });
 
-  const maxChars = options.maxChars || 12000;
-  let formattedString = JSON.stringify(contextData, null, 2);
-  
-  if (formattedString.length > maxChars) {
-    console.warn(`[ContextResolver] Context size (${formattedString.length} chars) exceeds budget limit. Truncating...`);
-    const minimalContext = {
-      profile: PROVIDERS.profile ? PROVIDERS.profile() : {},
-      task: PROVIDERS.task ? PROVIDERS.task() : {},
-      goal: PROVIDERS.goal ? PROVIDERS.goal() : {}
-    };
-    contextData.truncated = true;
-    formattedString = JSON.stringify(minimalContext, null, 2);
-  }
+  // Enforce limits and token budgets
+  contextData = enforceBudget(contextData, prompt);
+
+  const formattedString = JSON.stringify(contextData, null, 2);
 
   return {
     contextSummary: Object.keys(contextData).filter(k => k !== 'truncated'),
@@ -87,3 +79,4 @@ export function buildAiContext(prompt, options = {}) {
     formattedString
   };
 }
+

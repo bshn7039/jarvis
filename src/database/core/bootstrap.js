@@ -65,3 +65,32 @@ export async function bootstrapDatabase(userId = null) {
     throw error;
   }
 }
+
+/**
+ * Wipes the entire IndexedDB and resets the in-memory connection.
+ * Call this from DevTools console or a dev reset button:
+ *   import { resetDatabase } from './database/core/bootstrap';
+ *   await resetDatabase(); location.reload();
+ */
+export async function resetDatabase(userId = null) {
+  const dbName = userId ? `JARVIS_DB_${userId}` : 'JARVIS_DB';
+  console.log(`[DB] Resetting database: ${dbName}`);
+  
+  // Close existing connection
+  if (localDb.db) {
+    localDb.db.close();
+    localDb.db = null;
+  }
+
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.deleteDatabase(dbName);
+    req.onsuccess = () => {
+      console.log('[DB] Database deleted. Reload the page to re-initialize with clean seed data.');
+      resolve();
+    };
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => {
+      console.warn('[DB] Database deletion blocked. Close all other tabs and retry.');
+    };
+  });
+}

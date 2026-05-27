@@ -67,16 +67,16 @@ export const profileSchema = {
   defaults: {
     id: "root-profile",
     identity: {
-      fullName: "baka",
-      displayName: "Bhu",
-      email: "baka@gmail.com",
-      phone: "bakaxxxxxx",
-      location: "Bengaluru, India",
+      fullName: "",
+      displayName: "",
+      email: "",
+      phone: "",
+      location: "",
       timezone: "IST"
     },
     physical: {
-      heightCm: 175,
-      weightKg: 72
+      heightCm: 0,
+      weightKg: 0
     },
     diploma: {
       collegeName: "Government Polytechnic",

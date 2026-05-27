@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTaskStore } from '../store/taskStore';
 import { useGoalStore } from '../store/goalStore';
 import { useJournalStore } from '../store/journalStore';
@@ -26,6 +26,9 @@ import { useAuthStore } from '../store/authStore';
 import { localDb } from '../database/core/localDatabase';
 
 export function useStoreHydration() {
+  const isHydrating = useRef(false);
+  const lastAuthStatus = useRef(null);
+
   const hydrateTasks = useTaskStore(s => s.hydrate);
   const hydrateGoals = useGoalStore(s => s.hydrate);
   const hydrateJournal = useJournalStore(s => s.hydrate);
@@ -53,48 +56,60 @@ export function useStoreHydration() {
   const { isAuthenticated, user } = useAuthStore();
 
   useEffect(() => {
+    const authKey = `${isAuthenticated}:${user?.userId || 'none'}`;
+    if (lastAuthStatus.current === authKey) return;
+    if (isHydrating.current) return;
+
     const hydrateAll = async () => {
-      await initAuth();
+      isHydrating.current = true;
+      try {
+        await initAuth();
 
-      // Only hydrate data stores if authenticated
-      if (isAuthenticated && user?.userId) {
-        localDb.setUserId(user.userId);
+        // Only hydrate data stores if authenticated
+        if (isAuthenticated && user?.userId) {
+          localDb.setUserId(user.userId);
 
-        await Promise.all([
-          hydrateTasks(),
-          hydrateGoals(),
-          hydrateJournal(),
-          hydrateFinance(),
-          hydrateFitness(),
-          hydrateCrm(),
-          hydrateAcademics(),
-          hydrateUi(),
-          hydrateSchedule(),
-          hydrateChat(),
-          hydrateProfile(),
-          hydratePersonal(),
-          hydrateSelfCare(),
-          hydrateCommunication(),
-          hydrateSocialGrowth(),
-          hydratePublicPersona(),
-          hydrateMusic(),
-          hydrateWriting(),
-          hydrateReading(),
-          hydrateVault(),
-          hydrateActivities(),
-          hydrateEntities(),
-          hydrateTrash()
-        ]);
-      } else {
-        // Still hydrate UI and Entities as they might be needed for login UI
-        await Promise.all([
-          hydrateUi(),
-          hydrateEntities()
-        ]);
+          await Promise.all([
+            hydrateTasks(),
+            hydrateGoals(),
+            hydrateJournal(),
+            hydrateFinance(),
+            hydrateFitness(),
+            hydrateCrm(),
+            hydrateAcademics(),
+            hydrateUi(),
+            hydrateSchedule(),
+            hydrateChat(),
+            hydrateProfile(),
+            hydratePersonal(),
+            hydrateSelfCare(),
+            hydrateCommunication(),
+            hydrateSocialGrowth(),
+            hydratePublicPersona(),
+            hydrateMusic(),
+            hydrateWriting(),
+            hydrateReading(),
+            hydrateVault(),
+            hydrateActivities(),
+            hydrateEntities(),
+            hydrateTrash()
+          ]);
+        } else {
+          // Still hydrate UI and Entities as they might be needed for login UI
+          await Promise.all([
+            hydrateUi(),
+            hydrateEntities()
+          ]);
+        }
+        lastAuthStatus.current = authKey;
+      } catch (err) {
+        console.error('[Hydration] Critical failure during hydration:', err);
+      } finally {
+        isHydrating.current = false;
       }
     };
 
     hydrateAll();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, initAuth]);
 }
 

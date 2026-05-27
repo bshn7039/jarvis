@@ -17,9 +17,7 @@ const mockDatabase = {
     { id: 'schedules', title: 'Schedules', route: '/home', dataKey: 'schedules' },
   ],
 
-  schedules: [
-    { id: 'sch-001', label: 'Morning Deep Work', date: '2026-05-21', time: '06:30', module: 'System', taskIds: [] },
-  ],
+  schedules: [],
 
   goals: [
     // 1. ACADEMICS & CAREER
@@ -75,99 +73,8 @@ const mockDatabase = {
   tasks: [],
 
   journal: {
-    entries: [
-      { 
-        id: 'jr-001', 
-        date: '2026-05-23', 
-        entryDate: '2026-05-23', 
-        type: 'Daily Reflection', 
-        title: 'Morning Momentum', 
-        mood: 9, 
-        tags: ['productivity', 'focus'], 
-        aspects: ['Academics'],
-        content: 'Started the day with deep work on the refactor. Feeling extremely sharp.',
-        linkedTaskIds: [],
-        linkedGoalIds: ['sub-1-1-5-1'],
-        archived: false,
-        favorite: true
-      },
-      { 
-        id: 'jr-002', 
-        date: '2026-05-23', 
-        entryDate: '2026-05-23', 
-        type: 'Log', 
-        title: 'Midday System Check', 
-        mood: 7, 
-        tags: ['system'], 
-        aspects: ['Coding'],
-        content: 'IndexedDB migration successful. No hydration issues detected.',
-        linkedTaskIds: [],
-        linkedGoalIds: [],
-        archived: false,
-        favorite: false
-      },
-      { 
-        id: 'jr-003', 
-        date: '2026-05-22', 
-        entryDate: '2026-05-22', 
-        type: 'Reflection', 
-        title: 'End of Week Review', 
-        mood: 8, 
-        tags: ['review'], 
-        aspects: ['Academics', 'Fitness'],
-        content: 'Good progress on React fundamentals this week. Workout consistency is at 80%.',
-        linkedTaskIds: [],
-        linkedGoalIds: ['goal-1-1', 'goal-2-1'],
-        archived: false,
-        favorite: false
-      },
-      { 
-        id: 'jr-004', 
-        date: '2026-05-21', 
-        entryDate: '2026-05-21', 
-        type: 'Thoughts', 
-        title: 'Late Night Musings', 
-        mood: 6, 
-        tags: ['undefined'], 
-        aspects: ['Personal'],
-        content: 'Need to improve sleep hygiene. Coding till 2 AM is counterproductive.',
-        linkedTaskIds: [],
-        linkedGoalIds: [],
-        archived: false,
-        favorite: false
-      },
-      { 
-        id: 'jr-005', 
-        date: '2026-05-20', 
-        entryDate: '2026-05-20', 
-        type: 'Log', 
-        title: 'Fitness Session', 
-        mood: 9, 
-        tags: ['gym', 'pr'], 
-        aspects: ['Fitness'],
-        content: 'New PR on Deadlift. Energy levels are peaking.',
-        linkedTaskIds: [],
-        linkedGoalIds: ['obj-2-1-1'],
-        archived: false,
-        favorite: false
-      },
-      { 
-        id: 'jr-006', 
-        date: '2026-05-19', 
-        entryDate: '2026-05-19', 
-        type: 'Daily Reflection', 
-        title: 'Slow Start', 
-        mood: 5, 
-        tags: ['sluggish'], 
-        aspects: ['Personal'],
-        content: 'Felt a bit drained today. Taking it easy.',
-        linkedTaskIds: [],
-        linkedGoalIds: [],
-        archived: false,
-        favorite: false
-      }
-    ],
-    streak: 5,
+    entries: [],
+    streak: 0,
   },
 
   finance: {
@@ -188,29 +95,15 @@ const mockDatabase = {
       hydrationMl: 3500,
       weeklyWorkouts: 5,
     },
-    workouts: [
-      { id: 'wo-001', date: '2026-05-21', type: 'Push', durationMin: 45, caloriesBurned: 300, intensity: 'medium', completed: true },
-      { id: 'wo-002', date: '2026-05-19', type: 'Pull', durationMin: 50, caloriesBurned: 350, intensity: 'high', completed: true },
-    ],
-    meals: [
-      { id: 'meal-001', date: '2026-05-21', meal: 'Breakfast', title: 'Oats + milk + banana', calories: 510, protein: 24 },
-    ],
-    hydrationLogs: [
-      { id: 'water-001', date: '2026-05-21', amountMl: 700 },
-    ],
-    bodyMetrics: [
-      { date: '2026-05-21', weightKg: 75.1, bodyFat: 17.8, waistCm: 84.2 },
-    ],
-    routines: [
-      { day: 'Monday', plan: 'Push Day' },
-    ],
+    workouts: [],
+    meals: [],
+    hydrationLogs: [],
+    bodyMetrics: [],
+    routines: [],
   },
 
   crm: {
-    contacts: [
-      { id: 'ct-001', name: 'Aarav Mehta', connectionContext: 'College friend', tags: ['friend', 'study'], notes: 'DSA partner.', lastInteraction: '2026-05-20' },
-      { id: 'ct-002', name: 'Rohan Iyer', connectionContext: 'Senior mentor', tags: ['mentor'], notes: 'Career guidance.', lastInteraction: '2026-05-15' },
-    ],
+    contacts: [],
     reminders: [],
     interactionLog: [],
   },
@@ -246,31 +139,27 @@ const mockDatabase = {
 
   profile: {
     identity: {
-      fullName: 'Bhuvaneshwaran',
-      displayName: 'Bhu',
-      location: 'Bengaluru, India',
+      fullName: '',
+      displayName: '',
+      location: '',
       timezone: 'IST'
     },
     physical: {
-      heightCm: 175,
-      weightKg: 72
-    },
-    academics: {
-      semester: 'Sem 1'
+      heightCm: 0,
+      weightKg: 0
     },
     degree: {
-      collegeName: "Pillai College",
-      degreeName: "B.Tech Computer Engineering",
-      semester: "Sem 1",
-      academicGoal: "Adapt to degree-level workload",
+      collegeName: '',
+      degreeName: '',
+      semester: '',
       cgpa: 0,
-      targetCgpa: 10,
+      targetCgpa: 0,
     },
     productivity: {
       deepWorkHours: 4
     },
     lifestyle: {
-      hobbies: ['Coding', 'Fitness']
+      hobbies: []
     }
   }
 };

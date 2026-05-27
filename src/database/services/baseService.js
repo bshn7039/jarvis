@@ -1,5 +1,6 @@
 import { localDb } from '../core/localDatabase';
 import { trashService } from './trashService';
+import { cleanupEntityReferences } from '../../utils/entityCleanup';
 
 export class BaseService {
   constructor(storeName) {
@@ -42,6 +43,8 @@ export class BaseService {
     if (existing) {
       // Move full entity snapshot into trash archive
       await trashService.moveToTrash(this.storeName, existing);
+      // Clean up references in other entities
+      await cleanupEntityReferences(id);
     }
     return localDb.delete(this.storeName, id);
   }

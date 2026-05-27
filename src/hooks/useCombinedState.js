@@ -20,7 +20,7 @@ import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
 
-export function useCombinedState() {
+export function useCombinedState(selector) {
   const tasksData = useTaskStore(useShallow(s => ({ 
     tasks: s.tasks, 
     repetitiveTasks: s.repetitiveTasks, 
@@ -79,7 +79,7 @@ export function useCombinedState() {
   const reading = useReadingStore(s => s.library);
   const vault = useVaultStore(s => s.ideas);
 
-  return useMemo(() => ({
+  const fullState = useMemo(() => ({
     profile,
     tasks: tasksData,
     goals,
@@ -122,4 +122,6 @@ export function useCombinedState() {
     reading,
     vault
   ]);
+
+  return selector ? selector(fullState) : fullState;
 }

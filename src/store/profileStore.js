@@ -17,13 +17,6 @@ function normalizeProfile(profile) {
     ...profile,
   };
 
-  // Mask sensitive identity for safe dev display as requested
-  normalized.identity = {
-    ...normalized.identity,
-    fullName: "baka",
-    email: "baka@gmail.com",
-    phone: "bakaxxxxxx"
-  };
 
   // Migrate old productivity
   if (profile.productivity?.deepWorkHours !== undefined && normalized.productivity.taskHoursTarget === 4) {

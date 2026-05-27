@@ -19,6 +19,7 @@ import { useMusicStore } from '../store/musicStore';
 import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
+import { cleanupEntityReferences } from './entityCleanup';
 
 const MODULE_BINDINGS = {
   tasks: { store: STORES.TASKS, schemaKey: 'tasks', entityType: 'task', collection: true },
