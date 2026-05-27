@@ -34,7 +34,7 @@ function cleanupObjectReferences(input, removedId) {
       }
       continue;
     }
-    if (typeof value === 'string' && key.toLowerCase().endsWith('id') && value === removedId) {
+    if (typeof value === 'string' && key.toLowerCase() !== 'id' && key.toLowerCase().endsWith('id') && value === removedId) {
       out[key] = null;
       changed = true;
       continue;
@@ -50,9 +50,22 @@ function cleanupObjectReferences(input, removedId) {
   return changed ? out : input;
 }
 
+const SYSTEM_STORES = new Set([
+  STORES.TRASH,
+  STORES.VERSIONS,
+  STORES.ACTIVITIES,
+  STORES.CHATS,
+  STORES.METRICS_SNAPSHOTS,
+  STORES.METADATA,
+]);
+
 export async function cleanupEntityReferences(removedId) {
   if (!removedId) return;
-  const stores = Object.values(STORES);
+  
+  // Exclude system, log, and history stores
+  const stores = Object.values(STORES).filter(
+    (storeName) => !SYSTEM_STORES.has(storeName)
+  );
 
   for (const storeName of stores) {
     const rows = await localDb.getAll(storeName);

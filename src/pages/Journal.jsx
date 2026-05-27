@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import PagePanel from '../components/ui/PagePanel';
 import JournalCalendar from '../components/journal/JournalCalendar';
@@ -11,6 +12,7 @@ import { useJournalStreak } from '../store/selectors/metrics.selectors';
 import { formatDateKey } from '../utils/dateUtils';
 
 export default function Journal() {
+  const location = useLocation();
   const entries = useJournalStore((s) => s.entries);
   const selectedEntryId = useJournalStore((s) => s.selectedEntryId);
   const searchQuery = useJournalStore((s) => s.searchQuery);
@@ -52,6 +54,13 @@ export default function Journal() {
     setInitialFormData(data);
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    if (location.state?.openAddEntry) {
+      handleAddEntry({ entryDate: formatDateKey() });
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const handleFormSubmit = async (formData) => {
     try {

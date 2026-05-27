@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { deepSeekService } from '../ai/services/deepseekService';
 import { 
   Dumbbell, 
   Utensils, 
@@ -108,6 +110,27 @@ export default function Fitness() {
 
   const [isSavingEntity, setIsSavingEntity] = useState(false);
 
+  const location = useLocation();
+  const [isWorkoutModalOpen, setIsWorkoutModalOpen] = useState(false);
+  const [workoutForm, setWorkoutForm] = useState({ title: '', duration: '45m', intensity: 'Medium' });
+
+  useEffect(() => {
+    if (location.state?.openLogWorkout) {
+      setIsWorkoutModalOpen(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  const handleSaveWorkout = async () => {
+    await useFitnessStore.getState().addWorkoutLog({
+      title: workoutForm.title || 'New Workout',
+      duration: workoutForm.duration || '45m',
+      intensity: workoutForm.intensity || 'Medium',
+    });
+    setIsWorkoutModalOpen(false);
+    setWorkoutForm({ title: '', duration: '45m', intensity: 'Medium' });
+  };
+
   const caloriesPct = Math.round((daily.calories / daily.targets.calories) * 100);
   const proteinPct = Math.round((daily.protein / daily.targets.protein) * 100);
   const waterPct = Math.round((daily.water / daily.targets.hydrationMl) * 100);
@@ -151,24 +174,65 @@ export default function Fitness() {
 
   const handleSaveMeal = async () => {
     setIsAiProcessing(true);
-    // Simulate AI delay
-    await new Promise(r => setTimeout(r, 800));
     
-    const nutrition = extractNutrition(mealInput);
-    const title = mealInput.split('(')[0].trim() || 'Meal Log';
-
+    let calories = 250;
+    let protein = 12;
+    let title = mealInput.split('(')[0].trim() || 'Meal Log';
+    
+    try {
+      const systemPrompt = `You are a professional nutrition expert AI. Estimate the calories and protein content of the meal described by the user.
+Provide a JSON response ONLY, with no extra text or markdown formatting (except a standard JSON code block), in this exact format:
+{
+  "title": "A short, descriptive, clean name of the meal...",
+  "calories": 350, // estimated calories as an integer
+  "protein": 25 // estimated protein in grams as an integer
+}
+`;
+      const response = await deepSeekService.sendMessage([
+        { role: 'user', content: `Analyze this meal description: "${mealInput}"` }
+      ], {
+        systemPrompt,
+        temperature: 0.2
+      });
+      
+      if (response && response.content) {
+        let cleanContent = response.content.trim();
+        if (cleanContent.startsWith('```json')) {
+          cleanContent = cleanContent.slice(7);
+        }
+        if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.slice(3);
+        }
+        if (cleanContent.endsWith('```')) {
+          cleanContent = cleanContent.slice(0, -3);
+        }
+        cleanContent = cleanContent.trim();
+        
+        const result = JSON.parse(cleanContent);
+        calories = Math.max(0, Number(result.calories) || calories);
+        protein = Math.max(0, Number(result.protein) || protein);
+        title = result.title || title;
+        console.log('[Fitness AI Meal] Successfully extracted nutrition from AI:', result);
+      }
+    } catch (err) {
+      console.warn('[Fitness AI Meal] Real AI failed or was bypassed. Running offline extractor:', err);
+      const nutrition = extractNutrition(mealInput);
+      calories = nutrition.calories;
+      protein = nutrition.protein;
+    }
+    
     if (editingMeal) {
       await updateMealLog(editingMeal.id, {
         title,
-        calories: nutrition.calories,
-        protein: nutrition.protein
+        calories,
+        protein
       });
     } else {
       await addMealLog({
         meal: 'Meal',
         title,
-        calories: nutrition.calories,
-        protein: nutrition.protein
+        calories,
+        protein
       });
     }
     
@@ -274,6 +338,12 @@ export default function Fitness() {
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-jarvis-border bg-white/5 text-xs text-jarvis-text hover:bg-white/10 transition-colors"
                >
                  <Plus className="h-3 w-3" /> Water
+               </button>
+               <button 
+                  onClick={() => setIsWorkoutModalOpen(true)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-jarvis-border bg-white/5 text-xs text-jarvis-text hover:bg-white/10 transition-colors"
+               >
+                 <Plus className="h-3 w-3" /> Workout
                </button>
                <button 
                   onClick={() => handleOpenMealModal()}
@@ -574,6 +644,63 @@ export default function Fitness() {
              <button onClick={() => setIsMetricModalOpen(false)} className="flex-1 px-4 py-2 rounded-lg border border-jarvis-border text-xs text-jarvis-text hover:bg-white/5">Cancel</button>
              <button onClick={handleSaveMetric} className="flex-1 px-4 py-2 rounded-lg bg-jarvis-accent text-black text-xs font-medium hover:brightness-110 flex items-center justify-center gap-2">
                <Check className="h-3 w-3" /> Save Entry
+             </button>
+          </div>
+        </div>
+      </BaseModal>
+
+      <BaseModal 
+        open={isWorkoutModalOpen} 
+        onClose={() => setIsWorkoutModalOpen(false)}
+        ariaLabel="Log Workout"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-jarvis-border pb-2 mb-2">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-jarvis-text">
+              Log Workout
+            </h2>
+            <button onClick={() => setIsWorkoutModalOpen(false)} className="text-jarvis-muted hover:text-jarvis-text">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div>
+            <label className="text-[10px] uppercase text-jarvis-muted mb-1 block">Workout Title</label>
+            <input 
+              type="text"
+              value={workoutForm.title}
+              onChange={(e) => setWorkoutForm({ ...workoutForm, title: e.target.value })}
+              className="w-full bg-black/20 border border-jarvis-border rounded-lg px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
+              placeholder="e.g. Upper Body Strength, Leg Day, Cardio"
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-[10px] uppercase text-jarvis-muted mb-1 block">Duration</label>
+              <input 
+                type="text"
+                value={workoutForm.duration}
+                onChange={(e) => setWorkoutForm({ ...workoutForm, duration: e.target.value })}
+                className="w-full bg-black/20 border border-jarvis-border rounded-lg px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
+                placeholder="e.g. 45m, 1h"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase text-jarvis-muted mb-1 block">Intensity</label>
+              <select
+                value={workoutForm.intensity}
+                onChange={(e) => setWorkoutForm({ ...workoutForm, intensity: e.target.value })}
+                className="w-full bg-black/20 border border-jarvis-border rounded-lg px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
+              >
+                <option value="Low" className="bg-jarvis-panel">Low</option>
+                <option value="Medium" className="bg-jarvis-panel">Medium</option>
+                <option value="High" className="bg-jarvis-panel">High</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-2">
+             <button onClick={() => setIsWorkoutModalOpen(false)} className="flex-1 px-4 py-2 rounded-lg border border-jarvis-border text-xs text-jarvis-text hover:bg-white/5">Cancel</button>
+             <button onClick={handleSaveWorkout} className="flex-1 px-4 py-2 rounded-lg bg-jarvis-accent text-black text-xs font-medium hover:brightness-110 flex items-center justify-center gap-2">
+               <Check className="h-3 w-3" /> Log Workout
              </button>
           </div>
         </div>

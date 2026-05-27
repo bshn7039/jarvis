@@ -186,12 +186,6 @@ export const useChatStore = create((set, get) => ({
         for (const tc of assistantMsg.toolCalls) {
           if (tc.status === 'pending_execution') {
             // Check Cooldown & Duplicate
-            if (aiStore.isToolOnCooldown(tc.name)) {
-              tc.status = 'error';
-              tc.result = { error: `Tool '${tc.name}' is on cooldown. Please wait.` };
-              continue;
-            }
-
             try {
               aiStore.addPendingTool(tc);
               const result = await executeAiTool(tc.name, tc.args);
@@ -199,7 +193,6 @@ export const useChatStore = create((set, get) => ({
               tc.result = result;
               aiActionsPerformed.push(tc.name);
               aiStore.updateToolStatus(tc.id, 'executed', result);
-              aiStore.setToolCooldown(tc.name);
             } catch (err) {
               tc.status = 'error';
               tc.result = { error: err.message };
@@ -216,7 +209,13 @@ export const useChatStore = create((set, get) => ({
         }));
 
         const messagesWithTools = [
-          ...historyMessages.map(m => ({ role: m.role, content: m.content, toolCalls: m.toolCalls })),
+          ...historyMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            toolCalls: m.toolCalls || m.tool_calls,
+            tool_call_id: m.tool_call_id || m.toolCallId,
+            name: m.name
+          })),
           {
             role: 'assistant',
             content: assistantMsg.content,
@@ -239,7 +238,8 @@ export const useChatStore = create((set, get) => ({
 
         const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
           systemPrompt,
-          model
+          model,
+          tools: TOOL_SCHEMAS
         });
 
         const finalChat = get().chatHistory.find(c => c.id === chatId);
@@ -361,7 +361,13 @@ export const useChatStore = create((set, get) => ({
         const systemPrompt = buildSystemPrompt(formattedString);
 
         const messagesWithTools = [
-          ...historyMessages.map(m => ({ role: m.role, content: m.content, toolCalls: m.toolCalls })),
+          ...historyMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            toolCalls: m.toolCalls || m.tool_calls,
+            tool_call_id: m.tool_call_id || m.toolCallId,
+            name: m.name
+          })),
           {
             role: 'assistant',
             content: finalMsg.content,
@@ -384,7 +390,8 @@ export const useChatStore = create((set, get) => ({
 
         const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
           systemPrompt,
-          model: useAiStore.getState().currentModel
+          model: useAiStore.getState().currentModel,
+          tools: TOOL_SCHEMAS
         });
 
         const activeChat = get().chatHistory.find(c => c.id === chatId);
@@ -464,7 +471,13 @@ export const useChatStore = create((set, get) => ({
         const systemPrompt = buildSystemPrompt(formattedString);
 
         const messagesWithTools = [
-          ...historyMessages.map(m => ({ role: m.role, content: m.content, toolCalls: m.toolCalls })),
+          ...historyMessages.map(m => ({
+            role: m.role,
+            content: m.content,
+            toolCalls: m.toolCalls || m.tool_calls,
+            tool_call_id: m.tool_call_id || m.toolCallId,
+            name: m.name
+          })),
           {
             role: 'assistant',
             content: finalMsg.content,
@@ -487,7 +500,8 @@ export const useChatStore = create((set, get) => ({
 
         const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
           systemPrompt,
-          model: useAiStore.getState().currentModel
+          model: useAiStore.getState().currentModel,
+          tools: TOOL_SCHEMAS
         });
 
         const activeChat = get().chatHistory.find(c => c.id === chatId);

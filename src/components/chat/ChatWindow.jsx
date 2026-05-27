@@ -62,7 +62,7 @@ export default function ChatWindow({ messages = [], showEmpty = true }) {
                 <div className="flex-1">{lastError}</div>
                 <button 
                   onClick={clearError}
-                  className="rounded px-2 py-1 text-[11px] font-bold uppercase tracking-wider hover:bg-red-500/10"
+                  className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-[12px] font-semibold transition-all hover:bg-red-500/20 active:scale-95"
                 >
                   Dismiss
                 </button>

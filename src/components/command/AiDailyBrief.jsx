@@ -1,6 +1,6 @@
 import { RefreshCcw, Sparkles } from 'lucide-react';
 
-export default function AiDailyBrief({ brief, onRefresh }) {
+export default function AiDailyBrief({ brief, onRefresh, isGenerating = false }) {
   return (
     <section className="rounded-2xl border border-jarvis-border bg-jarvis-panel p-5 transition-colors duration-200 hover:border-jarvis-muted/30 md:p-6">
       <div className="mb-5 flex items-center justify-between gap-3">
@@ -10,10 +10,11 @@ export default function AiDailyBrief({ brief, onRefresh }) {
         <div className="flex items-center gap-3">
           <button
             onClick={onRefresh}
-            className="flex items-center gap-1.5 rounded-lg border border-jarvis-border px-2.5 py-1 text-xs text-jarvis-muted transition-colors hover:border-jarvis-muted/50 hover:text-jarvis-text"
+            disabled={isGenerating}
+            className={`flex items-center gap-1.5 rounded-lg border border-jarvis-border px-2.5 py-1 text-xs text-jarvis-muted transition-colors hover:border-jarvis-muted/50 hover:text-jarvis-text ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <RefreshCcw className="h-3 w-3" strokeWidth={1.75} />
-            Refresh Brief
+            <RefreshCcw className={`h-3 w-3 ${isGenerating ? 'animate-spin' : ''}`} strokeWidth={1.75} />
+            {isGenerating ? 'Analyzing...' : 'Refresh Brief'}
           </button>
           <span className="text-xs text-jarvis-muted">Direction Layer</span>
         </div>

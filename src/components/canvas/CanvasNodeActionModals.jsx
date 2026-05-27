@@ -71,6 +71,7 @@ export default function CanvasNodeActionModals({ actionState, combinedState, onC
 
   const confirmDelete = async () => {
     await deleteNodeAtPath({ path: snapshot.path, combinedState });
+    onClose();
   };
 
   return (

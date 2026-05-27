@@ -16,7 +16,7 @@ const initialState = {
   hydrationLogs: [],
   bodyMetrics: [],
   routines: [],
-  selectedDay: '2026-05-21',
+  selectedDay: new Date().toISOString().slice(0, 10),
   isHydrated: false,
 };
 
@@ -72,7 +72,7 @@ export const useFitnessStore = create((set, get) => ({
   addHydrationLog: async (amountMl) => {
     const next = {
       type: 'hydration',
-      date: get().selectedDay || '2026-05-21',
+      date: get().selectedDay || new Date().toISOString().slice(0, 10),
       amountMl: Math.max(50, Number(amountMl) || 250),
     };
     
@@ -90,7 +90,7 @@ export const useFitnessStore = create((set, get) => ({
   addMealLog: async (mealData) => {
     const next = {
       type: 'meal',
-      date: get().selectedDay || '2026-05-21',
+      date: get().selectedDay || new Date().toISOString().slice(0, 10),
       meal: mealData.meal || 'Snack',
       title: mealData.title || 'Manual meal entry',
       calories: Math.max(0, Number(mealData.calories) || 0),
@@ -111,10 +111,10 @@ export const useFitnessStore = create((set, get) => ({
   addWorkoutLog: async (workoutData) => {
     const next = {
       type: 'workout',
-      date: get().selectedDay || '2026-05-21',
+      date: get().selectedDay || new Date().toISOString().slice(0, 10),
       title: workoutData.title || 'New Workout',
       duration: workoutData.duration || '45m',
-      completed: false,
+      completed: true, // Mark logged workouts as completed by default
       intensity: workoutData.intensity || 'Medium',
       exercises: workoutData.exercises || []
     };
@@ -133,7 +133,7 @@ export const useFitnessStore = create((set, get) => ({
   addBodyMetricLog: async (metricData) => {
     const next = {
       type: 'bodyMetric',
-      date: get().selectedDay || '2026-05-21',
+      date: get().selectedDay || new Date().toISOString().slice(0, 10),
       weightKg: Number(metricData.weightKg) || 0,
       bodyFat: Number(metricData.bodyFat) || 0,
       waistCm: Number(metricData.waistCm) || 0,

@@ -29,7 +29,40 @@ export class DeepSeekService {
 
     const requestBody = {
       model,
-      messages: apiMessages.map(m => ({ role: m.role, content: m.content || '', tool_calls: m.toolCalls || m.tool_calls })),
+      messages: apiMessages.map(m => {
+        const msg = { role: m.role, content: m.content || '' };
+        if (m.tool_call_id) {
+          msg.tool_call_id = m.tool_call_id;
+        }
+        if (m.name) {
+          msg.name = m.name;
+        }
+        const toolCalls = m.toolCalls || m.tool_calls;
+        if (toolCalls && toolCalls.length > 0) {
+          const hasMatchingToolMessage = apiMessages.some(otherMsg => 
+            otherMsg.role === 'tool' && 
+            toolCalls.some(tc => (otherMsg.tool_call_id || otherMsg.toolCallId) === tc.id)
+          );
+          const isLastMessage = apiMessages[apiMessages.length - 1] === m;
+          
+          if (hasMatchingToolMessage || isLastMessage) {
+            msg.tool_calls = toolCalls.map(tc => {
+              if (tc.function) {
+                return tc; // Already standard OpenAI format
+              }
+              return {
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.name,
+                  arguments: typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args || {})
+                }
+              };
+            });
+          }
+        }
+        return msg;
+      }),
       temperature,
       max_tokens,
     };
@@ -66,7 +99,9 @@ export class DeepSeekService {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+          const err = new Error(errorData.error?.message || `API request failed with status ${response.status}`);
+          err.status = response.status;
+          throw err;
         }
 
         const data = await response.json();
@@ -98,6 +133,10 @@ export class DeepSeekService {
 
         if (error.name === 'AbortError') {
           console.warn(`[DeepSeek Service] Attempt ${attempt} timed out.`);
+        } else if (error.status && [400, 401, 403, 404].includes(error.status)) {
+          // Unrecoverable errors, do not retry
+          console.warn(`[DeepSeek Service] Unrecoverable error ${error.status}: ${error.message}`);
+          throw error;
         } else {
           console.warn(`[DeepSeek Service] Attempt ${attempt} failed: ${error.message}`);
         }

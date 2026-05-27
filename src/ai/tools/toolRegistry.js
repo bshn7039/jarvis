@@ -52,6 +52,11 @@ export const TOOL_PERMISSIONS = {
   update_finance_transaction: PERMISSION_LEVELS.SAFE_WRITE,
   delete_finance_transaction: PERMISSION_LEVELS.CONFIRM_REQUIRED,
   
+  add_to_daily_schedule: PERMISSION_LEVELS.SAFE_WRITE,
+  update_daily_schedule_item: PERMISSION_LEVELS.SAFE_WRITE,
+  delete_from_daily_schedule_item: PERMISSION_LEVELS.SAFE_WRITE,
+  reset_daily_schedule: PERMISSION_LEVELS.SAFE_WRITE,
+  
   purge_all_data: PERMISSION_LEVELS.SYSTEM_RESTRICTED,
 };
 
@@ -270,6 +275,70 @@ export const TOOL_SCHEMAS = [
         required: ['title', 'amount', 'type', 'category', 'account']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_to_daily_schedule',
+      description: "Add a new slot or routine directly into the Command Center's Today Schedule.",
+      parameters: {
+        type: 'object',
+        properties: {
+          time: { type: 'string', description: 'Scheduled time in 24h HH:MM format, e.g. "08:00" or "22:30"' },
+          label: { type: 'string', description: 'Label/description of the scheduled activity' },
+          category: { type: 'string', enum: ['Coding', 'Academics', 'Journal', 'Gym', 'Fitness', 'Routines', 'Personal'], description: 'Activity category' }
+        },
+        required: ['time', 'label']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_daily_schedule_item',
+      description: "Update an existing item inside Today's AI Schedule.",
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Schedule item ID (e.g. sched-wakeup or sched-usr-12345)' },
+          updates: {
+            type: 'object',
+            properties: {
+              time: { type: 'string', description: 'HH:MM format' },
+              label: { type: 'string' },
+              category: { type: 'string', enum: ['Coding', 'Academics', 'Journal', 'Gym', 'Fitness', 'Routines', 'Personal'] },
+              status: { type: 'string', enum: ['upcoming', 'active', 'done'] }
+            }
+          }
+        },
+        required: ['id', 'updates']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_from_daily_schedule_item',
+      description: "Remove/Delete an item from Today's AI Schedule.",
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'ID of the schedule item to delete' }
+        },
+        required: ['id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'reset_daily_schedule',
+      description: "Reset Today's AI Schedule back to the default daily rhythm: Wake up at 8AM and Sleep at 12AM.",
+      parameters: {
+        type: 'object',
+        properties: {}
+      }
+    }
   }
 ];
 
@@ -387,6 +456,30 @@ export async function executeToolAction(name, args) {
       const store = useFinanceStore.getState();
       const transaction = await store.addTransaction(sanitizedArgs);
       return { success: true, message: `Financial transaction '${transaction.title}' added. Current monthly spending is now $${useFinanceStore.getState().balanceOverview.monthlySpending}`, entityId: transaction.id };
+    }
+
+    case 'add_to_daily_schedule': {
+      const { useAiStore } = await import('../../store/aiStore');
+      useAiStore.getState().addToSchedule(sanitizedArgs);
+      return { success: true, message: `Added '${sanitizedArgs.label}' at ${sanitizedArgs.time} to Today's Schedule.` };
+    }
+
+    case 'update_daily_schedule_item': {
+      const { useAiStore } = await import('../../store/aiStore');
+      useAiStore.getState().updateScheduleItem(sanitizedArgs.id, sanitizedArgs.updates);
+      return { success: true, message: `Updated schedule item '${sanitizedArgs.id}' details.` };
+    }
+
+    case 'delete_from_daily_schedule_item': {
+      const { useAiStore } = await import('../../store/aiStore');
+      useAiStore.getState().deleteScheduleItem(sanitizedArgs.id);
+      return { success: true, message: `Deleted schedule item '${sanitizedArgs.id}' from Today's Schedule.` };
+    }
+
+    case 'reset_daily_schedule': {
+      const { useAiStore } = await import('../../store/aiStore');
+      useAiStore.getState().resetSchedule();
+      return { success: true, message: "Reset Today's Schedule to default Wake up (8:00 AM) and Sleep (12:00 AM) rhythm." };
     }
 
     default:

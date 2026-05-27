@@ -32,6 +32,39 @@ export const useTaskMetrics = () => {
   }, [tasks]);
 };
 
+const getStreak = (dates) => {
+  if (!dates || dates.length === 0) return 0;
+  
+  const uniqueDates = [...new Set(dates)].sort((a, b) => b.localeCompare(a));
+  
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().slice(0, 10);
+  
+  if (uniqueDates[0] !== today && uniqueDates[0] !== yesterdayStr) {
+    return 0;
+  }
+  
+  let streak = 1;
+  let currentDate = new Date(uniqueDates[0]);
+  
+  for (let i = 1; i < uniqueDates.length; i++) {
+    const nextDate = new Date(uniqueDates[i]);
+    const diffTime = Math.abs(currentDate - nextDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      streak++;
+      currentDate = nextDate;
+    } else if (diffDays > 1) {
+      break;
+    }
+  }
+  
+  return streak;
+};
+
 export const useFitnessMetrics = () => {
   const tasks = useTaskStore((s) => s.tasks);
   const meals = useFitnessStore((s) => s.meals);
@@ -39,17 +72,14 @@ export const useFitnessMetrics = () => {
   const fitnessTargets = useFitnessStore((s) => s.targets);
   const workouts = useFitnessStore((s) => s.workouts);
   const journalEntries = useJournalStore((s) => s.entries);
-  const revisionLogs = useAcademicStore((s) => s.revisionLogs);
 
   return useMemo(() => {
     const TODAY = todayKey();
     const calories = meals.filter((meal) => meal.date === TODAY).reduce((sum, meal) => sum + meal.calories, 0);
     const protein = meals.filter((meal) => meal.date === TODAY).reduce((sum, meal) => sum + meal.protein, 0);
     const waterMl = hydrationLogs.filter((log) => log.date === TODAY).reduce((sum, log) => sum + log.amountMl, 0);
-    const studyHours = revisionLogs.filter((log) => log.date === TODAY).reduce((sum, log) => sum + log.hours, 0);
     const workoutDone = workouts.some((w) => w.date === TODAY && w.completed);
     
-    // Aggregated mood for today
     const todayEntries = journalEntries.filter((e) => e.entryDate === TODAY);
     const moods = todayEntries.map(e => e.mood).filter(m => m !== null);
     const moodAverage = moods.length > 0 ? Math.round(moods.reduce((a, b) => a + b, 0) / moods.length) : null;
@@ -71,54 +101,91 @@ export const useFitnessMetrics = () => {
       { id: 'calories', label: 'Calories', value: `${calories}`, trend: `${fitnessTargets.calories} target`, trendUp: calories >= fitnessTargets.calories * 0.75, icon: 'Flame' },
       { id: 'protein', label: 'Protein', value: `${protein}g`, trend: `${Math.round((protein / (fitnessTargets.protein || 1)) * 100)}%`, trendUp: protein >= fitnessTargets.protein * 0.7, icon: 'Beef' },
       { id: 'water', label: 'Water', value: `${(waterMl / 1000).toFixed(1)}L`, trend: `${Math.round((waterMl / (fitnessTargets.hydrationMl || 1)) * 100)}%`, trendUp: waterMl >= fitnessTargets.hydrationMl * 0.7, icon: 'Droplets' },
-      { id: 'study', label: 'Study Hours', value: `${studyHours.toFixed(1)}h`, trend: 'Today', trendUp: studyHours >= 2, icon: 'BookOpen' },
+      { id: 'study', label: 'Study Hours', value: '0.0h', trend: 'Not Connected', trendUp: false, icon: 'BookOpen' },
       { id: 'workout', label: 'Workout', value: workoutDone ? 'Done' : 'Pending', trend: 'Today', trendUp: workoutDone, icon: 'Dumbbell' },
       { id: 'mood', label: 'Mood', value: moodDisplay, trend: 'Daily Avg', trendUp: moodTrendUp, icon: 'Smile' },
       { id: 'tasks', label: 'Tasks Done', value: `${completedTasksToday}/${totalTasksToday}`, trend: `${taskProgressPercent}%`, trendUp: taskProgressPercent >= 50, icon: 'CheckSquare' },
     ];
-  }, [tasks, meals, hydrationLogs, fitnessTargets, workouts, journalEntries, revisionLogs]);
+  }, [tasks, meals, hydrationLogs, fitnessTargets, workouts, journalEntries]);
 };
 
 export const useStreaks = () => {
   const codingProgress = useAcademicStore((s) => s.codingProgress);
   const workouts = useFitnessStore((s) => s.workouts);
   const journalEntries = useJournalStore((s) => s.entries);
-  const tasks = useTaskStore((s) => s.tasks);
-  const repetitiveTasks = useTaskStore((s) => s.repetitiveTasks);
+  const repetitiveHistory = useTaskStore((s) => s.repetitiveHistory);
 
   return useMemo(() => {
-    const maxRepStreak = Math.max(0, ...repetitiveTasks.map(t => t.streak));
+    // 1. Coding: solved problems streak from academics
+    const codingStreak = codingProgress.streakDays || 0;
+    
+    // 2. Journal: diary reflection streak from journal
+    const journalDates = journalEntries.map(e => e.entryDate);
+    const journalStreak = getStreak(journalDates);
+    
+    // 3. Gym: completed workouts streak from fitness
+    const workoutDates = workouts.filter(w => w.completed).map(w => w.date);
+    const gymStreak = getStreak(workoutDates);
+    
+    // 4. Routines: consecutive day streak if all repetitive tasks everyday are completed continuously
+    let routinesStreak = 0;
+    const sortedHistory = [...repetitiveHistory].sort((a, b) => b.date.localeCompare(a.date));
+    
+    if (sortedHistory.length > 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+      const latestDate = sortedHistory[0].date;
+      
+      if (latestDate === today || latestDate === yesterdayStr) {
+        let currentDate = new Date(latestDate);
+        
+        for (let i = 0; i < sortedHistory.length; i++) {
+          const entry = sortedHistory[i];
+          const entryDate = new Date(entry.date);
+          
+          if (i > 0) {
+            const diffTime = Math.abs(currentDate - entryDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (diffDays > 1) {
+              break;
+            }
+            currentDate = entryDate;
+          }
+          
+          const isFull = entry.snapshot?.length > 0 && entry.completedIds?.length === entry.snapshot.length;
+          if (isFull) {
+            routinesStreak++;
+          } else {
+            break;
+          }
+        }
+      }
+    }
     
     return [
-      { id: 'coding', label: 'Coding', days: codingProgress.streakDays || 0 },
-      { id: 'gym', label: 'Gym', days: workouts.filter((w) => w.completed).length },
-      { id: 'journal', label: 'Journal', days: journalEntries.length },
-      { id: 'routine', label: 'Routines', days: maxRepStreak },
+      { id: 'coding', label: 'Coding', days: codingStreak },
+      { id: 'journal', label: 'Journal', days: journalStreak },
+      { id: 'gym', label: 'Gym', days: gymStreak },
+      { id: 'routine', label: 'Routines', days: routinesStreak },
     ];
-  }, [codingProgress, workouts, journalEntries, tasks, repetitiveTasks]);
+  }, [codingProgress, workouts, journalEntries, repetitiveHistory]);
 };
 
 export const useWeeklyProgress = () => {
   const overview = useFinanceStore(s => s.balanceOverview);
   const codingProgress = useAcademicStore(s => s.codingProgress);
-  const repetitiveHistory = useTaskStore(s => s.repetitiveHistory);
   
   return useMemo(() => {
     const budgetPercent = Math.round((overview.monthlySpending / 30000) * 100);
     const codingPercent = Math.round((codingProgress.solvedProblems / (codingProgress.targetProblems || 1)) * 100);
     
-    // Repetitive consistency (last 7 days)
-    const last7Days = repetitiveHistory.slice(0, 7);
-    const totalPossible = last7Days.reduce((sum, day) => sum + (day.snapshot?.length || 0), 0);
-    const totalCompleted = last7Days.reduce((sum, day) => sum + (day.completedIds?.length || 0), 0);
-    const repConsistency = totalPossible > 0 ? Math.round((totalCompleted / totalPossible) * 100) : 0;
-
     return [
       { 
         id: 'wp-1', 
-        label: 'Monthly Budget', 
+        label: 'Monthly Spending', 
         value: `₹${overview.monthlySpending.toLocaleString()}`, 
-        target: '₹30,000',
         percent: Math.min(100, budgetPercent),
         bars: [40, 60, 45, 70, 50, 65, budgetPercent % 100] 
       },
@@ -130,16 +197,8 @@ export const useWeeklyProgress = () => {
         percent: Math.min(100, codingPercent),
         bars: [20, 35, 50, 40, 60, 55, codingPercent % 100]
       },
-      { 
-        id: 'wp-3', 
-        label: 'Routine Consistency', 
-        value: `${repConsistency}%`, 
-        target: '100%',
-        percent: repConsistency,
-        bars: last7Days.map(d => (d.completedIds.length / (d.snapshot.length || 1)) * 100).reverse()
-      },
     ];
-  }, [overview, codingProgress, repetitiveHistory]);
+  }, [overview, codingProgress]);
 };
 
 export const useSystemWarnings = () => {

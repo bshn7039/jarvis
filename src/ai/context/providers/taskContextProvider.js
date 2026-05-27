@@ -50,6 +50,7 @@ export function getTaskContext() {
     id: t.id,
     title: t.title,
     bucket: t.bucket,
+    time: t.time || null,
     dueDate: t.dueDate,
     priority: t.priority,
     category: t.category,

@@ -8,6 +8,7 @@ import { getCrmContext } from './providers/crmContextProvider';
 import { getActivityContext } from './providers/activityContextProvider';
 import { getProfileContext } from './providers/profileContextProvider';
 import { getPersonalContext } from './providers/personalContextProvider';
+import { getScheduleContext } from './providers/scheduleContextProvider';
 import { enforceBudget } from './contextBudgetManager';
 
 const PROVIDERS = {
@@ -21,6 +22,7 @@ const PROVIDERS = {
   activity: getActivityContext,
   profile: getProfileContext,
   personal: getPersonalContext,
+  schedule: getScheduleContext,
 };
 
 const KEYWORD_MAP = {
@@ -33,7 +35,8 @@ const KEYWORD_MAP = {
   crm: ['crm', 'contact', 'lead', 'client', 'interaction', 'network', 'phone', 'meeting', 'email', 'relationship', 'friend', 'family', 'call', 'reminder'],
   activity: ['activity', 'log', 'recent', 'history', 'action'],
   profile: ['profile', 'age', 'height', 'gender', 'blood', 'location', 'timezone', 'identity', 'physical', 'user'],
-  personal: ['personal', 'bio', 'hobby', 'interest', 'selfcare', 'self-care', 'music', 'writing', 'reading', 'vault', 'book', 'song', 'log', 'creative']
+  personal: ['personal', 'bio', 'hobby', 'interest', 'selfcare', 'self-care', 'music', 'writing', 'reading', 'vault', 'book', 'song', 'log', 'creative'],
+  schedule: ['schedule', 'calendar', 'routine', 'slot', 'command center schedule', 'daily schedule', 'today schedule']
 };
 
 export function detectContextTypes(prompt) {

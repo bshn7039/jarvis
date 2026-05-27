@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { LayoutProvider, useLayout } from '../context/LayoutContext';
 import Sidebar from '../components/sidebar/Sidebar';
 import CommandHeader from '../components/command/CommandHeader';
@@ -8,11 +8,8 @@ import TaskOperations from '../components/command/TaskOperations';
 import MetricCard from '../components/command/MetricCard';
 import StreakCard from '../components/command/StreakCard';
 import ProgressCard from '../components/command/ProgressCard';
-import InsightFeed from '../components/command/InsightFeed';
-import WarningPanel from '../components/command/WarningPanel';
 import QuickActions from '../components/command/QuickActions';
 import TodaySchedule from '../components/command/TodaySchedule';
-import GoalsDirectionLayer from '../components/command/GoalsDirectionLayer';
 import EntityModal from '../components/modals/EntityModal';
 import EntityForm from '../components/forms/EntityForm';
 import TransactionModal from '../components/finance/TransactionModal';
@@ -20,22 +17,20 @@ import { useUiStore } from '../store/uiStore';
 import { useTaskStore } from '../store/taskStore';
 import { useFinanceStore } from '../store/financeStore';
 import { useEntityStore } from '../store/entityStore';
+import { useAiStore } from '../store/aiStore';
+import { useNavigate } from 'react-router-dom';
 import { RefreshCcw } from 'lucide-react';
 import {
   useTaskMetrics,
   useFitnessMetrics,
   useStreaks,
   useWeeklyProgress,
-  useSystemWarnings,
-  useAiInsights,
-  useTodaySchedule,
-  useBrief,
-  useCriticalDeadlines,
-  useStrategicGoals
+  useCriticalDeadlines
 } from '../store/selectors/metrics.selectors';
 
 function CommandDashboard() {
   const { openMobile } = useLayout();
+  const navigate = useNavigate();
   
   // Use Live Derived Selectors
   const taskSummaries = useTaskMetrics();
@@ -43,17 +38,20 @@ function CommandDashboard() {
   const dailyMetrics = useFitnessMetrics();
   const streaks = useStreaks();
   const weeklyProgressData = useWeeklyProgress();
-  const systemWarnings = useSystemWarnings();
-  const aiInsights = useAiInsights();
-  const todaySchedule = useTodaySchedule();
-  const brief = useBrief();
-  const goalsTree = useStrategicGoals();
+
+  // Read AI center generated data from the AI store
+  const dailyBrief = useAiStore((s) => s.dailyBrief);
+  const dailySchedule = useAiStore((s) => s.dailySchedule);
+  const generateDailyCommandData = useAiStore((s) => s.generateDailyCommandData);
+  const isGenerating = useAiStore((s) => s.isGenerating);
 
   const createTask = useTaskStore(s => s.createTask);
   const addTransaction = useFinanceStore(s => s.addTransaction);
 
   const [activeModal, setActiveModal] = useState(null); // 'task' | 'expense' | null
   const [isSaving, setIsSaving] = useState(false);
+
+
 
   const quickActions = [
     { id: 'expense', label: 'Add Expense', icon: 'Wallet' },
@@ -68,6 +66,12 @@ function CommandDashboard() {
        // Use entityStore to ensure EntityForm knows it's a task
        useEntityStore.getState().openCreateModal('task');
        setActiveModal('task');
+    }
+    if (id === 'workout') {
+       navigate('/fitness', { state: { openLogWorkout: true } });
+    }
+    if (id === 'journal') {
+       navigate('/journal', { state: { openAddEntry: true } });
     }
   };
 
@@ -92,8 +96,8 @@ function CommandDashboard() {
   };
 
   const handleRefreshBrief = useCallback(() => {
-    console.log('[Command] Refreshing AI Brief...');
-  }, []);
+    generateDailyCommandData(true);
+  }, [generateDailyCommandData]);
 
   const handleRefreshMetrics = useCallback(() => {
     console.log('[Command] Refreshing Metrics Snapshot...');
@@ -104,7 +108,7 @@ function CommandDashboard() {
       <CommandHeader onMenuClick={openMobile} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1600px] space-y-6 p-4 pb-10 md:p-6 lg:p-8">
-          <AiDailyBrief brief={brief} onRefresh={handleRefreshBrief} />
+          <AiDailyBrief brief={dailyBrief} onRefresh={handleRefreshBrief} isGenerating={isGenerating} />
           
           <CriticalDeadlines deadlines={criticalDeadlines} />
           
@@ -143,19 +147,15 @@ function CommandDashboard() {
             </div>
           </section>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <InsightFeed insights={aiInsights} />
-            <WarningPanel warnings={systemWarnings} />
-          </div>
+
 
           <div className="grid gap-6 xl:grid-cols-3">
             <div className="xl:col-span-2">
               <QuickActions actions={quickActions} onAction={handleAction} />
             </div>
-            <TodaySchedule schedule={todaySchedule} />
+            <TodaySchedule schedule={dailySchedule} onRefresh={handleRefreshBrief} isGenerating={isGenerating} />
           </div>
 
-          <GoalsDirectionLayer tree={goalsTree} />
         </div>
       </div>
 

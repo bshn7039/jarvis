@@ -200,7 +200,7 @@ export const seedData = {
     profile: {
       fullName: 'Bhuvaneshwaran',
       displayName: 'Bhu',
-      location: 'Bengaluru, India',
+      location: 'Panvel, India',
     },
     preferences: {
       sidebarCollapsed: false,

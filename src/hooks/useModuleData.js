@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import { useTaskStore } from '../store/taskStore';
 import { useGoalStore } from '../store/goalStore';
 import { useJournalStore } from '../store/journalStore';
@@ -19,56 +20,91 @@ import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
 
 export function useModuleData(moduleId) {
+  const tasks = useTaskStore(useShallow(s => ({ 
+    tasks: s.tasks, 
+    repetitiveTasks: s.repetitiveTasks, 
+    repetitiveHistory: s.repetitiveHistory 
+  })));
+  const goals = useGoalStore(s => s.goals);
+  const journal = useJournalStore(useShallow(s => ({ 
+    entries: s.entries, 
+    streak: s.streak 
+  })));
+  const finance = useFinanceStore(useShallow(s => ({ 
+    transactions: s.transactions, 
+    balanceOverview: s.balanceOverview 
+  })));
+  const fitness = useFitnessStore(useShallow(s => ({ 
+    workouts: s.workouts, 
+    meals: s.meals, 
+    hydrationLogs: s.hydrationLogs 
+  })));
+  const crm = useCrmStore(useShallow(s => ({ 
+    contacts: s.contacts 
+  })));
+  const academics = useAcademicStore(useShallow(s => ({
+    subjects: s.subjects,
+    assignments: s.assignments,
+    practicals: s.practicals,
+    revisionLogs: s.revisionLogs,
+    projects: s.projects,
+    skills: s.skills,
+    activeLearning: s.activeLearning,
+    dsaQuestions: s.dsaQuestions,
+    techStack: s.techStack,
+    certifications: s.certifications,
+    portfolio: s.portfolio,
+    codingProgress: s.codingProgress,
+    currentSemester: s.currentSemester,
+    termEndDate: s.termEndDate
+  })));
+  const schedules = useScheduleStore(s => s.schedules);
+  const profile = useProfileStore(s => s.profile);
+  const chats = useChatStore(s => s.chatHistory);
+  const trash = useTrashStore(s => s.trashItems);
+
+  const selfCare = useSelfCareStore(s => s.routines);
+  const communication = useCommunicationStore(s => s.logs);
+  const socialGrowth = useSocialGrowthStore(s => s.records);
+  const publicPersona = usePublicPersonaStore(s => s.platforms);
+  const music = useMusicStore(s => s.practiceLogs);
+  const writing = useWritingStore(s => s.drafts);
+  const reading = useReadingStore(s => s.library);
+  const vault = useVaultStore(s => s.ideas);
+
   switch (moduleId) {
     case 'tasks':
-      return useTaskStore(s => ({ tasks: s.tasks, repetitiveTasks: s.repetitiveTasks, repetitiveHistory: s.repetitiveHistory }));
+      return tasks;
     case 'goals':
-      return useGoalStore(s => s.goals);
+      return goals;
     case 'journal':
-      return useJournalStore(s => ({ entries: s.entries, streak: s.streak }));
+      return journal;
     case 'finance':
-      return useFinanceStore(s => ({ transactions: s.transactions, balanceOverview: s.balanceOverview }));
+      return finance;
     case 'fitness':
-      return useFitnessStore(s => ({ workouts: s.workouts, meals: s.meals, hydrationLogs: s.hydrationLogs }));
+      return fitness;
     case 'crm':
-      return useCrmStore(s => ({ contacts: s.contacts }));
+      return crm;
     case 'academics':
-      return useAcademicStore(s => ({
-        subjects: s.subjects,
-        assignments: s.assignments,
-        practicals: s.practicals,
-        revisionLogs: s.revisionLogs,
-        projects: s.projects,
-        skills: s.skills,
-        activeLearning: s.activeLearning,
-        dsaQuestions: s.dsaQuestions,
-        techStack: s.techStack,
-        certifications: s.certifications,
-        portfolio: s.portfolio,
-        codingProgress: s.codingProgress,
-        currentSemester: s.currentSemester,
-        termEndDate: s.termEndDate
-      }));
+      return academics;
     case 'schedules':
-      return useScheduleStore(s => s.schedules);
+      return schedules;
     case 'profile':
-      return useProfileStore(s => s.profile);
+      return profile;
     case 'chats':
-      return useChatStore(s => s.chatHistory);
+      return chats;
     case 'trash':
-      return useTrashStore(s => s.trashItems);
+      return trash;
     case 'personal':
-      // Personal is more complex as it aggregates multiple stores
-      // But for simple access we can combine them here if needed
       return {
-        selfCare: useSelfCareStore(s => s.routines),
-        communication: useCommunicationStore(s => s.logs),
-        socialGrowth: useSocialGrowthStore(s => s.records),
-        publicPersona: usePublicPersonaStore(s => s.platforms),
-        music: useMusicStore(s => s.practiceLogs),
-        writing: useWritingStore(s => s.drafts),
-        reading: useReadingStore(s => s.library),
-        vault: useVaultStore(s => s.ideas)
+        selfCare,
+        communication,
+        socialGrowth,
+        publicPersona,
+        music,
+        writing,
+        reading,
+        vault
       };
     default:
       return null;

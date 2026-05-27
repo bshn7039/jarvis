@@ -7,7 +7,7 @@ export function getProfileContext() {
   return {
     identity: {
       displayName: profile.identity?.displayName || 'Bhu',
-      location: profile.identity?.location || 'Bengaluru, India',
+      location: profile.identity?.location || 'Panvel, India',
       timezone: profile.identity?.timezone || 'IST'
     },
     physical: {

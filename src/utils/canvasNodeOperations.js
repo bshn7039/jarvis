@@ -148,10 +148,30 @@ async function refreshAllStores() {
   ]);
 }
 
-function removeEntityFromLocalStore(binding, entityId) {
+function getActualStore(bindingStore, fullParts) {
+  if (bindingStore === STORES.TASKS) {
+    if (fullParts.includes('repetitive')) {
+      if (fullParts.includes('active')) return STORES.REPETITIVE_TASKS;
+      if (fullParts.includes('history')) return STORES.REPETITIVE_HISTORY;
+    }
+  }
+  return bindingStore;
+}
+
+function removeEntityFromLocalStore(binding, entityId, fullParts = []) {
   if (!entityId) return;
-  if (binding.rootKey === 'tasks') {
+  const store = getActualStore(binding.store, fullParts);
+  
+  if (store === STORES.TASKS) {
     useTaskStore.setState((state) => ({ tasks: state.tasks.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (store === STORES.REPETITIVE_TASKS) {
+    useTaskStore.setState((state) => ({ repetitiveTasks: state.repetitiveTasks.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (store === STORES.REPETITIVE_HISTORY) {
+    useTaskStore.setState((state) => ({ repetitiveHistory: state.repetitiveHistory.filter((item) => item.id !== entityId) }));
     return;
   }
   if (binding.rootKey === 'goals') {
@@ -238,34 +258,50 @@ export function getNodeSnapshot(combinedState, path) {
   };
 }
 
+async function extractEntityId(storeName, pathSegments) {
+  const allItems = await localDb.getAll(storeName);
+  const allIds = new Set(allItems.map(item => String(item.id)));
+  
+  for (let i = pathSegments.length - 1; i >= 0; i--) {
+    if (allIds.has(pathSegments[i])) {
+      return pathSegments[i];
+    }
+  }
+  return null;
+}
+
 export async function updateNodeAtPath({ path, combinedState, nextValue }) {
   const snapshot = getNodeSnapshot(combinedState, path);
-  if (!snapshot.binding || !snapshot.resolved) return false;
+  if (!snapshot.binding) return false;
 
-  const { binding, resolved } = snapshot;
+  const { binding } = snapshot;
   const rootPathParts = parsePath(binding.rootKey);
   const fullParts = parsePath(path);
   const relativeParts = fullParts.slice(rootPathParts.length);
 
   if (binding.collection) {
-    if (!relativeParts.length) return false;
-    const entityId = relativeParts[0];
-    const record = await localDb.getById(binding.store, entityId);
+    const store = getActualStore(binding.store, fullParts);
+    const entityId = await extractEntityId(store, fullParts);
+    if (!entityId) return false;
+    const record = await localDb.getById(store, entityId);
     if (!record) return false;
 
-    if (relativeParts.length === 1) {
-      await localDb.put(binding.store, { ...record, ...nextValue });
+    const entityIdx = fullParts.indexOf(entityId);
+    const fieldParts = fullParts.slice(entityIdx + 1);
+
+    if (fieldParts.length === 0) {
+      await localDb.put(store, { ...record, ...nextValue });
       await logActivity('entity_updated', binding.entityType, entityId, { path });
       await refreshAllStores();
       return true;
     }
 
     const base = structuredClone(record);
-    const targetPath = relativeParts.slice(1).join('.');
+    const targetPath = fieldParts.join('.');
     const target = resolvePath(base, targetPath);
     if (!target || !target.parent) return false;
     target.parent[target.parentKey] = nextValue;
-    await localDb.put(binding.store, base);
+    await localDb.put(store, base);
     await logActivity('field_updated', binding.entityType, entityId, { path, field: target.parentKey });
     await refreshAllStores();
     return true;
@@ -291,7 +327,7 @@ export async function updateNodeAtPath({ path, combinedState, nextValue }) {
 
 export async function deleteNodeAtPath({ path, combinedState }) {
   const snapshot = getNodeSnapshot(combinedState, path);
-  if (!snapshot.binding || !snapshot.resolved) return false;
+  if (!snapshot.binding) return false;
 
   const { binding } = snapshot;
   const rootPathParts = parsePath(binding.rootKey);
@@ -299,15 +335,23 @@ export async function deleteNodeAtPath({ path, combinedState }) {
   const relativeParts = fullParts.slice(rootPathParts.length);
 
   if (binding.collection) {
-    if (!relativeParts.length) return false;
-    const entityId = relativeParts[0];
-    const record = await localDb.getById(binding.store, entityId);
+    const store = getActualStore(binding.store, fullParts);
+    const entityId = await extractEntityId(store, fullParts);
+    if (!entityId) return false;
+    const record = await localDb.getById(store, entityId);
     if (!record) return false;
 
-    if (relativeParts.length === 1) {
-      removeEntityFromLocalStore(binding, entityId);
-      await localDb.delete(binding.store, entityId);
-      await cleanupEntityReferences(entityId);
+    const entityIdx = fullParts.indexOf(entityId);
+    const fieldParts = fullParts.slice(entityIdx + 1);
+
+    if (fieldParts.length === 0) {
+      removeEntityFromLocalStore(binding, entityId, fullParts);
+      await localDb.delete(store, entityId);
+      try {
+        await cleanupEntityReferences(entityId);
+      } catch (err) {
+        console.warn('[Canvas] Reference cleanup failed:', err);
+      }
       await logActivity('entity_deleted', binding.entityType, entityId, { path });
       await logActivity('relationship_removed', binding.entityType, entityId, { removedId: entityId });
       await refreshAllStores();
@@ -315,7 +359,7 @@ export async function deleteNodeAtPath({ path, combinedState }) {
     }
 
     const base = structuredClone(record);
-    const targetPath = relativeParts.slice(1).join('.');
+    const targetPath = fieldParts.join('.');
     const target = resolvePath(base, targetPath);
     if (!target || !target.parent) return false;
 
@@ -326,7 +370,7 @@ export async function deleteNodeAtPath({ path, combinedState }) {
       target.parent[target.parentKey] = cleanValueBySchema(binding.schemaKey, fieldName);
     }
 
-    await localDb.put(binding.store, base);
+    await localDb.put(store, base);
     await logActivity('field_updated', binding.entityType, entityId, { path, action: 'delete_field' });
     await refreshAllStores();
     return true;

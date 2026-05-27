@@ -24,6 +24,7 @@ import { useEntityStore } from '../store/entityStore';
 import { useTrashStore } from '../store/trashStore';
 import { useAuthStore } from '../store/authStore';
 import { localDb } from '../database/core/localDatabase';
+import { bootstrapDatabase } from '../database/core/bootstrap';
 
 export function useStoreHydration() {
   const isHydrating = useRef(false);
@@ -67,7 +68,7 @@ export function useStoreHydration() {
 
         // Only hydrate data stores if authenticated
         if (isAuthenticated && user?.userId) {
-          localDb.setUserId(user.userId);
+          await bootstrapDatabase(user.userId);
 
           await Promise.all([
             hydrateTasks(),

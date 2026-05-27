@@ -35,12 +35,12 @@ const DraggableModule = memo(function DraggableModule({
       }}
       onDrag={(event, data) => {
         stopPropagation(event);
-        onPositionChange(data.x, data.y);
+        onPositionChange(data.x, data.y, false);
       }}
       onStop={(event, data) => {
         stopPropagation(event);
         onDragStop?.();
-        onPositionChange(data.x, data.y);
+        onPositionChange(data.x, data.y, true);
       }}
     >
       <div

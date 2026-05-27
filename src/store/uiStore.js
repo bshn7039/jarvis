@@ -65,20 +65,26 @@ export const useUiStore = create((set, get) => ({
 
       const profile = settings['user-profile'];
       const prefs = settings['user-preferences'];
+      const treeCheckedState = settings['canvas-tree-checked'];
 
       // Map canvas registry back to modules state
-      const modules = get().modules;
+      const modules = { ...get().modules };
       if (canvasRegistry.length > 0) {
         canvasRegistry.forEach(m => {
           if (modules[m.id]) {
             modules[m.id] = {
               ...modules[m.id],
-              position: m.position || modules[m.id].position,
+              position: m.position ? { ...m.position } : modules[m.id].position,
               visible: typeof m.visible === 'boolean' ? m.visible : modules[m.id].visible,
             };
           }
         });
       }
+
+      const defaultTreeChecked = {};
+      Object.keys(modules).forEach(moduleId => {
+        defaultTreeChecked[moduleId] = modules[moduleId].visible;
+      });
 
       set({
         ui: {
@@ -89,6 +95,10 @@ export const useUiStore = create((set, get) => ({
           canvasPositionY: prefs?.canvasPositionY ?? 0,
         },
         modules,
+        explorerExpansion: prefs?.explorerExpansion || {},
+        canvasExpansion: prefs?.canvasExpansion || {},
+        moduleFieldExpanded: prefs?.moduleFieldExpanded || buildDefaultModuleFieldExpanded(initialModules),
+        treeChecked: treeCheckedState?.treeChecked || defaultTreeChecked,
         commandCenter: commandState ? { ...get().commandCenter, ...commandState } : get().commandCenter,
         isHydrated: true,
       });
@@ -97,13 +107,21 @@ export const useUiStore = create((set, get) => ({
     }
   },
 
+  saveTreeChecked: async () => {
+    const { treeChecked } = get();
+    await uiService.saveSetting('canvas-tree-checked', { treeChecked });
+  },
+
   savePrefs: async () => {
-    const { ui } = get();
+    const { ui, explorerExpansion, canvasExpansion, moduleFieldExpanded } = get();
     await uiService.saveSetting('user-preferences', {
       sidebarCollapsed: ui.sidebarCollapsed,
       canvasZoom: ui.canvasZoom,
       canvasPositionX: ui.canvasPositionX,
       canvasPositionY: ui.canvasPositionY,
+      explorerExpansion,
+      canvasExpansion,
+      moduleFieldExpanded,
     });
   },
 
@@ -145,7 +163,7 @@ export const useUiStore = create((set, get) => ({
     get().savePrefs();
   },
 
-  updateModulePosition: async (moduleId, x, y) => {
+  updateModulePosition: async (moduleId, x, y, persist = true) => {
     set((state) => ({
       modules: {
         ...state.modules,
@@ -156,13 +174,14 @@ export const useUiStore = create((set, get) => ({
       },
     }));
     
-    // Persist to IDB
-    const moduleState = get().modules[moduleId];
-    await uiService.saveCanvasModule({
-      id: moduleId,
-      position: { x, y },
-      visible: moduleState.visible
-    });
+    if (persist) {
+      const moduleState = get().modules[moduleId];
+      await uiService.saveCanvasModule({
+        id: moduleId,
+        position: { x, y },
+        visible: moduleState.visible
+      });
+    }
   },
 
   setModuleCollapsed: (moduleId, collapsed) =>
@@ -202,6 +221,8 @@ export const useUiStore = create((set, get) => ({
       position: moduleState.position,
       visible: Boolean(visible)
     });
+
+    await get().saveTreeChecked();
   },
 
   toggleModuleVisibility: (moduleId) => {
@@ -232,35 +253,43 @@ export const useUiStore = create((set, get) => ({
 
     if (initialModules.some(m => m.id === path)) {
       get().setModuleVisibility(path, next);
+    } else {
+      get().saveTreeChecked();
     }
   },
 
-  toggleExplorerExpand: (path) =>
+  toggleExplorerExpand: (path) => {
     set((state) => ({
       explorerExpansion: {
         ...state.explorerExpansion,
         [path]: !state.explorerExpansion[path],
       },
-    })),
+    }));
+    get().savePrefs();
+  },
 
-  toggleCanvasExpand: (path) =>
+  toggleCanvasExpand: (path) => {
     set((state) => ({
       canvasExpansion: {
         ...state.canvasExpansion,
         [path]: !state.canvasExpansion[path],
       },
-    })),
+    }));
+    get().savePrefs();
+  },
 
   setActiveDetailPath: (path) => set({ activeDetailPath: path }),
   clearActiveDetailPath: () => set({ activeDetailPath: null }),
 
-  setModuleFieldExpanded: (moduleId, nodeId, expanded) =>
+  setModuleFieldExpanded: (moduleId, nodeId, expanded) => {
     set((state) => ({
       moduleFieldExpanded: {
         ...state.moduleFieldExpanded,
         [`${moduleId}:${nodeId}`]: Boolean(expanded),
       },
-    })),
+    }));
+    get().savePrefs();
+  },
 
   toggleModuleFieldExpanded: (moduleId, nodeId) => {
     const key = `${moduleId}:${nodeId}`;

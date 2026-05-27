@@ -123,7 +123,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
   const closeNodeAction = useCallback(() => setNodeActionState(null), []);
 
   const handleVisibilityToggle = useCallback((id) => toggleModuleVisibility(id), [toggleModuleVisibility]);
-  const handlePositionChange = useCallback((id, x, y) => updateModulePosition(id, x, y), [updateModulePosition]);
+  const handlePositionChange = useCallback((id, x, y, persist) => updateModulePosition(id, x, y, persist), [updateModulePosition]);
   const handleDragStart = useCallback(() => setIsDraggingModule(true), []);
   const handleDragStop = useCallback(() => setIsDraggingModule(false), []);
 

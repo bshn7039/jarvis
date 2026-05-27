@@ -9,7 +9,7 @@ export default function ProgressCard({ item }) {
         <div>
           <h3 className="text-sm text-jarvis-text">{item.label}</h3>
           <p className="mt-1 text-lg font-medium text-jarvis-text">{item.value}</p>
-          <p className="mt-0.5 text-xs text-jarvis-muted">Target: {item.target}</p>
+          {item.target && <p className="mt-0.5 text-xs text-jarvis-muted">Target: {item.target}</p>}
         </div>
         <div className="relative h-16 w-16 shrink-0">
           <svg className="h-16 w-16 -rotate-90" viewBox="0 0 64 64">
