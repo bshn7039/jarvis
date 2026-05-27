@@ -1,5 +1,13 @@
 import { useMemo } from 'react';
-import { usePersonalStore } from '../store/personalStore';
+import { useSelfCareStore } from '../store/selfCareStore';
+import { useCommunicationStore } from '../store/communicationStore';
+import { useSocialGrowthStore } from '../store/socialGrowthStore';
+import { usePublicPersonaStore } from '../store/publicPersonaStore';
+import { useMusicStore } from '../store/musicStore';
+import { useWritingStore } from '../store/writingStore';
+import { useReadingStore } from '../store/readingStore';
+import { useVaultStore } from '../store/vaultStore';
+import { useCrmStore } from '../store/crmStore';
 import { useEntityStore } from '../store/entityStore';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import EntityModal from '../components/modals/EntityModal';
@@ -18,7 +26,12 @@ import {
   Trash2,
   Edit2,
   CheckCircle2,
-  Circle
+  Circle,
+  TrendingUp,
+  ExternalLink,
+  MessageSquare,
+  Clock,
+  Star
 } from 'lucide-react';
 
 function SectionHeader({ title, icon: Icon, onAdd }) {
@@ -40,7 +53,7 @@ function SectionHeader({ title, icon: Icon, onAdd }) {
   );
 }
 
-function ItemCard({ item, onEdit, onDelete, onToggle, children }) {
+function ItemCard({ item, onEdit, onDelete, onToggle, children, icon: Icon }) {
   return (
     <div className="group relative rounded-xl border border-jarvis-border bg-black/20 p-4 transition hover:border-jarvis-muted/40">
       <div className="flex items-start justify-between gap-4">
@@ -48,14 +61,15 @@ function ItemCard({ item, onEdit, onDelete, onToggle, children }) {
           <div className="flex items-center gap-2">
             {onToggle && (
               <button onClick={() => onToggle(item.id)} className="shrink-0 text-jarvis-muted hover:text-jarvis-accent transition">
-                {item.status === 'completed' ? <CheckCircle2 className="h-4 w-4 text-jarvis-accent" /> : <Circle className="h-4 w-4" />}
+                {item.completed ? <CheckCircle2 className="h-4 w-4 text-jarvis-accent" /> : <Circle className="h-4 w-4" />}
               </button>
             )}
+            {Icon && <Icon className="h-3.5 w-3.5 text-jarvis-muted/60" />}
             <h4 className="truncate text-sm font-medium text-jarvis-text">
-              {item.title || item.name || item.platform || 'Untitled'}
+              {item.title || item.platform || item.username || 'Untitled'}
             </h4>
           </div>
-          {item.description && <p className="mt-1 text-xs text-jarvis-muted line-clamp-2">{item.description}</p>}
+          {item.notes && <p className="mt-1 text-xs text-jarvis-muted line-clamp-2">{item.notes}</p>}
           {item.content && <p className="mt-1 text-xs text-jarvis-muted line-clamp-2 italic">"{item.content}"</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
@@ -74,9 +88,14 @@ function ItemCard({ item, onEdit, onDelete, onToggle, children }) {
             {tag}
           </span>
         ))}
-        {item.subType && (
+        {item.category && (
           <span className="rounded border border-jarvis-border px-1.5 py-0.5 text-[10px] text-jarvis-muted uppercase tracking-wider">
-            {item.subType}
+            {item.category}
+          </span>
+        )}
+        {item.type && !item.category && (
+          <span className="rounded border border-jarvis-border px-1.5 py-0.5 text-[10px] text-jarvis-muted uppercase tracking-wider">
+            {item.type}
           </span>
         )}
       </div>
@@ -85,20 +104,15 @@ function ItemCard({ item, onEdit, onDelete, onToggle, children }) {
 }
 
 export default function Personal() {
-  const {
-    selfCare,
-    communication,
-    socialGrowth,
-    publicPersona,
-    music,
-    writing,
-    reading,
-    vault,
-    addItem,
-    updateItem,
-    deleteItem,
-    toggleStatus
-  } = usePersonalStore();
+  const selfCareStore = useSelfCareStore();
+  const communicationStore = useCommunicationStore();
+  const socialGrowthStore = useSocialGrowthStore();
+  const publicPersonaStore = usePublicPersonaStore();
+  const musicStore = useMusicStore();
+  const writingStore = useWritingStore();
+  const readingStore = useReadingStore();
+  const vaultStore = useVaultStore();
+  const crmStore = useCrmStore();
 
   const {
     isModalOpen,
@@ -110,24 +124,53 @@ export default function Personal() {
     closeModal
   } = useEntityStore();
 
+  const storeMap = {
+    selfCare: selfCareStore,
+    communication: communicationStore,
+    socialGrowth: socialGrowthStore,
+    publicPersona: publicPersonaStore,
+    music: musicStore,
+    writing: writingStore,
+    reading: readingStore,
+    vault: vaultStore
+  };
+
   const handleAdd = (type) => openCreateModal(type);
   const handleEdit = (type, item) => openEditModal(type, item.id);
   
   const handleSubmit = async (data) => {
+    const store = storeMap[activeType];
+    if (!store) return;
+
     if (draftMode === 'create') {
-      await addItem(activeType, data);
+      await store.addItem(data);
     } else {
-      await updateItem(activeType, selectedId, data);
+      await store.updateItem(selectedId, data);
     }
     closeModal();
   };
 
   const selectedItem = useMemo(() => {
     if (!selectedId || !activeType) return null;
-    return (usePersonalStore.getState()[activeType] || []).find(i => i.id === selectedId);
-  }, [selectedId, activeType]);
+    const store = storeMap[activeType];
+    if (!store) return null;
+    
+    // Some stores use 'routines', 'logs', 'records', etc.
+    const items = store.routines || store.logs || store.records || store.platforms || store.practiceLogs || store.drafts || store.library || store.ideas || [];
+    return items.find(i => i.id === selectedId);
+  }, [selectedId, activeType, selfCareStore.routines, communicationStore.logs, socialGrowthStore.records, publicPersonaStore.platforms, musicStore.practiceLogs, writingStore.drafts, readingStore.library, vaultStore.ideas]);
 
-  const personalTypes = ['selfCare', 'communication', 'socialGrowth', 'publicPersona', 'music', 'writing', 'reading', 'vault'];
+  const personalTypes = Object.keys(storeMap);
+
+  const insights = useMemo(() => {
+    const streaks = selfCareStore.getStreaks();
+    const commStats = communicationStore.getWeeklyStats();
+    const activeBooks = readingStore.library.filter(b => b.status === 'reading').length;
+    const totalIdeas = vaultStore.ideas.length;
+    const recentSocial = socialGrowthStore.records.slice(0, 5);
+
+    return { streaks, commStats, activeBooks, totalIdeas, recentSocial };
+  }, [selfCareStore.routines, communicationStore.logs, readingStore.library, vaultStore.ideas, socialGrowthStore.records]);
 
   return (
     <ModulePageLayout
@@ -140,17 +183,23 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Self Care" icon={Heart} onAdd={() => handleAdd('selfCare')} />
           <div className="grid gap-3">
-            {selfCare.length === 0 && <p className="text-xs text-jarvis-muted italic">No routines established.</p>}
-            {selfCare.map(item => (
+            {selfCareStore.routines.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No routines established.</p>
+            )}
+            {selfCareStore.routines.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('selfCare', item)} 
-                onDelete={() => deleteItem('selfCare', item.id)}
-                onToggle={() => toggleStatus('selfCare', item.id)}
+                onDelete={() => selfCareStore.deleteItem(item.id)}
+                onToggle={() => selfCareStore.toggleComplete(item.id)}
               >
-                <div className="mt-2 text-[10px] text-jarvis-muted uppercase tracking-wider">
-                  {item.frequency}
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-[10px] text-jarvis-muted uppercase tracking-wider">{item.routineType}</span>
+                  <div className="flex items-center gap-1 text-[10px] font-bold text-jarvis-accent">
+                    <TrendingUp className="h-3 w-3" />
+                    {item.streak || 0} DAY STREAK
+                  </div>
                 </div>
               </ItemCard>
             ))}
@@ -161,20 +210,24 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Communication & Voice" icon={Mic2} onAdd={() => handleAdd('communication')} />
           <div className="grid gap-3">
-            {communication.length === 0 && <p className="text-xs text-jarvis-muted italic">No practice logs found.</p>}
-            {communication.map(item => (
+            {communicationStore.logs.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No practice logs found.</p>
+            )}
+            {communicationStore.logs.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('communication', item)} 
-                onDelete={() => deleteItem('communication', item.id)}
+                onDelete={() => communicationStore.deleteItem(item.id)}
               >
                  <div className="mt-2 flex items-center gap-3 text-[10px] text-jarvis-muted uppercase tracking-wider">
+                  <Clock className="h-3 w-3" />
                   <span>{item.duration}</span>
                   <span className="h-1 w-1 rounded-full bg-jarvis-border" />
-                  <span>{item.difficulty}</span>
-                  <span className="h-1 w-1 rounded-full bg-jarvis-border" />
-                  <span className="text-jarvis-accent">{item.progress}%</span>
+                  <div className="flex items-center gap-0.5">
+                    <Star className="h-2.5 w-2.5 fill-jarvis-accent text-jarvis-accent" />
+                    <span>{item.rating}/5</span>
+                  </div>
                 </div>
               </ItemCard>
             ))}
@@ -185,19 +238,32 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Social Growth" icon={Users} onAdd={() => handleAdd('socialGrowth')} />
           <div className="grid gap-3">
-            {socialGrowth.length === 0 && <p className="text-xs text-jarvis-muted italic">No growth records.</p>}
-            {socialGrowth.map(item => (
-              <ItemCard 
-                key={item.id} 
-                item={item} 
-                onEdit={() => handleEdit('socialGrowth', item)} 
-                onDelete={() => deleteItem('socialGrowth', item.id)}
-              >
-                <div className="mt-2 text-[10px] text-jarvis-muted uppercase tracking-wider">
-                  Confidence: <span className="text-jarvis-text">{item.confidenceRating}/10</span>
-                </div>
-              </ItemCard>
-            ))}
+            {socialGrowthStore.records.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No growth records.</p>
+            )}
+            {socialGrowthStore.records.map(item => {
+              const contact = crmStore.contacts.find(c => c.id === item.linkedContactId);
+              return (
+                <ItemCard 
+                  key={item.id} 
+                  item={item} 
+                  onEdit={() => handleEdit('socialGrowth', item)} 
+                  onDelete={() => socialGrowthStore.deleteItem(item.id)}
+                >
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {contact && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-jarvis-accent font-medium">
+                        <Users className="h-3 w-3" />
+                        <span>WITH {contact.name.toUpperCase()}</span>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-jarvis-muted uppercase tracking-wider">
+                      Confidence: <span className="text-jarvis-text font-bold">{item.confidenceLevel}/10</span>
+                    </div>
+                  </div>
+                </ItemCard>
+              );
+            })}
           </div>
         </section>
 
@@ -205,17 +271,20 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Public Persona" icon={Globe} onAdd={() => handleAdd('publicPersona')} />
           <div className="grid gap-3">
-            {publicPersona.length === 0 && <p className="text-xs text-jarvis-muted italic">No platform presence tracked.</p>}
-            {publicPersona.map(item => (
+            {publicPersonaStore.platforms.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No platform presence tracked.</p>
+            )}
+            {publicPersonaStore.platforms.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('publicPersona', item)} 
-                onDelete={() => deleteItem('publicPersona', item.id)}
+                onDelete={() => publicPersonaStore.deleteItem(item.id)}
+                icon={ExternalLink}
               >
                 <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-wider">
-                  <span className="text-jarvis-muted">{item.objective}</span>
-                  <span className="text-jarvis-accent font-bold">{item.status}</span>
+                  <span className="text-jarvis-muted font-medium">{item.platform}</span>
+                  <span className="text-jarvis-accent font-bold">@{item.username}</span>
                 </div>
               </ItemCard>
             ))}
@@ -226,17 +295,21 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Singing & Music" icon={Music} onAdd={() => handleAdd('music')} />
           <div className="grid gap-3">
-            {music.length === 0 && <p className="text-xs text-jarvis-muted italic">No music logs.</p>}
-            {music.map(item => (
+            {musicStore.practiceLogs.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No music logs.</p>
+            )}
+            {musicStore.practiceLogs.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('music', item)} 
-                onDelete={() => deleteItem('music', item.id)}
+                onDelete={() => musicStore.deleteItem(item.id)}
               >
                 <div className="mt-2 flex items-center gap-3 text-[10px] text-jarvis-muted uppercase tracking-wider">
+                  <Clock className="h-3 w-3" />
                   <span>{item.duration}</span>
-                  <span className="text-jarvis-accent">{item.progress}%</span>
+                  <span className="h-1 w-1 rounded-full bg-jarvis-border" />
+                  <span className="text-jarvis-accent">{item.skillFocus}</span>
                 </div>
               </ItemCard>
             ))}
@@ -247,15 +320,20 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Writing & Creativity" icon={PenTool} onAdd={() => handleAdd('writing')} />
           <div className="grid gap-3">
-            {writing.length === 0 && <p className="text-xs text-jarvis-muted italic">No creative drafts.</p>}
-            {writing.map(item => (
+            {writingStore.drafts.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No creative drafts.</p>
+            )}
+            {writingStore.drafts.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('writing', item)} 
-                onDelete={() => deleteItem('writing', item.id)}
+                onDelete={() => writingStore.deleteItem(item.id)}
               >
-                {item.mood && <div className="mt-2 text-[10px] text-jarvis-muted uppercase tracking-wider italic">Mood: {item.mood}</div>}
+                <div className="mt-2 flex items-center justify-between text-[10px] text-jarvis-muted uppercase tracking-wider italic">
+                  <span>{item.type}</span>
+                  {item.mood && <span>MOOD: {item.mood}</span>}
+                </div>
               </ItemCard>
             ))}
           </div>
@@ -265,18 +343,26 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Reading & Learning" icon={BookOpen} onAdd={() => handleAdd('reading')} />
           <div className="grid gap-3">
-            {reading.length === 0 && <p className="text-xs text-jarvis-muted italic">No books in library.</p>}
-            {reading.map(item => (
+            {readingStore.library.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">No resources in library.</p>
+            )}
+            {readingStore.library.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('reading', item)} 
-                onDelete={() => deleteItem('reading', item.id)}
+                onDelete={() => readingStore.deleteItem(item.id)}
               >
                 <div className="mt-1 text-[11px] text-jarvis-muted italic">by {item.author}</div>
-                <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-wider">
-                  <span className="text-jarvis-muted">{item.status}</span>
-                  <span className="text-jarvis-accent">{item.progress}%</span>
+                <div className="mt-3 overflow-hidden rounded-full bg-jarvis-border/30 h-1">
+                  <div 
+                    className="bg-jarvis-accent h-full transition-all duration-500" 
+                    style={{ width: `${item.progress || 0}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-wider font-bold">
+                  <span className={item.status === 'reading' ? 'text-jarvis-accent' : 'text-jarvis-muted'}>{item.status}</span>
+                  <span className="text-jarvis-text">{item.progress || 0}%</span>
                 </div>
               </ItemCard>
             ))}
@@ -287,18 +373,19 @@ export default function Personal() {
         <section className="space-y-4">
           <SectionHeader title="Creative Vault" icon={Lock} onAdd={() => handleAdd('vault')} />
           <div className="grid gap-3">
-            {vault.length === 0 && <p className="text-xs text-jarvis-muted italic">Vault is empty.</p>}
-            {vault.map(item => (
+            {vaultStore.ideas.length === 0 && (
+              <p className="text-xs text-jarvis-muted italic">Vault is empty.</p>
+            )}
+            {vaultStore.ideas.map(item => (
               <ItemCard 
                 key={item.id} 
                 item={item} 
                 onEdit={() => handleEdit('vault', item)} 
-                onDelete={() => deleteItem('vault', item.id)}
+                onDelete={() => vaultStore.deleteItem(item.id)}
               >
-                <div className="mt-2 text-[10px] uppercase tracking-wider">
-                  <span className={item.priority === 'high' ? 'text-red-400' : 'text-jarvis-muted'}>
-                    {item.priority} priority
-                  </span>
+                <div className="mt-2 flex items-center justify-between text-[10px] uppercase tracking-wider">
+                  <span className="text-jarvis-muted">TYPE: {item.type || 'RAW'}</span>
+                  {item.pinned && <span className="text-jarvis-accent font-bold">PINNED</span>}
                 </div>
               </ItemCard>
             ))}
@@ -308,11 +395,81 @@ export default function Personal() {
         {/* 9. PERSONAL INSIGHTS */}
         <section className="space-y-4">
           <SectionHeader title="Personal Insights" icon={Sparkles} />
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-jarvis-border bg-black/10 p-8 text-center">
-            <Sparkles className="mb-3 h-6 w-6 text-jarvis-muted" />
-            <p className="text-xs text-jarvis-muted leading-relaxed">
-              AI personal insights will appear here once enough operational data exists.
-            </p>
+          <div className="rounded-xl border border-jarvis-border bg-black/20 p-6 space-y-6">
+            
+            {insights.streaks.length === 0 && insights.commStats.count === 0 && insights.recentSocial.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <Sparkles className="mb-3 h-6 w-6 text-jarvis-muted/40" />
+                <p className="text-[10px] text-jarvis-muted uppercase tracking-[0.2em]">
+                  Awaiting operational data for insights...
+                </p>
+              </div>
+            )}
+
+            {insights.streaks.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] font-bold text-jarvis-muted uppercase tracking-widest flex items-center gap-2">
+                  <TrendingUp className="h-3 w-3" />
+                  Self-Care Streaks
+                </h4>
+                <div className="space-y-2">
+                  {insights.streaks.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between rounded bg-white/5 p-2 border border-jarvis-border/50">
+                      <span className="text-xs text-jarvis-text font-medium">{s.title}</span>
+                      <span className="text-xs font-bold text-jarvis-accent">{s.streak}d</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {insights.commStats.count > 0 && (
+              <div className="space-y-3 pt-2 border-t border-jarvis-border/30">
+                <h4 className="text-[10px] font-bold text-jarvis-muted uppercase tracking-widest flex items-center gap-2">
+                  <MessageSquare className="h-3 w-3" />
+                  Communication (Weekly)
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded bg-white/5 p-2 border border-jarvis-border/50">
+                    <div className="text-[10px] text-jarvis-muted uppercase">Sessions</div>
+                    <div className="text-sm font-bold text-jarvis-text">{insights.commStats.count}</div>
+                  </div>
+                  <div className="rounded bg-white/5 p-2 border border-jarvis-border/50">
+                    <div className="text-[10px] text-jarvis-muted uppercase">Avg Rating</div>
+                    <div className="text-sm font-bold text-jarvis-accent">{insights.commStats.averageRating}/5</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {insights.recentSocial.length > 0 && (
+              <div className="space-y-3 pt-2 border-t border-jarvis-border/30">
+                <h4 className="text-[10px] font-bold text-jarvis-muted uppercase tracking-widest flex items-center gap-2">
+                  <Users className="h-3 w-3" />
+                  Recent Social Growth
+                </h4>
+                <div className="space-y-2">
+                  {insights.recentSocial.map((r, i) => (
+                    <div key={i} className="text-[10px] flex justify-between border-b border-jarvis-border/20 pb-1">
+                      <span className="text-jarvis-muted truncate w-32">{r.title}</span>
+                      <span className="text-jarvis-accent font-bold">+{r.confidenceLevel} CONF</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 flex justify-between items-center text-[10px] text-jarvis-muted uppercase font-bold border-t border-jarvis-border/30">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-3 w-3" />
+                <span>Reading: {insights.activeBooks} active</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-3 w-3" />
+                <span>Vault: {insights.totalIdeas} ideas</span>
+              </div>
+            </div>
+
           </div>
         </section>
 
@@ -321,7 +478,7 @@ export default function Personal() {
       <EntityModal
         isOpen={isModalOpen && personalTypes.includes(activeType)}
         onClose={closeModal}
-        title={`${draftMode === 'create' ? 'Add' : 'Edit'} ${activeType}`}
+        title={`${draftMode === 'create' ? 'Add' : 'Edit'} ${activeType ? activeType.replace(/([A-Z])/g, ' $1').trim() : ''}`}
       >
         <EntityForm
           initialData={selectedItem}

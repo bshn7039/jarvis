@@ -7,7 +7,10 @@ import { useAcademicStore } from '../../store/academicStore';
 import { useCrmStore } from '../../store/crmStore';
 import { useJournalStore } from '../../store/journalStore';
 import { useChatStore } from '../../store/chatStore';
-import { usePersonalStore } from '../../store/personalStore';
+import { useSelfCareStore } from '../../store/selfCareStore';
+import { useReadingStore } from '../../store/readingStore';
+import { useMusicStore } from '../../store/musicStore';
+import { useVaultStore } from '../../store/vaultStore';
 
 function Stat({ label, value }) {
   return (
@@ -213,10 +216,14 @@ function ChatsPreview() {
 }
 
 function PersonalPreview() {
-  const { selfCare, reading, music, vault } = usePersonalStore();
-  const activeReading = reading.filter((b) => b.status === 'Reading').length;
+  const selfCare = useSelfCareStore((s) => s.routines);
+  const reading = useReadingStore((s) => s.library);
+  const music = useMusicStore((s) => s.practiceLogs);
+  const vault = useVaultStore((s) => s.ideas);
+  
+  const activeReading = reading.filter((b) => b.status === 'reading').length;
   const vaultIdeas = vault.length;
-  const selfCarePending = selfCare.filter((s) => s.status !== 'completed').length;
+  const selfCarePending = selfCare.filter((s) => !s.completed).length;
   const musicLogs = music.length;
 
   return (

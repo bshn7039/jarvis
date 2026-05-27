@@ -135,32 +135,33 @@ function setNestedValue(obj, path, value) {
   return { ...obj };
 }
 
-function normalizeFormState(type, data = {}) {
+function normalizeFormState(type, data) {
+  const safeData = data || {};
   const defaults = defaultValues[type] || {};
   const normalized = {
     ...defaults,
-    ...data,
+    ...safeData,
   };
 
   // Type specific normalizations
   if (type === 'task') {
-    normalized.progress = Number(data.progress ?? defaults.progress);
-    normalized.subTags = Array.isArray(data.subTags) ? data.subTags : [];
-    normalized.dueDate = data.dueDate ? String(data.dueDate).slice(0, 10) : '';
+    normalized.progress = Number(safeData.progress ?? defaults.progress);
+    normalized.subTags = Array.isArray(safeData.subTags) ? safeData.subTags : [];
+    normalized.dueDate = safeData.dueDate ? String(safeData.dueDate).slice(0, 10) : '';
   }
   
   if (type === 'crm') {
-    normalized.socialLinks = Array.isArray(data.socialLinks) ? data.socialLinks : [];
-    normalized.tags = Array.isArray(data.tags) ? data.tags : [];
-    normalized.birthday = data.birthday ? String(data.birthday).slice(0, 10) : '';
-    normalized.lastInteraction = data.lastInteraction ? String(data.lastInteraction).slice(0, 10) : '';
+    normalized.socialLinks = Array.isArray(safeData.socialLinks) ? safeData.socialLinks : [];
+    normalized.tags = Array.isArray(safeData.tags) ? safeData.tags : [];
+    normalized.birthday = safeData.birthday ? String(safeData.birthday).slice(0, 10) : '';
+    normalized.lastInteraction = safeData.lastInteraction ? String(safeData.lastInteraction).slice(0, 10) : '';
   }
 
   // Common relationship normalization
-  normalized.linkedGoalIds = Array.from(new Set(data.linkedGoalIds || []));
-  normalized.linkedAcademicIds = Array.from(new Set(data.linkedAcademicIds || data.linkedSubjectIds || []));
-  normalized.linkedScheduleIds = Array.from(new Set(data.linkedScheduleIds || []));
-  normalized.linkedJournalIds = Array.from(new Set(data.linkedJournalIds || []));
+  normalized.linkedGoalIds = Array.from(new Set(safeData.linkedGoalIds || []));
+  normalized.linkedAcademicIds = Array.from(new Set(safeData.linkedAcademicIds || safeData.linkedSubjectIds || []));
+  normalized.linkedScheduleIds = Array.from(new Set(safeData.linkedScheduleIds || []));
+  normalized.linkedJournalIds = Array.from(new Set(safeData.linkedJournalIds || []));
 
   return normalized;
 }

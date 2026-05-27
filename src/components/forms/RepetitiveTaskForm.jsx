@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useGoalStore } from '../../store/goalStore';
 
-export default function RepetitiveTaskForm({ initialData = {}, onSubmit, onCancel, isSubmitting }) {
+export default function RepetitiveTaskForm({ initialData, onSubmit, onCancel, isSubmitting }) {
+  const safeData = initialData || {};
   const [formData, setFormData] = useState({
-    title: initialData.title || '',
-    description: initialData.description || '',
-    priority: initialData.priority || 'medium',
-    category: initialData.category || 'Routine',
-    tags: (initialData.tags || []).join(', '),
-    subTags: (initialData.subTags || []).join(', '),
-    linkedGoalIds: initialData.linkedGoalIds || [],
-    notes: initialData.notes || '',
+    title: safeData.title || '',
+    description: safeData.description || '',
+    priority: safeData.priority || 'medium',
+    category: safeData.category || 'Routine',
+    tags: (safeData.tags || []).join(', '),
+    subTags: (safeData.subTags || []).join(', '),
+    linkedGoalIds: safeData.linkedGoalIds || [],
+    notes: safeData.notes || '',
   });
 
   const goals = useGoalStore(s => s.goals);

@@ -11,6 +11,14 @@ import { useAcademicStore } from '../store/academicStore';
 import { useScheduleStore } from '../store/scheduleStore';
 import { useChatStore } from '../store/chatStore';
 import { useProfileStore } from '../store/profileStore';
+import { useSelfCareStore } from '../store/selfCareStore';
+import { useCommunicationStore } from '../store/communicationStore';
+import { useSocialGrowthStore } from '../store/socialGrowthStore';
+import { usePublicPersonaStore } from '../store/publicPersonaStore';
+import { useMusicStore } from '../store/musicStore';
+import { useWritingStore } from '../store/writingStore';
+import { useReadingStore } from '../store/readingStore';
+import { useVaultStore } from '../store/vaultStore';
 
 const MODULE_BINDINGS = {
   tasks: { store: STORES.TASKS, schemaKey: 'tasks', entityType: 'task', collection: true },
@@ -25,6 +33,14 @@ const MODULE_BINDINGS = {
   schedules: { store: STORES.SCHEDULES, schemaKey: 'schedules', entityType: 'schedule', collection: true },
   chats: { store: STORES.CHATS, schemaKey: 'chats', entityType: 'chat', collection: true },
   profile: { store: STORES.PROFILE, schemaKey: 'profile', entityType: 'profile', collection: false, fixedId: 'root-profile' },
+  'personal.selfCare': { store: STORES.PERSONAL_SELF_CARE, schemaKey: 'personalSelfCare', entityType: 'self_care', collection: true },
+  'personal.communication': { store: STORES.PERSONAL_COMMUNICATION, schemaKey: 'personalCommunication', entityType: 'communication', collection: true },
+  'personal.socialGrowth': { store: STORES.PERSONAL_SOCIAL_GROWTH, schemaKey: 'personalSocialGrowth', entityType: 'social_growth', collection: true },
+  'personal.publicPersona': { store: STORES.PERSONAL_PUBLIC_PERSONA, schemaKey: 'personalPublicPersona', entityType: 'public_persona', collection: true },
+  'personal.music': { store: STORES.PERSONAL_MUSIC, schemaKey: 'personalMusic', entityType: 'music_log', collection: true },
+  'personal.writing': { store: STORES.PERSONAL_WRITING, schemaKey: 'personalWriting', entityType: 'writing_draft', collection: true },
+  'personal.reading': { store: STORES.PERSONAL_READING, schemaKey: 'personalReading', entityType: 'reading_item', collection: true },
+  'personal.vault': { store: STORES.PERSONAL_VAULT, schemaKey: 'personalVault', entityType: 'vault_idea', collection: true },
 };
 
 function parsePath(path) {
@@ -120,6 +136,14 @@ async function refreshAllStores() {
     useScheduleStore.getState().hydrate(),
     useChatStore.getState().hydrate(),
     useProfileStore.getState().hydrate(),
+    useSelfCareStore.getState().hydrate(),
+    useCommunicationStore.getState().hydrate(),
+    useSocialGrowthStore.getState().hydrate(),
+    usePublicPersonaStore.getState().hydrate(),
+    useMusicStore.getState().hydrate(),
+    useWritingStore.getState().hydrate(),
+    useReadingStore.getState().hydrate(),
+    useVaultStore.getState().hydrate(),
   ]);
 }
 
@@ -167,6 +191,38 @@ function removeEntityFromLocalStore(binding, entityId) {
   }
   if (binding.rootKey === 'chats') {
     useChatStore.setState((state) => ({ chatHistory: state.chatHistory.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.selfCare') {
+    useSelfCareStore.setState((state) => ({ routines: state.routines.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.communication') {
+    useCommunicationStore.setState((state) => ({ logs: state.logs.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.socialGrowth') {
+    useSocialGrowthStore.setState((state) => ({ records: state.records.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.publicPersona') {
+    usePublicPersonaStore.setState((state) => ({ platforms: state.platforms.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.music') {
+    useMusicStore.setState((state) => ({ practiceLogs: state.practiceLogs.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.writing') {
+    useWritingStore.setState((state) => ({ drafts: state.drafts.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.reading') {
+    useReadingStore.setState((state) => ({ library: state.library.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'personal.vault') {
+    useVaultStore.setState((state) => ({ ideas: state.ideas.filter((item) => item.id !== entityId) }));
   }
 }
 

@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
 import AmbientBackground from '../components/landing/AmbientBackground';
+import { useAuthStore } from '../store/authStore';
 import { bootstrapDatabase } from '../database/core/bootstrap';
 
-export default function Login() {
+export default function Register() {
   const navigate = useNavigate();
-  const { isAuthenticated, login, init } = useAuthStore();
-  
-  const [identifier, setIdentifier] = useState('');
+  const { isAuthenticated, register, init } = useAuthStore();
+
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -27,19 +28,27 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (!username.trim() || !email.trim() || !password || !confirmPassword) {
+      setError('All fields are required');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const success = await login(identifier.trim(), password, rememberMe);
-      if (success) {
-        const authUser = useAuthStore.getState().user;
-        await bootstrapDatabase(authUser.userId);
+      const user = await register(username.trim(), email.trim(), password);
+      if (user?.userId) {
+        await bootstrapDatabase(user.userId);
         navigate('/home');
-      } else {
-        setError('Invalid credentials');
       }
     } catch (err) {
-      setError(err.message || 'An error occurred during authentication');
+      setError(err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -48,28 +57,43 @@ export default function Login() {
   return (
     <div className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-jarvis-bg px-6">
       <AmbientBackground />
-      
+
       <div className="relative z-10 w-full max-w-sm rounded-lg border border-jarvis-border bg-black/40 p-8 backdrop-blur-xl">
         <h2 className="mb-6 text-center text-2xl font-semibold tracking-widest text-jarvis-text">
-          IDENTIFY
+          INITIALIZE IDENTITY
         </h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-6">
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs uppercase tracking-widest text-jarvis-muted mb-2">
-              Username or Email
+              Username
             </label>
             <input
               type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-white/[0.03] border border-jarvis-border rounded px-4 py-2 text-jarvis-text focus:outline-none focus:border-jarvis-accent/50 transition-colors"
               required
             />
           </div>
-          
+
           <div>
-            <label className="block text-xs uppercase tracking-widest text-jarvis-muted mb-2">Password</label>
+            <label className="block text-xs uppercase tracking-widest text-jarvis-muted mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-white/[0.03] border border-jarvis-border rounded px-4 py-2 text-jarvis-text focus:outline-none focus:border-jarvis-accent/50 transition-colors"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-jarvis-muted mb-2">
+              Password
+            </label>
             <input
               type="password"
               value={password}
@@ -79,20 +103,23 @@ export default function Login() {
             />
           </div>
 
-          <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-jarvis-muted">
-            <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-3 w-3 rounded border border-jarvis-border bg-black/40 accent-jarvis-accent"
-              />
-              <span>Remember Session</span>
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-jarvis-muted mb-2">
+              Confirm Password
             </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-white/[0.03] border border-jarvis-border rounded px-4 py-2 text-jarvis-text focus:outline-none focus:border-jarvis-accent/50 transition-colors"
+              required
+            />
           </div>
 
           {error && (
-            <p className="text-red-400 text-[10px] text-center uppercase tracking-widest">{error}</p>
+            <p className="text-red-400 text-[10px] text-center uppercase tracking-widest">
+              {error}
+            </p>
           )}
 
           <button
@@ -100,19 +127,20 @@ export default function Login() {
             disabled={loading}
             className="w-full py-3 rounded border border-jarvis-border text-jarvis-text hover:bg-white/[0.05] transition-all duration-300 tracking-[0.2em] text-sm"
           >
-            {loading ? 'PROCESSING...' : 'ENTER'}
+            {loading ? 'INITIALIZING...' : 'CREATE ACCOUNT'}
           </button>
         </form>
-        
+
         <div className="mt-6 text-center">
           <Link
-            to="/register"
+            to="/login"
             className="text-[10px] text-jarvis-muted hover:text-jarvis-accent uppercase tracking-widest transition-colors"
           >
-            New System? Initialize Identity
+            Already have identity? Authenticate
           </Link>
         </div>
       </div>
     </div>
   );
 }
+

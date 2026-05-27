@@ -267,55 +267,85 @@ export const academicPortfolioFormConfig = [
 // Personal Section Configs
 export const selfCareFormConfig = [
   { name: 'title', label: 'Title', type: 'text', required: true, placeholder: 'Routine title' },
-  { name: 'description', label: 'Description', type: 'textarea' },
-  { name: 'frequency', label: 'Frequency', type: 'text', placeholder: 'Daily, Weekly, etc.' },
+  {
+    name: 'category',
+    label: 'Category',
+    type: 'select',
+    options: [
+      { value: 'skincare', label: 'Skincare' },
+      { value: 'haircare', label: 'Haircare' },
+      { value: 'grooming', label: 'Grooming' },
+      { value: 'hygiene', label: 'Hygiene' },
+      { value: 'appearance', label: 'Appearance' },
+      { value: 'health', label: 'Health' },
+    ],
+  },
+  {
+    name: 'routineType',
+    label: 'Routine Type',
+    type: 'select',
+    options: [
+      { value: 'daily', label: 'Daily' },
+      { value: 'weekly', label: 'Weekly' },
+      { value: 'custom', label: 'Custom' },
+    ],
+  },
+  { name: 'reminderFrequency', label: 'Reminder Frequency', type: 'text', placeholder: 'e.g. Every morning' },
+  { name: 'notes', label: 'Notes', type: 'textarea' },
+  { name: 'tags', label: 'Tags', type: 'tags', placeholder: 'morning, night, spa' },
+  { name: 'linkedTaskIds', label: 'Linked Tasks', type: 'tags', placeholder: 'Task IDs...' },
   {
     name: 'status',
-    label: 'Status',
+    label: 'Initial Status',
     type: 'select',
     options: [
       { value: 'pending', label: 'Pending' },
       { value: 'completed', label: 'Completed' },
     ],
   },
-  { name: 'notes', label: 'Notes', type: 'textarea' },
-  { name: 'tags', label: 'Tags', type: 'tags', placeholder: 'skincare, hygiene' },
 ];
 
 export const communicationFormConfig = [
-  { name: 'title', label: 'Title', type: 'text', required: true },
+  { name: 'title', label: 'Session Title', type: 'text', required: true },
   {
-    name: 'subType',
-    label: 'Category',
+    name: 'type',
+    label: 'Focus Area',
     type: 'select',
     options: [
-      { value: 'practice', label: 'Practice' },
+      { value: 'speaking', label: 'Speaking' },
       { value: 'articulation', label: 'Articulation' },
       { value: 'confidence', label: 'Confidence' },
-      { value: 'voice', label: 'Voice Training' },
+      { value: 'presentation', label: 'Presentation' },
+      { value: 'vocal_training', label: 'Voice Training' },
+      { value: 'breathing', label: 'Breathing' },
     ],
   },
-  { name: 'duration', label: 'Duration', type: 'text', placeholder: '15m, 30m' },
-  {
-    name: 'difficulty',
-    label: 'Difficulty',
-    type: 'select',
-    options: [
-      { value: 'Easy', label: 'Easy' },
-      { value: 'Medium', label: 'Medium' },
-      { value: 'Hard', label: 'Hard' },
-    ],
-  },
-  { name: 'progress', label: 'Progress (%)', type: 'number' },
-  { name: 'notes', label: 'Notes', type: 'textarea' },
+  { name: 'duration', label: 'Duration (m)', type: 'text', placeholder: '15m, 30m' },
+  { name: 'rating', label: 'Session Rating (1-5)', type: 'number' },
+  { name: 'notes', label: 'Insights/Notes', type: 'textarea' },
+  { name: 'linkedTaskIds', label: 'Linked Tasks', type: 'tags' },
 ];
 
 export const socialGrowthFormConfig = [
-  { name: 'title', label: 'Title', type: 'text', required: true },
-  { name: 'reflection', label: 'Reflection', type: 'textarea' },
-  { name: 'confidenceRating', label: 'Confidence (1-10)', type: 'number' },
+  { name: 'title', label: 'Interaction Title', type: 'text', required: true },
+  { name: 'linkedContactId', label: 'CRM Contact ID', type: 'text' },
+  {
+    name: 'interactionType',
+    label: 'Type',
+    type: 'select',
+    options: [
+      { value: 'meeting', label: 'Meeting' },
+      { value: 'call', label: 'Call' },
+      { value: 'chat', label: 'Online Chat' },
+      { value: 'event', label: 'Event' },
+      { value: 'other', label: 'Other' },
+    ],
+  },
+  { name: 'confidenceLevel', label: 'Confidence Level (1-10)', type: 'number' },
+  { name: 'socialChallenge', label: 'Social Challenge Attempted', type: 'text' },
   { name: 'outcome', label: 'Outcome', type: 'textarea' },
-  { name: 'tags', label: 'Tags', type: 'tags' },
+  { name: 'followUpDate', label: 'Follow Up Date', type: 'date' },
+  { name: 'notes', label: 'Notes/Reflection', type: 'textarea' },
 ];
 
 export const publicPersonaFormConfig = [
@@ -324,99 +354,94 @@ export const publicPersonaFormConfig = [
     label: 'Platform',
     type: 'select',
     options: [
-      { value: 'LinkedIn', label: 'LinkedIn' },
-      { value: 'Instagram', label: 'Instagram' },
-      { value: 'Portfolio', label: 'Portfolio' },
-      { value: 'Twitter/X', label: 'Twitter/X' },
-      { value: 'Other', label: 'Other' },
+      { value: 'linkedin', label: 'LinkedIn' },
+      { value: 'github', label: 'GitHub' },
+      { value: 'instagram', label: 'Instagram' },
+      { value: 'twitter', label: 'Twitter/X' },
+      { value: 'portfolio', label: 'Portfolio' },
+      { value: 'youtube', label: 'YouTube' },
+      { value: 'other', label: 'Other' },
     ],
   },
-  { name: 'objective', label: 'Objective', type: 'text' },
-  {
-    name: 'status',
-    label: 'Status',
-    type: 'select',
-    options: [
-      { value: 'Planning', label: 'Planning' },
-      { value: 'Active', label: 'Active' },
-      { value: 'Optimized', label: 'Optimized' },
-    ],
-  },
-  { name: 'links', label: 'Links', type: 'tags' },
-  { name: 'notes', label: 'Notes', type: 'textarea' },
+  { name: 'username', label: 'Username/Handle', type: 'text' },
+  { name: 'profileUrl', label: 'Profile URL', type: 'text' },
+  { name: 'goals', label: 'Platform Goals', type: 'textarea' },
+  { name: 'contentIdeas', label: 'Content Ideas', type: 'textarea' },
+  { name: 'growthNotes', label: 'Growth Notes', type: 'textarea' },
 ];
 
 export const musicFormConfig = [
-  { name: 'title', label: 'Title', type: 'text', required: true },
+  { name: 'title', label: 'Practice/Piece Title', type: 'text', required: true },
   {
-    name: 'subType',
+    name: 'category',
     label: 'Category',
     type: 'select',
     options: [
-      { value: 'Singing', label: 'Singing' },
-      { value: 'Guitar', label: 'Guitar' },
-      { value: 'Flute', label: 'Flute' },
-      { value: 'Theory', label: 'Music Theory' },
+      { value: 'singing', label: 'Singing' },
+      { value: 'guitar', label: 'Guitar' },
+      { value: 'flute', label: 'Flute' },
+      { value: 'music_theory', label: 'Music Theory' },
+      { value: 'practice', label: 'General Practice' },
     ],
   },
-  { name: 'duration', label: 'Duration', type: 'text' },
-  {
-    name: 'difficulty',
-    label: 'Difficulty',
-    type: 'select',
-    options: [
-      { value: 'Easy', label: 'Easy' },
-      { value: 'Medium', label: 'Medium' },
-      { value: 'Hard', label: 'Hard' },
-    ],
-  },
-  { name: 'progress', label: 'Progress (%)', type: 'number' },
+  { name: 'duration', label: 'Duration', type: 'text', placeholder: '45m' },
+  { name: 'skillFocus', label: 'Skill Focus', type: 'text', placeholder: 'Scales, vibrato, etc.' },
+  { name: 'recordingLink', label: 'Recording Link', type: 'text' },
   { name: 'notes', label: 'Notes', type: 'textarea' },
 ];
 
 export const writingFormConfig = [
   { name: 'title', label: 'Title', type: 'text', required: true },
+  {
+    name: 'type',
+    label: 'Type',
+    type: 'select',
+    options: [
+      { value: 'lyrics', label: 'Lyrics' },
+      { value: 'poetry', label: 'Poetry' },
+      { value: 'journaling', label: 'Journaling' },
+      { value: 'script', label: 'Script' },
+      { value: 'creative_writing', label: 'Creative Writing' },
+      { value: 'ideas', label: 'Ideas' },
+    ],
+  },
   { name: 'content', label: 'Content', type: 'textarea' },
   { name: 'mood', label: 'Mood', type: 'text' },
   { name: 'tags', label: 'Tags', type: 'tags' },
+  { name: 'linkedGoalIds', label: 'Linked Goals', type: 'tags' },
+  { name: 'linkedJournalIds', label: 'Linked Journal Entries', type: 'tags' },
 ];
 
 export const readingFormConfig = [
-  { name: 'title', label: 'Book Title', type: 'text', required: true },
-  { name: 'author', label: 'Author', type: 'text' },
+  { name: 'title', label: 'Book/Resource Title', type: 'text', required: true },
+  { name: 'author', label: 'Author/Creator', type: 'text' },
+  { name: 'category', label: 'Category', type: 'text', placeholder: 'Fiction, Tech, Bio...' },
   {
     name: 'status',
     label: 'Status',
     type: 'select',
     options: [
-      { value: 'Want to Read', label: 'Want to Read' },
-      { value: 'Reading', label: 'Reading' },
-      { value: 'Completed', label: 'Completed' },
-      { value: 'On Hold', label: 'On Hold' },
+      { value: 'planned', label: 'Planned' },
+      { value: 'reading', label: 'Reading' },
+      { value: 'completed', label: 'Completed' },
+      { value: 'paused', label: 'Paused' },
     ],
   },
   { name: 'progress', label: 'Progress (%)', type: 'number' },
-  { name: 'rating', label: 'Rating (1-10)', type: 'number' },
-  { name: 'summary', label: 'Summary', type: 'textarea' },
-  { name: 'notes', label: 'Lessons/Notes', type: 'textarea' },
+  { name: 'highlights', label: 'Key Highlights', type: 'textarea' },
+  { name: 'lessons', label: 'Core Lessons', type: 'textarea' },
   { name: 'startedAt', label: 'Started Date', type: 'date' },
   { name: 'completedAt', label: 'Completed Date', type: 'date' },
 ];
 
 export const vaultFormConfig = [
-  { name: 'title', label: 'Title', type: 'text', required: true },
-  { name: 'content', label: 'Idea/Concept', type: 'textarea' },
-  {
-    name: 'priority',
-    label: 'Priority',
-    type: 'select',
-    options: [
-      { value: 'low', label: 'Low' },
-      { value: 'medium', label: 'Medium' },
-      { value: 'high', label: 'High' },
-    ],
-  },
+  { name: 'title', label: 'Idea Title', type: 'text', required: true },
+  { name: 'type', label: 'Idea Type', type: 'text', placeholder: 'Project, Life, Tech...' },
+  { name: 'content', label: 'Raw Idea Content', type: 'textarea' },
   { name: 'tags', label: 'Tags', type: 'tags' },
+  { name: 'linkedEntityIds', label: 'Linked Entities', type: 'tags' },
+  { name: 'pinned', label: 'Pin to Top', type: 'checkbox' },
 ];
+
 
 

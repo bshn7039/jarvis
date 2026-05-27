@@ -11,6 +11,14 @@ import { useScheduleStore } from '../store/scheduleStore';
 import { useChatStore } from '../store/chatStore';
 import { useProfileStore } from '../store/profileStore';
 import { usePersonalStore } from '../store/personalStore';
+import { useSelfCareStore } from '../store/selfCareStore';
+import { useCommunicationStore } from '../store/communicationStore';
+import { useSocialGrowthStore } from '../store/socialGrowthStore';
+import { usePublicPersonaStore } from '../store/publicPersonaStore';
+import { useMusicStore } from '../store/musicStore';
+import { useWritingStore } from '../store/writingStore';
+import { useReadingStore } from '../store/readingStore';
+import { useVaultStore } from '../store/vaultStore';
 import { useActivityStore } from '../store/activityStore';
 import { useEntityStore } from '../store/entityStore';
 import { useTrashStore } from '../store/trashStore';
@@ -30,6 +38,14 @@ export function useStoreHydration() {
   const hydrateChat = useChatStore(s => s.hydrate);
   const hydrateProfile = useProfileStore(s => s.hydrate);
   const hydratePersonal = usePersonalStore(s => s.hydrate);
+  const hydrateSelfCare = useSelfCareStore(s => s.hydrate);
+  const hydrateCommunication = useCommunicationStore(s => s.hydrate);
+  const hydrateSocialGrowth = useSocialGrowthStore(s => s.hydrate);
+  const hydratePublicPersona = usePublicPersonaStore(s => s.hydrate);
+  const hydrateMusic = useMusicStore(s => s.hydrate);
+  const hydrateWriting = useWritingStore(s => s.hydrate);
+  const hydrateReading = useReadingStore(s => s.hydrate);
+  const hydrateVault = useVaultStore(s => s.hydrate);
   const hydrateActivities = useActivityStore(s => s.hydrate);
   const hydrateEntities = useEntityStore(s => s.hydrate);
   const hydrateTrash = useTrashStore(s => s.hydrate);
@@ -57,6 +73,14 @@ export function useStoreHydration() {
           hydrateChat(),
           hydrateProfile(),
           hydratePersonal(),
+          hydrateSelfCare(),
+          hydrateCommunication(),
+          hydrateSocialGrowth(),
+          hydratePublicPersona(),
+          hydrateMusic(),
+          hydrateWriting(),
+          hydrateReading(),
+          hydrateVault(),
           hydrateActivities(),
           hydrateEntities(),
           hydrateTrash()
@@ -73,3 +97,4 @@ export function useStoreHydration() {
     hydrateAll();
   }, [isAuthenticated, user]);
 }
+

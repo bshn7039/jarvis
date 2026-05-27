@@ -1,5 +1,5 @@
 const DEFAULT_DB_NAME = 'JARVIS_DB';
-const DB_VERSION = 5; // Bump version for new academic stores
+const DB_VERSION = 6; // Bump version for personal stores
 
 export const STORES = {
   TASKS: 'tasks',
@@ -15,6 +15,14 @@ export const STORES = {
   SCHEDULES: 'schedules',
   METRICS_SNAPSHOTS: 'metricsSnapshots',
   PERSONAL: 'personal',
+  PERSONAL_SELF_CARE: 'personalSelfCare',
+  PERSONAL_COMMUNICATION: 'personalCommunication',
+  PERSONAL_SOCIAL_GROWTH: 'personalSocialGrowth',
+  PERSONAL_PUBLIC_PERSONA: 'personalPublicPersona',
+  PERSONAL_MUSIC: 'personalMusic',
+  PERSONAL_WRITING: 'personalWriting',
+  PERSONAL_READING: 'personalReading',
+  PERSONAL_VAULT: 'personalVault',
   CANVAS: 'canvas',
   CHATS: 'chats',
   SAVINGS_GOALS: 'savingsGoals',

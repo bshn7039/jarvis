@@ -11,6 +11,14 @@ import { useScheduleStore } from '../store/scheduleStore';
 import { useProfileStore } from '../store/profileStore';
 import { useChatStore } from '../store/chatStore';
 import { useTrashStore } from '../store/trashStore';
+import { useSelfCareStore } from '../store/selfCareStore';
+import { useCommunicationStore } from '../store/communicationStore';
+import { useSocialGrowthStore } from '../store/socialGrowthStore';
+import { usePublicPersonaStore } from '../store/publicPersonaStore';
+import { useMusicStore } from '../store/musicStore';
+import { useWritingStore } from '../store/writingStore';
+import { useReadingStore } from '../store/readingStore';
+import { useVaultStore } from '../store/vaultStore';
 
 export function useCombinedState() {
   const tasksData = useTaskStore(useShallow(s => ({ 
@@ -61,6 +69,16 @@ export function useCombinedState() {
   const chats = useChatStore(s => s.chatHistory);
   const trashItems = useTrashStore(s => s.trashItems);
 
+  // Personal Evolution System
+  const selfCare = useSelfCareStore(s => s.routines);
+  const communication = useCommunicationStore(s => s.logs);
+  const socialGrowth = useSocialGrowthStore(s => s.records);
+  const publicPersona = usePublicPersonaStore(s => s.platforms);
+  const music = useMusicStore(s => s.practiceLogs);
+  const writing = useWritingStore(s => s.drafts);
+  const reading = useReadingStore(s => s.library);
+  const vault = useVaultStore(s => s.ideas);
+
   return useMemo(() => ({
     profile,
     tasks: tasksData,
@@ -72,7 +90,17 @@ export function useCombinedState() {
     academics: academicState,
     schedules,
     chats,
-    trash: trashItems
+    trash: trashItems,
+    personal: {
+      selfCare,
+      communication,
+      socialGrowth,
+      publicPersona,
+      music,
+      writing,
+      reading,
+      vault
+    }
   }), [
     profile, 
     tasksData, 
@@ -84,6 +112,14 @@ export function useCombinedState() {
     academicState, 
     schedules, 
     chats, 
-    trashItems
+    trashItems,
+    selfCare,
+    communication,
+    socialGrowth,
+    publicPersona,
+    music,
+    writing,
+    reading,
+    vault
   ]);
 }

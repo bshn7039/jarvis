@@ -1,5 +1,6 @@
 import { BaseService } from './baseService';
 import { STORES } from '../core/localDatabase';
+import { useAuthStore } from '../../store/authStore';
 
 class ActivityService extends BaseService {
   constructor() {
@@ -7,13 +8,22 @@ class ActivityService extends BaseService {
   }
 
   async logActivity({ type, action, entityType, entityId, metadata = {} }) {
+    const authState = useAuthStore.getState?.() || {};
+    const currentUserId = authState.user?.userId || null;
+    const timestamp = new Date().toISOString();
+
     const activity = {
       id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       type,
       action,
       entityType,
       entityId,
-      timestamp: new Date().toISOString(),
+      // New fields for richer operational history
+      actionType: action,
+      entityTitle: metadata.title || metadata.name || metadata.entityTitle || null,
+      createdAt: timestamp,
+      userId: currentUserId,
+      timestamp,
       metadata
     };
     return this.create(activity);

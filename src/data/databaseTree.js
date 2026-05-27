@@ -9,6 +9,7 @@ const MODULE_KEYS = [
   'academics',
   'schedules',
   'chats',
+  'personal',
   'trash',
 ];
 
@@ -211,6 +212,30 @@ export function buildNode(data, path, depth = 0) {
         return itemNode;
       })
     }));
+    return node;
+  }
+
+  // Special handling for Personal module to group by sub-systems
+  if (path === 'personal' && data) {
+    node.type = 'folder';
+    const categories = [
+      { key: 'selfCare', label: 'Self Care' },
+      { key: 'communication', label: 'Communication' },
+      { key: 'socialGrowth', label: 'Social Growth' },
+      { key: 'publicPersona', label: 'Public Persona' },
+      { key: 'music', label: 'Singing & Music' },
+      { key: 'writing', label: 'Writing & Creativity' },
+      { key: 'reading', label: 'Reading & Learning' },
+      { key: 'vault', label: 'Creative Vault' },
+    ];
+
+    node.children = categories.map(cat => {
+      const subData = data[cat.key] || [];
+      const subNode = buildNode(subData, `personal.${cat.key}`, depth + 1);
+      subNode.label = cat.label;
+      subNode.type = 'folder';
+      return subNode;
+    });
     return node;
   }
 

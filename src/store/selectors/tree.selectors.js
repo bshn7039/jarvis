@@ -12,6 +12,15 @@ import { useScheduleStore } from '../scheduleStore';
 import { useProfileStore } from '../profileStore';
 import { useChatStore } from '../chatStore';
 
+import { useSelfCareStore } from '../selfCareStore';
+import { useCommunicationStore } from '../communicationStore';
+import { useSocialGrowthStore } from '../socialGrowthStore';
+import { usePublicPersonaStore } from '../publicPersonaStore';
+import { useMusicStore } from '../musicStore';
+import { useWritingStore } from '../writingStore';
+import { useReadingStore } from '../readingStore';
+import { useVaultStore } from '../vaultStore';
+
 export function useLiveDatabaseTree() {
   const { tasks, repetitiveTasks, repetitiveHistory } = useTaskStore(useShallow(s => ({
     tasks: s.tasks,
@@ -32,6 +41,16 @@ export function useLiveDatabaseTree() {
   const profile = useProfileStore(s => s.profile);
   const chats = useChatStore(s => s.chatHistory);
 
+  // Personal stores
+  const selfCare = useSelfCareStore(s => s.routines);
+  const communication = useCommunicationStore(s => s.logs);
+  const socialGrowth = useSocialGrowthStore(s => s.records);
+  const publicPersona = usePublicPersonaStore(s => s.platforms);
+  const music = useMusicStore(s => s.practiceLogs);
+  const writing = useWritingStore(s => s.drafts);
+  const reading = useReadingStore(s => s.library);
+  const vault = useVaultStore(s => s.ideas);
+
   return useMemo(() => {
     const combinedState = {
       profile,
@@ -47,13 +66,24 @@ export function useLiveDatabaseTree() {
       crm: { contacts: crmContacts },
       academics: { subjects: academicSubjects },
       schedules,
-      chats
+      chats,
+      personal: {
+        selfCare,
+        communication,
+        socialGrowth,
+        publicPersona,
+        music,
+        writing,
+        reading,
+        vault
+      }
     };
     
     return generateDatabaseTree(combinedState);
   }, [
     profile, tasks, repetitiveTasks, repetitiveHistory, goals, journalEntries, financeTransactions, 
     fitnessWorkouts, fitnessMeals, fitnessHydration, 
-    crmContacts, academicSubjects, schedules, chats
+    crmContacts, academicSubjects, schedules, chats,
+    selfCare, communication, socialGrowth, publicPersona, music, writing, reading, vault
   ]);
 }
