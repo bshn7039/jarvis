@@ -5,7 +5,7 @@ export class DeepSeekClient {
     this.apiKey = apiKey;
   }
 
-  async sendMessage(messages, model = 'deepseek-chat', options = {}) {
+  async sendMessage(messages, model = 'deepseek-v4-flash', options = {}) {
     if (!this.apiKey) {
       throw new Error('DeepSeek API key is missing. Please check your .env file.');
     }

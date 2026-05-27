@@ -32,10 +32,13 @@ export default function ChatWindow({ messages = [], showEmpty = true }) {
           {messages.map((message) => (
             <MessageBubble
               key={message.id}
+              messageId={message.id}
               role={message.role}
               content={message.content}
-              timestamp={message.timestamp}
+              timestamp={message.createdAt || message.timestamp}
               model={message.model}
+              toolCalls={message.toolCalls}
+              contextReferences={message.contextReferences}
             />
           ))}
 

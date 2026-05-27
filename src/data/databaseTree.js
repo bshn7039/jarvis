@@ -215,6 +215,16 @@ export function buildNode(data, path, depth = 0) {
     return node;
   }
 
+  // Special handling for Goals to show hierarchical tree (area → goal → objective → sub_goal)
+  if (path === 'goals' && Array.isArray(data)) {
+    const allGoals = data;
+    const rootGoals = allGoals.filter(g => g.parentId === null);
+
+    node.type = 'folder';
+    node.children = rootGoals.map(goal => buildGoalTreeNode(goal, allGoals, `goals.${goal.id}`));
+    return node;
+  }
+
   // Special handling for Personal module to group by sub-systems
   if (path === 'personal' && data) {
     node.type = 'folder';

@@ -1,6 +1,5 @@
 export const AI_MODELS = {
-  CHAT: 'deepseek-chat',
-  REASONER: 'deepseek-reasoner',
+  CHAT: 'deepseek-v4-flash',
 };
 
 export const DEFAULT_MODEL = AI_MODELS.CHAT;
@@ -8,12 +7,7 @@ export const DEFAULT_MODEL = AI_MODELS.CHAT;
 export const MODEL_CONFIG = [
   {
     id: AI_MODELS.CHAT,
-    name: 'DeepSeek Chat',
-    description: 'General purpose fast and intelligent model.',
-  },
-  {
-    id: AI_MODELS.REASONER,
-    name: 'DeepSeek Reasoner',
-    description: 'Advanced reasoning model for complex tasks.',
+    name: 'DeepSeek V4 Flash',
+    description: 'Fast and intelligent model for all tasks.',
   },
 ];
