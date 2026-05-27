@@ -302,6 +302,7 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSub
       linkedJournalIds: journals.map((entry) => ({
         id: entry.id,
         title: entry.title || entry.date || entry.id,
+        date: entry.entryDate || entry.date,
       })),
     };
   }, [goals, journals, schedules, subjects]);
@@ -423,6 +424,7 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSub
           value={formData.linkedJournalIds}
           onChange={(value) => setField('linkedJournalIds', value)}
           placeholder="Link journal entries"
+          groupByDate
         />
       </div>
 
