@@ -1,5 +1,5 @@
 const DEFAULT_DB_NAME = 'JARVIS_DB';
-const DB_VERSION = 10; // Bump version to seed clean Today's schedule with Wake up at 8, Lunch at 2, Sleep at 11:59
+const DB_VERSION = 11; // Added mutualFunds store
 
 export const STORES = {
   TASKS: 'tasks',
@@ -44,6 +44,7 @@ export const STORES = {
   METADATA: 'metadata',
   TRASH: 'trash',
   VERSIONS: 'versions',
+  MUTUAL_FUNDS: 'mutualFunds',
 };
 
 class LocalDatabase {

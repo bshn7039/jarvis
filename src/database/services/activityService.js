@@ -1,5 +1,5 @@
 import { BaseService } from './baseService';
-import { STORES } from '../core/localDatabase';
+import { STORES, localDb } from '../core/localDatabase';
 import { useAuthStore } from '../../store/authStore';
 
 class ActivityService extends BaseService {
@@ -66,6 +66,10 @@ class ActivityService extends BaseService {
     return all
       .filter(a => a.timestamp.slice(0, 10) === today)
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }
+
+  async clear() {
+    await localDb.clear(this.storeName);
   }
 }
 

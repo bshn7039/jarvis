@@ -80,7 +80,7 @@ export function truncateContextCollections(contextData) {
   }
 
   if (data.finance && Array.isArray(data.finance.recentTransactions)) {
-    data.finance.recentTransactions = data.finance.recentTransactions.slice(0, 5);
+    data.finance.recentTransactions = data.finance.recentTransactions.slice(0, 40);
   }
 
   if (data.crm && Array.isArray(data.crm.recentContacts)) {

@@ -20,6 +20,7 @@ import { useMusicStore } from '../musicStore';
 import { useWritingStore } from '../writingStore';
 import { useReadingStore } from '../readingStore';
 import { useVaultStore } from '../vaultStore';
+import { useMutualFundStore } from '../mutualFundStore';
 
 export function useLiveDatabaseTree() {
   const { tasks, repetitiveTasks, repetitiveHistory } = useTaskStore(useShallow(s => ({
@@ -50,6 +51,7 @@ export function useLiveDatabaseTree() {
   const writing = useWritingStore(s => s.drafts);
   const reading = useReadingStore(s => s.library);
   const vault = useVaultStore(s => s.ideas);
+  const mutualFunds = useMutualFundStore(s => s.funds);
 
   return useMemo(() => {
     const combinedState = {
@@ -57,7 +59,7 @@ export function useLiveDatabaseTree() {
       tasks: { tasks, repetitiveTasks, repetitiveHistory },
       goals,
       journal: { entries: journalEntries },
-      finance: { transactions: financeTransactions },
+      finance: { transactions: financeTransactions, mutualFunds },
       fitness: { 
         workouts: fitnessWorkouts, 
         meals: fitnessMeals, 
@@ -76,14 +78,15 @@ export function useLiveDatabaseTree() {
         writing,
         reading,
         vault
-      }
+      },
     };
     
     return generateDatabaseTree(combinedState);
   }, [
-    profile, tasks, repetitiveTasks, repetitiveHistory, goals, journalEntries, financeTransactions, 
-    fitnessWorkouts, fitnessMeals, fitnessHydration, 
+    profile, tasks, repetitiveTasks, repetitiveHistory, goals, journalEntries, financeTransactions,
+    fitnessWorkouts, fitnessMeals, fitnessHydration,
     crmContacts, academicSubjects, schedules, chats,
-    selfCare, communication, socialGrowth, publicPersona, music, writing, reading, vault
+    selfCare, communication, socialGrowth, publicPersona, music, writing, reading, vault,
+    mutualFunds
   ]);
 }

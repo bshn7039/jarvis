@@ -23,6 +23,7 @@ import { useActivityStore } from '../store/activityStore';
 import { useEntityStore } from '../store/entityStore';
 import { useTrashStore } from '../store/trashStore';
 import { useAuthStore } from '../store/authStore';
+import { useMutualFundStore } from '../store/mutualFundStore';
 import { localDb } from '../database/core/localDatabase';
 import { bootstrapDatabase } from '../database/core/bootstrap';
 
@@ -53,6 +54,7 @@ export function useStoreHydration() {
   const hydrateActivities = useActivityStore(s => s.hydrate);
   const hydrateEntities = useEntityStore(s => s.hydrate);
   const hydrateTrash = useTrashStore(s => s.hydrate);
+  const hydrateMutualFunds = useMutualFundStore(s => s.hydrate);
   const initAuth = useAuthStore(s => s.init);
   const { isAuthenticated, user } = useAuthStore();
 
@@ -93,7 +95,8 @@ export function useStoreHydration() {
             hydrateVault(),
             hydrateActivities(),
             hydrateEntities(),
-            hydrateTrash()
+            hydrateTrash(),
+            hydrateMutualFunds()
           ]);
         } else {
           // Still hydrate UI and Entities as they might be needed for login UI

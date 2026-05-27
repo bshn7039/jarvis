@@ -30,7 +30,7 @@ const KEYWORD_MAP = {
   goal: ['goal', 'target', 'objective', 'achieve', 'milestone', 'vision'],
   academic: ['academic', 'degree', 'study', 'course', 'university', 'exam', 'class', 'grade', 'professor', 'syllabus', 'major', 'semester', 'subject', 'assignment', 'practical', 'revision', 'leet', 'code', 'dsa', 'skill', 'project', 'certification', 'portfolio'],
   fitness: ['fitness', 'workout', 'gym', 'exercise', 'run', 'calorie', 'weight', 'fat', 'recovery', 'sleep', 'diet', 'meal', 'food', 'hydration', 'water', 'routine'],
-  finance: ['finance', 'money', 'expense', 'transaction', 'income', 'budget', 'cost', 'price', 'spend', 'payment', 'saving', 'credit', 'debit', 'account'],
+  finance: ['finance', 'money', 'expense', 'transaction', 'income', 'budget', 'cost', 'price', 'spend', 'payment', 'saving', 'credit', 'debit', 'account', 'mutual', 'fund', 'mf', 'nav', 'xirr', 'investment', 'portfolio'],
   journal: ['journal', 'mood', 'diary', 'thought', 'reflection', 'inconsistent', 'feeling', 'happy', 'sad', 'angry'],
   crm: ['crm', 'contact', 'lead', 'client', 'interaction', 'network', 'phone', 'meeting', 'email', 'relationship', 'friend', 'family', 'call', 'reminder'],
   activity: ['activity', 'log', 'recent', 'history', 'action'],
@@ -39,25 +39,59 @@ const KEYWORD_MAP = {
   schedule: ['schedule', 'calendar', 'routine', 'slot', 'command center schedule', 'daily schedule', 'today schedule']
 };
 
-export function detectContextTypes(prompt) {
-  const p = prompt.toLowerCase();
-  const matched = [];
+export function detectContextTypes(prompt = '', options = {}) {
+  const p = String(prompt || '').toLowerCase();
+  const matched = new Set();
 
   Object.entries(KEYWORD_MAP).forEach(([type, keywords]) => {
     if (keywords.some(kw => p.includes(kw))) {
-      matched.push(type);
+      matched.add(type);
     }
   });
 
-  if (matched.length === 0) {
-    matched.push('profile', 'task', 'goal');
+  if (matched.size === 0 && options.historyMessages && options.historyMessages.length > 0) {
+    const history = [...options.historyMessages];
+    // If the last message in history is the current prompt, pop it to look at previous turns
+    if (history.length > 0 && history[history.length - 1].content === prompt && history[history.length - 1].role === 'user') {
+      history.pop();
+    }
+
+    // Scan up to 4 previous messages in reverse order to find the first non-default context
+    const recentMessages = history.slice(-4).reverse();
+    for (const msg of recentMessages) {
+      if (msg.role === 'assistant' && msg.contextReferences && msg.contextReferences.length > 0) {
+        const nonDefault = msg.contextReferences.filter(c => !['profile', 'task', 'goal'].includes(c));
+        if (nonDefault.length > 0) {
+          nonDefault.forEach(c => matched.add(c));
+          break; // Found recent active context, inherit it and stop
+        }
+      }
+      if (msg.role === 'user' && msg.content) {
+        const userMatched = [];
+        const msgContent = msg.content.toLowerCase();
+        Object.entries(KEYWORD_MAP).forEach(([type, keywords]) => {
+          if (keywords.some(kw => msgContent.includes(kw))) {
+            userMatched.push(type);
+          }
+        });
+        const nonDefault = userMatched.filter(c => !['profile', 'task', 'goal'].includes(c));
+        if (nonDefault.length > 0) {
+          nonDefault.forEach(c => matched.add(c));
+          break; // Found recent active context, inherit it and stop
+        }
+      }
+    }
   }
 
-  return matched;
+  if (matched.size === 0) {
+    return ['profile', 'task', 'goal'];
+  }
+
+  return Array.from(matched);
 }
 
 export function buildAiContext(prompt, options = {}) {
-  const matchedTypes = detectContextTypes(prompt);
+  const matchedTypes = detectContextTypes(prompt, options);
   let contextData = {};
 
   matchedTypes.forEach(type => {

@@ -1,7 +1,19 @@
 import ProgressBar from '../ui/ProgressBar';
 
+const CATEGORY_ICONS = {
+  'Food & Dining': '🍽️',
+  'Transport': '🚌',
+  'Entertainment': '🎮',
+  'Health & Medical': '💊',
+  'Shopping': '🛍️',
+  'Bills & Utilities': '📋',
+  'Education': '📚',
+  'Subscriptions': '🔄',
+  'Savings Transfer': '💰',
+  'Miscellaneous': '📦',
+};
+
 export function MonthlySpendingBars({ monthlySpending }) {
-  // monthlySpending is now monthlyHistory with { month, credited, debited, saved }
   const max = Math.max(
     ...monthlySpending.map((item) => Math.max(item.credited, item.debited, item.saved)),
     1
@@ -55,31 +67,63 @@ export function MonthlySpendingBars({ monthlySpending }) {
   );
 }
 
-export function CategoryBreakdown({ categoryBreakdown }) {
+export function SpendingsBreakdown({ categoryBreakdown, savingsTotal = 0 }) {
+  // Only debit categories (no Savings Transfer)
+  const spendingCategories = categoryBreakdown.filter(c => c.category !== 'Savings Transfer');
+  const total = spendingCategories.reduce((sum, c) => sum + c.amount, 0);
+
   return (
-    <div className="space-y-3">
-      {categoryBreakdown.map((category) => {
-        const amount = category.amount ?? 0;
-        const budget = category.budget || 1;
-        const pct = Math.round((amount / budget) * 100);
-        return (
-          <article key={category.category} className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <div className="flex items-center justify-between text-sm">
-              <p className="text-jarvis-text">{category.category}</p>
-              <p className="text-jarvis-muted">
-                {amount.toLocaleString('en-IN')} / {budget.toLocaleString('en-IN')}
-              </p>
-            </div>
-            <div className="mt-2">
-              <ProgressBar progress={pct} height={6} />
-              <p className="mt-1 text-[11px] text-jarvis-muted">{pct}% of budget used</p>
-            </div>
-          </article>
-        );
-      })}
-      {categoryBreakdown.length === 0 && (
-        <p className="py-8 text-center text-xs text-jarvis-muted italic">No spending categories this month.</p>
+    <div className="space-y-2">
+      {spendingCategories.length === 0 && savingsTotal === 0 ? (
+        <p className="py-8 text-center text-xs text-jarvis-muted italic">No spending this month.</p>
+      ) : (
+        <>
+          {spendingCategories.map((category) => {
+            const pct = total > 0 ? Math.round((category.amount / total) * 100) : 0;
+            const icon = CATEGORY_ICONS[category.category] || '📦';
+            return (
+              <article key={category.category} className="rounded-xl border border-jarvis-border bg-black/20 p-3">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <p className="text-jarvis-text flex items-center gap-2">
+                    <span>{icon}</span>
+                    <span>{category.category}</span>
+                  </p>
+                  <div className="text-right">
+                    <p className="text-jarvis-text font-medium text-xs">
+                      ₹{category.amount.toLocaleString('en-IN')}
+                    </p>
+                    <p className="text-[10px] text-jarvis-muted">{pct}% of spend</p>
+                  </div>
+                </div>
+                <ProgressBar progress={pct} height={4} />
+              </article>
+            );
+          })}
+
+          {/* Savings row */}
+          {savingsTotal > 0 && (
+            <article className="rounded-xl border border-jarvis-accent/30 bg-jarvis-accent/5 p-3">
+              <div className="flex items-center justify-between text-sm">
+                <p className="text-jarvis-accent flex items-center gap-2">
+                  <span>💰</span>
+                  <span>Savings</span>
+                </p>
+                <div className="text-right">
+                  <p className="text-jarvis-accent font-medium text-xs">
+                    ₹{savingsTotal.toLocaleString('en-IN')}
+                  </p>
+                  <p className="text-[10px] text-jarvis-muted">transferred to savings</p>
+                </div>
+              </div>
+            </article>
+          )}
+        </>
       )}
     </div>
   );
+}
+
+// Keep old export for backwards compat
+export function CategoryBreakdown({ categoryBreakdown }) {
+  return <SpendingsBreakdown categoryBreakdown={categoryBreakdown} />;
 }

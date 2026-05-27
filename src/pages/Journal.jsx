@@ -64,13 +64,10 @@ export default function Journal() {
 
   const handleFormSubmit = async (formData) => {
     try {
-      console.log('Submitting journal entry:', formData);
       await addEntry(formData);
-      console.log('Journal entry created, closing modal');
       setIsModalOpen(false);
     } catch (err) {
       console.error('Failed to create journal entry:', err);
-      // Still close if user expects it, or show error
       setIsModalOpen(false);
     }
   };
@@ -84,25 +81,45 @@ export default function Journal() {
 
   const streak = useJournalStreak();
 
-  // If selectedEntryId is null but dayEntries has items, select the first one
+  // Compute dates that have entries for the date list
+  const datesWithEntries = useMemo(() => {
+    const dateSet = {};
+    filteredEntries.forEach(e => {
+      if (!dateSet[e.entryDate]) dateSet[e.entryDate] = 0;
+      dateSet[e.entryDate]++;
+    });
+    return Object.entries(dateSet)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 30); // last 30 dates
+  }, [filteredEntries]);
+
+  // Auto-select first entry of the day when date changes
   useEffect(() => {
-    if (!selectedEntryId && dayEntries.length > 0) {
+    if (dayEntries.length > 0) {
       setSelectedEntryId(dayEntries[0].id);
+    } else {
+      setSelectedEntryId(null);
     }
-  }, [dayEntries, selectedEntryId, setSelectedEntryId]);
+  }, [selectedDate]);
+
+  const handleDateSelect = (date) => {
+    setSelectedDate(date);
+    setSelectedEntryId(null);
+  };
 
   return (
     <ModulePageLayout title="Journal" subtitle="Reflection, emotional awareness, and personal feedback loop.">
+      {/* Top control bar */}
       <PagePanel
         title="Journal Controls"
-        subtitle="Search entries, filter by type/tag, and maintain reflection streak."
+        subtitle={`Streak: ${streak} days`}
         actions={
           <button
             type="button"
             onClick={() => handleAddEntry({ entryDate: selectedDate })}
-            className="rounded-lg border border-jarvis-border bg-white/5 px-3 py-1.5 text-xs text-jarvis-text hover:bg-white/10"
+            className="rounded-lg border border-jarvis-border bg-jarvis-accent/10 px-3 py-1.5 text-xs text-jarvis-accent transition hover:bg-jarvis-accent/20"
           >
-            New Entry
+            + New Entry
           </button>
         }
       >
@@ -136,25 +153,65 @@ export default function Journal() {
             ))}
           </select>
         </div>
-        <p className="mt-3 text-xs text-jarvis-muted">Reflection streak: {streak} days</p>
       </PagePanel>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_400px]">
-        <div className="flex flex-col gap-6">
-          <JournalCalendar 
-            entries={filteredEntries} 
-            onSelectDay={setSelectedDate}
+      {/* Main 3-column layout */}
+      <div className="grid gap-4 xl:grid-cols-[320px_280px_1fr]">
+        {/* Column 1: Calendar */}
+        <div className="flex flex-col gap-4">
+          <JournalCalendar
+            entries={filteredEntries}
+            onSelectDay={handleDateSelect}
             selectedDate={selectedDate}
             onAddEntry={handleAddEntry}
           />
-          
-          <JournalEditor
-            entry={selectedEntry}
-            onUpdate={(updates) => updateEntry(selectedEntry.id, updates)}
-          />
+
+          {/* Date list — recent dates with entries */}
+          <PagePanel title="Entry Dates" subtitle="Click a date to browse">
+            <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+              {datesWithEntries.length === 0 ? (
+                <p className="py-4 text-center text-xs text-jarvis-muted italic">No entries yet.</p>
+              ) : (
+                datesWithEntries.map(([date, count]) => (
+                  <button
+                    key={date}
+                    type="button"
+                    onClick={() => handleDateSelect(date)}
+                    className={[
+                      'flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition',
+                      selectedDate === date
+                        ? 'bg-jarvis-accent/15 text-jarvis-accent border border-jarvis-accent/30'
+                        : 'text-jarvis-text hover:bg-white/5 border border-transparent',
+                    ].join(' ')}
+                  >
+                    <span className="font-medium">
+                      {new Date(date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="text-[10px] text-jarvis-muted">{count} {count === 1 ? 'entry' : 'entries'}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </PagePanel>
         </div>
 
-        <PagePanel title="Day Explorer" subtitle={`Selected: ${selectedDate}`}>
+        {/* Column 2: Day entries panel */}
+        <PagePanel
+          title={selectedDate
+            ? new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+            : 'Day Explorer'
+          }
+          subtitle="Select an entry to open it"
+          actions={
+            <button
+              type="button"
+              onClick={() => handleAddEntry({ entryDate: selectedDate })}
+              className="rounded-md border border-jarvis-border bg-white/5 px-2 py-1 text-[10px] text-jarvis-muted hover:text-jarvis-text transition"
+            >
+              + Add
+            </button>
+          }
+        >
           <JournalDayPanel
             date={selectedDate}
             entries={dayEntries}
@@ -163,6 +220,30 @@ export default function Journal() {
             selectedEntryId={selectedEntryId}
           />
         </PagePanel>
+
+        {/* Column 3: Editor */}
+        <div>
+          {selectedEntry ? (
+            <JournalEditor
+              entry={selectedEntry}
+              onUpdate={(updates) => updateEntry(selectedEntry.id, updates)}
+            />
+          ) : (
+            <div className="flex h-full min-h-[400px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-jarvis-border bg-jarvis-panel/20">
+              <div className="text-center">
+                <p className="text-sm font-medium text-jarvis-text">No entry selected</p>
+                <p className="mt-1 text-xs text-jarvis-muted">Click a date on the calendar, then select an entry</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAddEntry({ entryDate: selectedDate })}
+                className="rounded-lg border border-jarvis-border bg-jarvis-accent/10 px-4 py-2 text-xs text-jarvis-accent hover:bg-jarvis-accent/20 transition"
+              >
+                + Write for {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Today'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <EntityModal
@@ -170,7 +251,7 @@ export default function Journal() {
         onClose={() => setIsModalOpen(false)}
         title="New Journal Entry"
       >
-        <JournalEntryForm 
+        <JournalEntryForm
           initialData={initialFormData}
           onSubmit={handleFormSubmit}
           onCancel={() => setIsModalOpen(false)}

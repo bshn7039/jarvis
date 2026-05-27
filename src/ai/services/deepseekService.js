@@ -17,7 +17,7 @@ export class DeepSeekService {
       systemPrompt,
       tools,
       signal,
-      timeout = 30000,
+      timeout = 60000,
       retries = 3
     } = options;
 
@@ -31,6 +31,11 @@ export class DeepSeekService {
       model,
       messages: apiMessages.map(m => {
         const msg = { role: m.role, content: m.content || '' };
+        if (m.reasoningContent) {
+          msg.reasoning_content = m.reasoningContent;
+        } else if (m.reasoning_content) {
+          msg.reasoning_content = m.reasoning_content;
+        }
         if (m.tool_call_id) {
           msg.tool_call_id = m.tool_call_id;
         }
@@ -115,6 +120,7 @@ export class DeepSeekService {
         return {
           id: data.id,
           content: data.choices[0].message?.content || '',
+          reasoningContent: data.choices[0].message?.reasoning_content || null,
           toolCalls: data.choices[0].message?.tool_calls || null,
           model: data.model,
           usage: data.usage || { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 },

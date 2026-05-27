@@ -32,10 +32,11 @@ export function buildNode(data, path, depth = 0) {
     expanded: false,
   };
 
-  // Special handling for Finance to group by Accounts and Transactions
+  // Special handling for Finance to group by Accounts, Transactions, and Mutual Funds
   if (path === 'finance' && data) {
     const transactions = data.transactions || [];
     const accounts = [...new Set(transactions.map(t => t.account || 'cash'))];
+    const mutualFunds = data.mutualFunds || [];
     
     node.type = 'folder';
     node.children = [
@@ -74,8 +75,64 @@ export function buildNode(data, path, depth = 0) {
           tNode.label = `${t.type === 'credit' ? '+' : '-'} ₹${(t.amount || 0).toLocaleString()} - ${t.title || t.category}`;
           return tNode;
         })
+      },
+      {
+        id: 'finance.mutualfunds-group',
+        label: 'Mutual Funds',
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: mutualFunds.map(fund => {
+          const totalInvested = (fund.purchases || []).reduce((s, p) => s + (p.amount || 0), 0);
+          const totalUnits = (fund.purchases || []).reduce((s, p) => s + (p.units || 0), 0);
+          return {
+            id: `finance.mutualFunds.${fund.id}`,
+            label: fund.schemeName,
+            type: 'folder',
+            checked: true,
+            expanded: false,
+            children: [
+              {
+                id: `finance.mutualFunds.${fund.id}.summary`,
+                label: `Invested: ₹${totalInvested.toLocaleString('en-IN')} · ${parseFloat(totalUnits.toFixed(4))} units`,
+                type: 'leaf',
+                checked: true,
+              },
+              {
+                id: `finance.mutualFunds.${fund.id}.code`,
+                label: `Code: ${fund.schemeCode}`,
+                type: 'leaf',
+                checked: true,
+              },
+              {
+                id: `finance.mutualFunds.${fund.id}.purchases`,
+                label: `Purchases (${(fund.purchases || []).length})`,
+                type: 'folder',
+                checked: true,
+                expanded: false,
+                children: (fund.purchases || [])
+                  .slice()
+                  .sort((a, b) => b.date.localeCompare(a.date))
+                  .map(p => ({
+                    id: `finance.mutualFunds.${fund.id}.purchases.${p.id}`,
+                    label: `${p.date} — ₹${(p.amount || 0).toLocaleString('en-IN')} @ NAV ₹${p.nav} (${p.units} units)`,
+                    type: 'leaf',
+                    checked: true,
+                  }))
+              }
+            ]
+          };
+        })
       }
     ];
+
+    if (mutualFunds.length === 0) {
+      const mfGroup = node.children.find(c => c.id === 'finance.mutualfunds-group');
+      if (mfGroup) {
+        mfGroup.children = [{ id: 'finance.mutualFunds.empty', label: 'No funds tracked yet', type: 'leaf', checked: true }];
+      }
+    }
+
     return node;
   }
 

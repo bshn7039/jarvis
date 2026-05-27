@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { financeService } from '../database/services/financeService';
 import { deepClone } from '../utils/deepClone';
 import { useActivityStore } from './activityStore';
+import { localDb, STORES } from '../database/core/localDatabase';
 
 const initialState = {
   transactions: [],
@@ -124,7 +125,58 @@ export const useFinanceStore = create((set, get) => ({
 
   hydrate: async () => {
     try {
-      const transactions = await financeService.getAll();
+      let transactions = await financeService.getAll();
+
+      // Auto-seed default Yes Bank transactions if any of them are missing to populate user ledger instantly
+      const defaultTxns = [
+        { id: 't-seed-1', transactionDate: '2026-04-23', title: 'Rapido', category: 'Transport', type: 'debit', amount: 150, account: 'checking' },
+        { id: 't-seed-2', transactionDate: '2026-05-01', title: 'Opening Balance (Yes Bank)', category: 'Starting Balance', type: 'credit', amount: 3000, account: 'checking' },
+        { id: 't-seed-3', transactionDate: '2026-05-01', title: 'Rapido', category: 'Transport', type: 'debit', amount: 70, account: 'checking' },
+        { id: 't-seed-4', transactionDate: '2026-05-03', title: 'WiFi Recharge', category: 'Bills & Utilities', type: 'debit', amount: 650, account: 'checking' },
+        { id: 't-seed-5', transactionDate: '2026-05-05', title: 'Water Bottle / Misc', category: 'Miscellaneous', type: 'debit', amount: 100, account: 'checking' },
+        { id: 't-seed-6', transactionDate: '2026-05-06', title: 'Online Expense', category: 'Miscellaneous', type: 'debit', amount: 200, account: 'checking' },
+        { id: 't-seed-7', transactionDate: '2026-05-08', title: 'Cafe', category: 'Food & Dining', type: 'debit', amount: 100, account: 'checking' },
+        { id: 't-seed-8', transactionDate: '2026-05-08', title: '1 Mall', category: 'Shopping', type: 'debit', amount: 200, account: 'checking' },
+        { id: 't-seed-9', transactionDate: '2026-05-09', title: 'Spotify', category: 'Subscriptions', type: 'debit', amount: 100, account: 'checking' },
+        { id: 't-seed-10', transactionDate: '2026-05-10', title: 'Mummy Rapido', category: 'Transport', type: 'debit', amount: 150, account: 'checking' },
+        { id: 't-seed-11', transactionDate: '2026-05-10', title: 'Bhajni', category: 'Food & Dining', type: 'debit', amount: 80, account: 'checking' },
+        { id: 't-seed-12', transactionDate: '2026-05-10', title: 'Mame / Mama', category: 'Miscellaneous', type: 'debit', amount: 100, account: 'checking' },
+        { id: 't-seed-13', transactionDate: '2026-05-11', title: 'Account Inflow / Deposit', category: 'Salary / Income', type: 'credit', amount: 53900, account: 'checking' },
+        { id: 't-seed-14', transactionDate: '2026-05-11', title: 'Given to Mummy', category: 'Miscellaneous', type: 'debit', amount: 20000, account: 'checking' },
+        { id: 't-seed-15', transactionDate: '2026-05-12', title: 'Mama Cash', category: 'Miscellaneous', type: 'debit', amount: 30200, account: 'checking' },
+        { id: 't-seed-16', transactionDate: '2026-05-13', title: 'Rapido (Nilje)', category: 'Transport', type: 'debit', amount: 500, account: 'checking' },
+        { id: 't-seed-17', transactionDate: '2026-05-13', title: 'Water & Thums Up', category: 'Food & Dining', type: 'debit', amount: 60, account: 'checking' },
+        { id: 't-seed-18', transactionDate: '2026-05-13', title: 'Shraddha Mhatre', category: 'Miscellaneous', type: 'debit', amount: 250, account: 'checking' },
+        { id: 't-seed-19', transactionDate: '2026-05-14', title: "McDonald's (Macd)", category: 'Food & Dining', type: 'debit', amount: 300, account: 'checking' },
+        { id: 't-seed-20', transactionDate: '2026-05-15', title: 'Seawoods Bowling', category: 'Entertainment', type: 'debit', amount: 500, account: 'checking' },
+        { id: 't-seed-21', transactionDate: '2026-05-16', title: 'CSMU Registration', category: 'Education', type: 'debit', amount: 1500, account: 'checking' },
+        { id: 't-seed-22', transactionDate: '2026-05-16', title: 'CSMU Additional Fee', category: 'Education', type: 'debit', amount: 400, account: 'checking' },
+        { id: 't-seed-23', transactionDate: '2026-05-16', title: 'Mobile Recharge', category: 'Bills & Utilities', type: 'debit', amount: 400, account: 'checking' },
+        { id: 't-seed-24', transactionDate: '2026-05-17', title: 'Kharghar (Khagar) Expense', category: 'Transport', type: 'debit', amount: 500, account: 'checking' },
+        { id: 't-seed-25', transactionDate: '2026-05-17', title: 'Rapido', category: 'Transport', type: 'debit', amount: 150, account: 'checking' },
+        { id: 't-seed-26', transactionDate: '2026-05-17', title: 'Pillai College Expense', category: 'Education', type: 'debit', amount: 50, account: 'checking' },
+        { id: 't-seed-27', transactionDate: '2026-05-17', title: 'Soap', category: 'Shopping', type: 'debit', amount: 50, account: 'checking' },
+        { id: 't-seed-28', transactionDate: '2026-05-17', title: 'Boot (Shoes)', category: 'Shopping', type: 'debit', amount: 250, account: 'checking' },
+        { id: 't-seed-29', transactionDate: '2026-05-24', title: 'Monthly Allowance / Salary', category: 'Salary / Income', type: 'credit', amount: 5000, account: 'checking' },
+        { id: 't-seed-30', transactionDate: '2026-05-25', title: 'Mobile Stand', category: 'Shopping', type: 'debit', amount: 100, account: 'checking' },
+        { id: 't-seed-31', transactionDate: '2026-05-25', title: 'Keyboard & Mouse Mat', category: 'Shopping', type: 'debit', amount: 100, account: 'checking' },
+        { id: 't-seed-32', transactionDate: '2026-05-26', title: 'Heads (Headphones)', category: 'Shopping', type: 'debit', amount: 400, account: 'checking' },
+        { id: 't-seed-33', transactionDate: '2026-05-26', title: 'Food', category: 'Food & Dining', type: 'debit', amount: 200, account: 'checking' },
+        { id: 't-seed-34', transactionDate: '2026-05-27', title: 'Books x2', category: 'Education', type: 'debit', amount: 380, account: 'checking' },
+        { id: 't-seed-35', transactionDate: '2026-05-27', title: 'Gemini AI x2', category: 'Subscriptions', type: 'debit', amount: 200, account: 'checking' }
+      ];
+
+      const seedFlag = await localDb.getById(STORES.METADATA, 'yes-bank-seeded') || { id: 'yes-bank-seeded', seeded: false };
+      if (!seedFlag.seeded) {
+        const existingIds = new Set(transactions.map(t => t.id));
+        const missingTxns = defaultTxns.filter(t => !existingIds.has(t.id));
+        if (missingTxns.length > 0) {
+          await Promise.all(missingTxns.map(t => financeService.create(t)));
+          transactions = await financeService.getAll();
+        }
+        await localDb.put(STORES.METADATA, { id: 'yes-bank-seeded', seeded: true });
+      }
+
       const sorted = transactions.sort((a, b) => (b.transactionDate || '').localeCompare(a.transactionDate || ''));
       const derived = calculateDerivedFinance(sorted);
       

@@ -1,11 +1,23 @@
 import { useState } from 'react';
 import BaseModal from '../modals/BaseModal';
 
+const DEBIT_CATEGORIES = [
+  'Food & Dining',
+  'Transport',
+  'Entertainment',
+  'Health & Medical',
+  'Shopping',
+  'Bills & Utilities',
+  'Education',
+  'Subscriptions',
+  'Miscellaneous',
+];
+
 export default function TransactionModal({ open, onClose, type, onSubmit, onSaveSubmit }) {
   const [formData, setFormData] = useState({
     amount: '',
     title: '',
-    category: type === 'debit' ? '' : (type === 'saving' ? 'Savings Transfer' : 'Income'),
+    category: type === 'debit' ? 'Food & Dining' : (type === 'saving' ? 'Savings Transfer' : 'Income'),
     account: 'cash',
     description: '',
     transactionDate: new Date().toISOString().split('T')[0],
@@ -33,7 +45,7 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
     setFormData({
       amount: '',
       title: '',
-      category: type === 'debit' ? '' : (type === 'saving' ? 'Savings Transfer' : 'Income'),
+      category: type === 'debit' ? 'Food & Dining' : (type === 'saving' ? 'Savings Transfer' : 'Income'),
       account: 'cash',
       description: '',
       transactionDate: new Date().toISOString().split('T')[0],
@@ -44,12 +56,12 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
   return (
     <BaseModal open={open} onClose={onClose} ariaLabel={type === 'credit' ? 'Add Credit' : (type === 'saving' ? 'Save Money' : 'Add Debit')}>
       <h2 className="text-lg font-semibold mb-4">
-        {type === 'credit' ? 'Add Credit' : (type === 'saving' ? 'Save Money' : 'Add Debit')}
+        {type === 'credit' ? '+ Add Credit' : (type === 'saving' ? '💰 Save Money' : '- Add Debit')}
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block space-y-1">
-            <span className="text-xs uppercase tracking-wide text-jarvis-muted">Amount</span>
+            <span className="text-xs uppercase tracking-wide text-jarvis-muted">Amount (₹)</span>
             <input
               type="number"
               required
@@ -73,7 +85,7 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
 
         <label className="block space-y-1">
           <span className="text-xs uppercase tracking-wide text-jarvis-muted">
-            {type === 'credit' ? 'Title/Note' : (type === 'saving' ? 'Saving Note' : 'Expense Title')}
+            {type === 'credit' ? 'Title / Note' : (type === 'saving' ? 'Saving Note' : 'Expense Title')}
           </span>
           <input
             type="text"
@@ -81,7 +93,7 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
             value={formData.title}
             onChange={e => setFormData({ ...formData, title: e.target.value })}
             className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none"
-            placeholder={type === 'credit' ? 'Salary, Gift, etc.' : (type === 'saving' ? 'Monthly savings, Emergency fund...' : 'Dinner, Rent, etc.')}
+            placeholder={type === 'credit' ? 'Salary, Gift, Freelance...' : (type === 'saving' ? 'Monthly savings, Emergency fund...' : 'Describe the expense')}
           />
         </label>
 
@@ -96,20 +108,21 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
               value={formData.account}
               onChange={e => setFormData({ ...formData, account: e.target.value })}
               className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none"
-              placeholder="cash, upi, etc."
+              placeholder="cash, upi, bank..."
             />
           </label>
           {type === 'debit' && (
             <label className="block space-y-1">
               <span className="text-xs uppercase tracking-wide text-jarvis-muted">Category</span>
-              <input
-                type="text"
-                required
+              <select
                 value={formData.category}
                 onChange={e => setFormData({ ...formData, category: e.target.value })}
                 className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none"
-                placeholder="food, travel, etc."
-              />
+              >
+                {DEBIT_CATEGORIES.map(cat => (
+                  <option key={cat} value={cat} className="bg-jarvis-panel">{cat}</option>
+                ))}
+              </select>
             </label>
           )}
         </div>

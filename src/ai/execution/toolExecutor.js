@@ -3,6 +3,7 @@ import { useActivityStore } from '../../store/activityStore';
 import { useTaskStore } from '../../store/taskStore';
 import { useGoalStore } from '../../store/goalStore';
 import { useFinanceStore } from '../../store/financeStore';
+import { useMutualFundStore } from '../../store/mutualFundStore';
 
 /**
  * Validates, executes, and logs AI tool requests.
@@ -43,7 +44,7 @@ export async function executeAiTool(name, args) {
     }
   }
 
-  if (resolvedName === 'delete_finance_transaction') {
+  if (resolvedName === 'delete_finance_transaction' || resolvedName === 'update_finance_transaction') {
     if (!args.id) {
       throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
     }
@@ -51,6 +52,27 @@ export async function executeAiTool(name, args) {
     const transactionExists = (financeStore.transactions || []).some(t => t.id === args.id);
     if (!transactionExists) {
       throw new Error(`Validation Error: Transaction ID '${args.id}' does not exist in the active store.`);
+    }
+  }
+
+  if (resolvedName === 'delete_mutual_fund' || resolvedName === 'delete_mutual_fund_purchase' || resolvedName === 'add_mutual_fund_purchase') {
+    if (!args.fundId) {
+      throw new Error(`Validation Error: Missing required field 'fundId' for action '${name}'.`);
+    }
+    const mfStore = useMutualFundStore.getState();
+    const fund = (mfStore.funds || []).find(f => f.id === args.fundId);
+    if (!fund) {
+      throw new Error(`Validation Error: Mutual Fund with ID '${args.fundId}' does not exist in the active store.`);
+    }
+
+    if (resolvedName === 'delete_mutual_fund_purchase') {
+      if (!args.purchaseId) {
+        throw new Error(`Validation Error: Missing required field 'purchaseId' for action '${name}'.`);
+      }
+      const purchaseExists = (fund.purchases || []).some(p => p.id === args.purchaseId);
+      if (!purchaseExists) {
+        throw new Error(`Validation Error: Purchase with ID '${args.purchaseId}' does not exist in Mutual Fund '${fund.schemeName}'.`);
+      }
     }
   }
 
@@ -89,12 +111,40 @@ export async function executeAiTool(name, args) {
       } else if (resolvedName === 'create_finance_transaction') {
         activityAction = `AI recorded ${args.type} transaction: "${args.title}"`;
         entityType = 'finance';
+      } else if (resolvedName === 'bulk_create_finance_transactions') {
+        activityAction = `AI bulk recorded ${(args.transactions || []).length} transaction(s)`;
+        entityType = 'finance';
+      } else if (resolvedName === 'update_finance_transaction') {
+        activityAction = `AI updated transaction ID: ${args.id}`;
+        entityType = 'finance';
+      } else if (resolvedName === 'delete_finance_transaction') {
+        activityAction = `AI deleted transaction ID: ${args.id}`;
+        entityType = 'finance';
+      } else if (resolvedName === 'create_savings_transfer') {
+        activityAction = `AI logged savings transfer of ₹${args.amount} from '${args.fromAccount}'`;
+        entityType = 'finance';
       } else if (resolvedName === 'create_schedule') {
         activityAction = `AI scheduled event: "${args.title}"`;
         entityType = 'schedule';
       } else if (resolvedName === 'create_crm_entry') {
         activityAction = `AI logged CRM contact: "${args.name}"`;
         entityType = 'crm';
+      } else if (resolvedName === 'create_mutual_fund') {
+        activityAction = `AI logged new mutual fund: "${args.schemeName}"`;
+        entityType = 'finance';
+        entityId = result.entityId || 'system';
+      } else if (resolvedName === 'add_mutual_fund_purchase') {
+        activityAction = `AI added purchase of ₹${args.purchase?.amount} to mutual fund ID: ${args.fundId}`;
+        entityType = 'finance';
+        entityId = args.fundId;
+      } else if (resolvedName === 'delete_mutual_fund') {
+        activityAction = `AI deleted mutual fund ID: ${args.fundId}`;
+        entityType = 'finance';
+        entityId = args.fundId;
+      } else if (resolvedName === 'delete_mutual_fund_purchase') {
+        activityAction = `AI deleted purchase ID: ${args.purchaseId} from mutual fund ID: ${args.fundId}`;
+        entityType = 'finance';
+        entityId = args.fundId;
       }
 
       await activityStore.logActivity({

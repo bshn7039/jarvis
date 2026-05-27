@@ -19,6 +19,7 @@ import { useMusicStore } from '../store/musicStore';
 import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
+import { useMutualFundStore } from '../store/mutualFundStore';
 
 export function useCombinedState(selector) {
   const tasksData = useTaskStore(useShallow(s => ({ 
@@ -79,12 +80,17 @@ export function useCombinedState(selector) {
   const reading = useReadingStore(s => s.library);
   const vault = useVaultStore(s => s.ideas);
 
+  const mutualFunds = useMutualFundStore(s => s.funds);
+
   const fullState = useMemo(() => ({
     profile,
     tasks: tasksData,
     goals,
     journal: journalData,
-    finance: financeData,
+    finance: {
+      ...financeData,
+      mutualFunds,
+    },
     fitness: fitnessData,
     crm: { contacts: crmContacts },
     academics: academicState,
@@ -120,7 +126,8 @@ export function useCombinedState(selector) {
     music,
     writing,
     reading,
-    vault
+    vault,
+    mutualFunds
   ]);
 
   return selector ? selector(fullState) : fullState;

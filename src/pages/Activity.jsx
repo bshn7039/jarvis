@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Search, Filter, Clock, ArrowUpDown } from 'lucide-react';
+import { Search, Filter, Clock, ArrowUpDown, Trash2, AlertTriangle } from 'lucide-react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import { useActivityStore } from '../store/activityStore';
 
@@ -52,9 +52,16 @@ function groupByDay(activities) {
 
 export default function Activity() {
   const activities = useActivityStore((s) => s.activities);
+  const clearHistory = useActivityStore((s) => s.clearHistory);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleClearActivity = async () => {
+    await clearHistory();
+    setShowClearConfirm(false);
+  };
 
   const filteredActivities = useMemo(() => {
     let filtered = [...activities];
@@ -92,6 +99,43 @@ export default function Activity() {
       title="Activity Timeline"
       subtitle="Track every action across your system"
     >
+      {/* Clear Confirmation Modal */}
+      {showClearConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowClearConfirm(false); }}
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-red-900/40 bg-jarvis-panel p-6 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-red-900/30 bg-red-900/10">
+                <AlertTriangle className="h-4 w-4 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-jarvis-text">Clear All Activity?</h3>
+                <p className="text-[11px] text-jarvis-muted">This cannot be undone.</p>
+              </div>
+            </div>
+            <p className="mb-5 text-xs text-jarvis-muted">
+              All {activities.length} activity entries will be permanently deleted from your timeline.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="rounded-lg border border-jarvis-border bg-white/5 px-4 py-2 text-xs text-jarvis-muted hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearActivity}
+                className="rounded-lg border border-red-900/40 bg-red-900/10 px-4 py-2 text-xs font-medium text-red-400 hover:bg-red-900/20 transition-colors"
+              >
+                Yes, Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-jarvis-muted" strokeWidth={1.75} />
@@ -126,6 +170,17 @@ export default function Activity() {
             <ArrowUpDown className="h-4 w-4" strokeWidth={1.75} />
             {sortOrder === 'newest' ? 'Newest' : 'Oldest'}
           </button>
+          {activities.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-red-900/30 bg-red-900/5 px-3 py-2 text-sm text-red-400/70 transition-colors hover:border-red-900/50 hover:text-red-400"
+              title="Clear all activity"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+              Clear
+            </button>
+          )}
         </div>
       </div>
 

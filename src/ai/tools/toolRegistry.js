@@ -5,6 +5,7 @@ import { useFitnessStore } from '../../store/fitnessStore';
 import { useCrmStore } from '../../store/crmStore';
 import { useScheduleStore } from '../../store/scheduleStore';
 import { useFinanceStore } from '../../store/financeStore';
+import { useMutualFundStore } from '../../store/mutualFundStore';
 import { trashService } from '../../database/services/trashService';
 
 export const PERMISSION_LEVELS = {
@@ -26,6 +27,10 @@ export const TOOL_ALIASES = {
   addTransaction: 'create_finance_transaction',
   createSchedule: 'create_schedule',
   createCRMContact: 'create_crm_entry',
+  deleteTransaction: 'delete_finance_transaction',
+  updateTransaction: 'update_finance_transaction',
+  saveMoney: 'create_savings_transfer',
+  bulkCreateTransactions: 'bulk_create_finance_transactions',
 };
 
 export const TOOL_PERMISSIONS = {
@@ -51,6 +56,13 @@ export const TOOL_PERMISSIONS = {
   create_finance_transaction: PERMISSION_LEVELS.SAFE_WRITE,
   update_finance_transaction: PERMISSION_LEVELS.SAFE_WRITE,
   delete_finance_transaction: PERMISSION_LEVELS.CONFIRM_REQUIRED,
+  create_savings_transfer: PERMISSION_LEVELS.SAFE_WRITE,
+  bulk_create_finance_transactions: PERMISSION_LEVELS.SAFE_WRITE,
+  
+  create_mutual_fund: PERMISSION_LEVELS.SAFE_WRITE,
+  add_mutual_fund_purchase: PERMISSION_LEVELS.SAFE_WRITE,
+  delete_mutual_fund: PERMISSION_LEVELS.CONFIRM_REQUIRED,
+  delete_mutual_fund_purchase: PERMISSION_LEVELS.CONFIRM_REQUIRED,
   
   add_to_daily_schedule: PERMISSION_LEVELS.SAFE_WRITE,
   update_daily_schedule_item: PERMISSION_LEVELS.SAFE_WRITE,
@@ -279,6 +291,90 @@ export const TOOL_SCHEMAS = [
   {
     type: 'function',
     function: {
+      name: 'bulk_create_finance_transactions',
+      description: 'Bulk import/create multiple credit/debit transaction logs at once.',
+      parameters: {
+        type: 'object',
+        properties: {
+          transactions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'Description of the transaction' },
+                amount: { type: 'number', description: 'Financial amount' },
+                type: { type: 'string', enum: ['credit', 'debit'] },
+                category: { type: 'string', description: 'E.g. Food, Rent, Education, Dividend' },
+                account: { type: 'string', description: 'Account source/destination, e.g. Checking, Cash, Savings, Credit Card' },
+                transactionDate: { type: 'string', description: 'YYYY-MM-DD format' }
+              },
+              required: ['title', 'amount', 'type', 'category', 'account']
+            }
+          }
+        },
+        required: ['transactions']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'update_finance_transaction',
+      description: 'Update an existing finance transaction details.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'The unique transaction ID to update' },
+          updates: {
+            type: 'object',
+            properties: {
+              title: { type: 'string' },
+              amount: { type: 'number' },
+              type: { type: 'string', enum: ['credit', 'debit'] },
+              category: { type: 'string' },
+              account: { type: 'string' },
+              transactionDate: { type: 'string', description: 'YYYY-MM-DD' }
+            }
+          }
+        },
+        required: ['id', 'updates']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_finance_transaction',
+      description: 'Delete a finance transaction. Requires confirmation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', description: 'Transaction ID' }
+        },
+        required: ['id']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_savings_transfer',
+      description: 'Transfer / Save money from an account into the savings account.',
+      parameters: {
+        type: 'object',
+        properties: {
+          amount: { type: 'number', description: 'The savings transfer amount' },
+          fromAccount: { type: 'string', description: 'Source account, e.g. checking, cash' },
+          transactionDate: { type: 'string', description: 'YYYY-MM-DD format (optional)' },
+          note: { type: 'string', description: 'Description/Note for the transfer' }
+        },
+        required: ['amount', 'fromAccount']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
       name: 'add_to_daily_schedule',
       description: "Add a new slot or routine directly into the Command Center's Today Schedule.",
       parameters: {
@@ -332,11 +428,104 @@ export const TOOL_SCHEMAS = [
   {
     type: 'function',
     function: {
-      name: 'reset_daily_schedule',
-      description: "Reset Today's AI Schedule back to the default daily rhythm: Wake up at 8AM and Sleep at 12AM.",
+      name: 'create_mutual_fund',
+      description: 'Create a new mutual fund tracking entry with one or more initial purchases.',
       parameters: {
         type: 'object',
-        properties: {}
+        properties: {
+          schemeName: { type: 'string', description: 'Name of the mutual fund scheme, e.g. Nippon India Small Cap Fund Direct Growth' },
+          schemeCode: { type: 'string', description: 'MFAPI scheme code, e.g. "118778"' },
+          purchase: {
+            type: 'object',
+            description: 'A single initial purchase/SIP detail for the fund',
+            properties: {
+              date: { type: 'string', description: 'Date of the purchase in YYYY-MM-DD format' },
+              amount: { type: 'number', description: 'Amount invested in ₹' },
+              nav: { type: 'number', description: 'NAV price at purchase time in ₹' }
+            },
+            required: ['date', 'amount', 'nav']
+          },
+          purchases: {
+            type: 'array',
+            description: 'Multiple initial purchases/SIPs details for the fund',
+            items: {
+              type: 'object',
+              properties: {
+                date: { type: 'string', description: 'Date of the purchase in YYYY-MM-DD format' },
+                amount: { type: 'number', description: 'Amount invested in ₹' },
+                nav: { type: 'number', description: 'NAV price at purchase time in ₹' }
+              },
+              required: ['date', 'amount', 'nav']
+            }
+          }
+        },
+        required: ['schemeName', 'schemeCode']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'add_mutual_fund_purchase',
+      description: 'Add one or more new purchases (SIP or lumpsum) to an existing mutual fund tracking entry.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fundId: { type: 'string', description: 'The ID of the existing mutual fund entry' },
+          purchase: {
+            type: 'object',
+            description: 'A single purchase/SIP detail to add',
+            properties: {
+              date: { type: 'string', description: 'Date of the purchase in YYYY-MM-DD format' },
+              amount: { type: 'number', description: 'Amount invested in ₹' },
+              nav: { type: 'number', description: 'NAV price at purchase time in ₹' }
+            },
+            required: ['date', 'amount', 'nav']
+          },
+          purchases: {
+            type: 'array',
+            description: 'Multiple purchases/SIPs details to add',
+            items: {
+              type: 'object',
+              properties: {
+                date: { type: 'string', description: 'Date of the purchase in YYYY-MM-DD format' },
+                amount: { type: 'number', description: 'Amount invested in ₹' },
+                nav: { type: 'number', description: 'NAV price at purchase time in ₹' }
+              },
+              required: ['date', 'amount', 'nav']
+            }
+          }
+        },
+        required: ['fundId']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_mutual_fund',
+      description: 'Delete a mutual fund tracking entry entirely by its ID. Requires confirmation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fundId: { type: 'string', description: 'ID of the mutual fund to delete' }
+        },
+        required: ['fundId']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'delete_mutual_fund_purchase',
+      description: 'Delete a specific purchase entry from a mutual fund. Requires confirmation.',
+      parameters: {
+        type: 'object',
+        properties: {
+          fundId: { type: 'string', description: 'ID of the mutual fund' },
+          purchaseId: { type: 'string', description: 'ID of the purchase to delete' }
+        },
+        required: ['fundId', 'purchaseId']
       }
     }
   }
@@ -458,6 +647,88 @@ export async function executeToolAction(name, args) {
       return { success: true, message: `Financial transaction '${transaction.title}' added. Current monthly spending is now $${useFinanceStore.getState().balanceOverview.monthlySpending}`, entityId: transaction.id };
     }
 
+    case 'bulk_create_finance_transactions': {
+      const store = useFinanceStore.getState();
+      let txns = [];
+      if (Array.isArray(sanitizedArgs.transactions)) {
+        txns = sanitizedArgs.transactions;
+      } else if (sanitizedArgs.transactions && typeof sanitizedArgs.transactions === 'object') {
+        txns = [sanitizedArgs.transactions];
+      } else if (Array.isArray(sanitizedArgs)) {
+        txns = sanitizedArgs;
+      } else if (sanitizedArgs.title && sanitizedArgs.amount) {
+        txns = [sanitizedArgs];
+      }
+      
+      const added = [];
+      for (const t of txns) {
+        // Enforce account as "Cash" if requested
+        const enriched = { ...t, account: t.account || 'Cash' };
+        const transaction = await store.addTransaction(enriched);
+        added.push(transaction);
+      }
+      return { 
+        success: true, 
+        message: `Successfully bulk recorded ${added.length} transaction(s).`, 
+        entityId: added[0]?.id || 'bulk' 
+      };
+    }
+
+    case 'update_finance_transaction': {
+      const store = useFinanceStore.getState();
+      const existing = store.transactions.find(t => t.id === sanitizedArgs.id);
+      if (!existing) {
+        return { success: false, message: `Transaction with ID ${sanitizedArgs.id} not found.` };
+      }
+      await store.updateTransaction(sanitizedArgs.id, sanitizedArgs.updates);
+      return { success: true, message: `Financial transaction '${existing.title}' updated successfully.`, entityId: sanitizedArgs.id };
+    }
+
+    case 'delete_finance_transaction': {
+      const store = useFinanceStore.getState();
+      const existing = store.transactions.find(t => t.id === sanitizedArgs.id);
+      if (!existing) {
+        return { success: false, message: `Transaction with ID ${sanitizedArgs.id} not found.` };
+      }
+      await store.deleteTransaction(sanitizedArgs.id);
+      return { success: true, message: `Financial transaction '${existing.title}' deleted successfully.` };
+    }
+
+    case 'create_savings_transfer': {
+      const store = useFinanceStore.getState();
+      const result = await store.saveMoney(sanitizedArgs);
+      return { success: true, message: `Successfully transferred ₹${sanitizedArgs.amount} from '${sanitizedArgs.fromAccount}' to savings account.`, entityId: result.savedDebit.id };
+    }
+
+    case 'create_mutual_fund': {
+      const store = useMutualFundStore.getState();
+      const fund = await store.addFund(sanitizedArgs);
+      return { success: true, message: `Mutual Fund '${fund.schemeName}' created successfully with ID ${fund.id}`, entityId: fund.id };
+    }
+
+    case 'add_mutual_fund_purchase': {
+      const store = useMutualFundStore.getState();
+      const purchaseOrPurchases = sanitizedArgs.purchases || sanitizedArgs.purchase;
+      await store.addPurchase(sanitizedArgs.fundId, purchaseOrPurchases);
+      const fund = store.funds.find(f => f.id === sanitizedArgs.fundId);
+      const count = Array.isArray(purchaseOrPurchases) ? purchaseOrPurchases.length : 1;
+      return { success: true, message: `Successfully added ${count} purchase(s) to Mutual Fund '${fund?.schemeName || sanitizedArgs.fundId}'.`, entityId: sanitizedArgs.fundId };
+    }
+
+    case 'delete_mutual_fund': {
+      const store = useMutualFundStore.getState();
+      const fund = store.funds.find(f => f.id === sanitizedArgs.fundId);
+      await store.deleteFund(sanitizedArgs.fundId);
+      return { success: true, message: `Mutual Fund '${fund?.schemeName || sanitizedArgs.fundId}' deleted successfully.` };
+    }
+
+    case 'delete_mutual_fund_purchase': {
+      const store = useMutualFundStore.getState();
+      const fund = store.funds.find(f => f.id === sanitizedArgs.fundId);
+      await store.deletePurchase(sanitizedArgs.fundId, sanitizedArgs.purchaseId);
+      return { success: true, message: `Purchase ID '${sanitizedArgs.purchaseId}' deleted from Mutual Fund '${fund?.schemeName || sanitizedArgs.fundId}'.` };
+    }
+
     case 'add_to_daily_schedule': {
       const { useAiStore } = await import('../../store/aiStore');
       useAiStore.getState().addToSchedule(sanitizedArgs);
@@ -512,6 +783,52 @@ function sanitizeToolArgs(name, args) {
   if (name === 'create_finance_transaction') {
     if (clean.amount !== undefined) clean.amount = Math.max(0.01, Number(clean.amount) || 0);
     if (clean.title) clean.title = clean.title.slice(0, 100);
+  }
+
+  if (name === 'update_finance_transaction' && clean.updates) {
+    if (clean.updates.amount !== undefined) clean.updates.amount = Math.max(0.01, Number(clean.updates.amount) || 0);
+    if (clean.updates.title) clean.updates.title = clean.updates.title.slice(0, 100);
+  }
+
+  if (name === 'create_savings_transfer') {
+    if (clean.amount !== undefined) clean.amount = Math.max(0.01, Number(clean.amount) || 0);
+    if (clean.note) clean.note = clean.note.slice(0, 100);
+  }
+
+  if (name === 'create_mutual_fund') {
+    if (clean.schemeName) clean.schemeName = clean.schemeName.slice(0, 150);
+    if (clean.schemeCode) clean.schemeCode = String(clean.schemeCode).slice(0, 20);
+    if (clean.purchase) {
+      clean.purchase.amount = Math.max(0.01, Number(clean.purchase.amount) || 0);
+      clean.purchase.nav = Math.max(0.0001, Number(clean.purchase.nav) || 0);
+      if (clean.purchase.date) clean.purchase.date = clean.purchase.date.slice(0, 10);
+    }
+    if (Array.isArray(clean.purchases)) {
+      clean.purchases = clean.purchases.map(p => {
+        const cleanP = { ...p };
+        cleanP.amount = Math.max(0.01, Number(cleanP.amount) || 0);
+        cleanP.nav = Math.max(0.0001, Number(cleanP.nav) || 0);
+        if (cleanP.date) cleanP.date = cleanP.date.slice(0, 10);
+        return cleanP;
+      });
+    }
+  }
+
+  if (name === 'add_mutual_fund_purchase') {
+    if (clean.purchase) {
+      clean.purchase.amount = Math.max(0.01, Number(clean.purchase.amount) || 0);
+      clean.purchase.nav = Math.max(0.0001, Number(clean.purchase.nav) || 0);
+      if (clean.purchase.date) clean.purchase.date = clean.purchase.date.slice(0, 10);
+    }
+    if (Array.isArray(clean.purchases)) {
+      clean.purchases = clean.purchases.map(p => {
+        const cleanP = { ...p };
+        cleanP.amount = Math.max(0.01, Number(cleanP.amount) || 0);
+        cleanP.nav = Math.max(0.0001, Number(cleanP.nav) || 0);
+        if (cleanP.date) cleanP.date = cleanP.date.slice(0, 10);
+        return cleanP;
+      });
+    }
   }
 
   return clean;

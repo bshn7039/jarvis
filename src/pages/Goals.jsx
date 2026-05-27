@@ -4,18 +4,14 @@ import PagePanel from '../components/ui/PagePanel';
 import GoalHierarchyTree from '../components/goals/GoalHierarchyTree';
 import { useGoalStore } from '../store/goalStore';
 import { useTaskStore } from '../store/taskStore';
-import { Shield, Target, Zap, Circle } from 'lucide-react';
+import { Shield, Target, Zap } from 'lucide-react';
 
 export default function Goals() {
   const goals = useGoalStore((s) => s.goals);
-  const selectedGoalId = useGoalStore((s) => s.selectedGoalId);
-  const setSelectedGoalId = useGoalStore((s) => s.setSelectedGoalId);
   const addGoal = useGoalStore((s) => s.addGoal);
 
   const tasks = useTaskStore((s) => s.tasks);
   const tasksById = useMemo(() => Object.fromEntries(tasks.map((task) => [task.id, task])), [tasks]);
-
-  const selectedNode = goals.find((goal) => goal.id === selectedGoalId) ?? goals.find(g => g.type === 'area');
 
   const stats = useMemo(() => {
     const totalAreas = goals.filter(g => g.type === 'area').length;
@@ -32,8 +28,8 @@ export default function Goals() {
       subtitle="Strategic command tree. Life Area -> Main Goal -> Objective -> Sub Goal -> Tasks."
     >
       <PagePanel
-        title={selectedNode?.title || 'System Map'}
-        subtitle={selectedNode?.description || 'Strategic life architecture.'}
+        title="Goals Overview"
+        subtitle="Track your life areas, main goals, and linked tasks."
         actions={
           <button
             type="button"
@@ -44,7 +40,7 @@ export default function Goals() {
           </button>
         }
       >
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
             <div className="flex items-center gap-2 text-jarvis-muted">
               <Shield className="h-3.5 w-3.5" />
@@ -65,13 +61,6 @@ export default function Goals() {
               <p className="text-[10px] uppercase tracking-widest">Exec Layer</p>
             </div>
             <p className="mt-1 text-lg font-medium text-jarvis-text">{stats.totalLinkedTasks} Tasks</p>
-          </div>
-          <div className="rounded-xl border border-jarvis-border bg-black/20 p-3">
-            <div className="flex items-center gap-2 text-jarvis-muted">
-              <Circle className="h-3.5 w-3.5" />
-              <p className="text-[10px] uppercase tracking-widest">Architecture</p>
-            </div>
-            <p className="mt-1 text-xs text-jarvis-text">Recursive Tree</p>
           </div>
         </div>
       </PagePanel>

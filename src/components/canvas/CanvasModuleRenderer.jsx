@@ -11,6 +11,7 @@ import { useSelfCareStore } from '../../store/selfCareStore';
 import { useReadingStore } from '../../store/readingStore';
 import { useMusicStore } from '../../store/musicStore';
 import { useVaultStore } from '../../store/vaultStore';
+import { useMutualFundStore } from '../../store/mutualFundStore';
 
 function Stat({ label, value }) {
   return (
@@ -107,26 +108,31 @@ function FitnessPreview() {
 function FinancePreview() {
   const balanceOverview = useFinanceStore((s) => s.balanceOverview);
   const transactions = useFinanceStore((s) => s.transactions);
-  const savingsGoals = useFinanceStore((s) => s.savingsGoals);
-  const recentExpenses = transactions.filter((txn) => txn.type === 'expense').slice(0, 3);
-  const savingsProgress = savingsGoals.length
-    ? Math.round(
-        (savingsGoals.reduce((sum, goal) => sum + goal.current / goal.target, 0) /
-          savingsGoals.length) *
-          100,
-      )
-    : 0;
-  const topCategory = recentExpenses[0]?.category ?? 'None';
+  const getPortfolioTotals = useMutualFundStore(s => s.getPortfolioTotals);
+  const mfTotals = getPortfolioTotals();
+
+  const currentMonthSpend = useMemo(() => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    return transactions
+      .filter(t => t.type === 'debit' && (t.transactionDate || '').startsWith(currentMonth))
+      .reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  }, [transactions]);
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        <Stat label="Balance" value={`$${balanceOverview.totalBalance}`} />
-        <Stat label="Savings" value={`${savingsProgress}%`} />
+        <Stat label="Balance" value={`₹${Math.round(balanceOverview.totalBalance).toLocaleString('en-IN')}`} />
+        <Stat label="This Month" value={`-₹${Math.round(currentMonthSpend).toLocaleString('en-IN')}`} />
+        <Stat label="MF Invested" value={mfTotals.totalInvested > 0 ? `₹${Math.round(mfTotals.totalInvested).toLocaleString('en-IN')}` : '—'} />
+        <Stat label="MF Value" value={mfTotals.totalCurrentValue > 0 ? `₹${Math.round(mfTotals.totalCurrentValue).toLocaleString('en-IN')}` : '—'} />
       </div>
-      <p className="text-xs text-jarvis-muted">
-        Recent expenses: {recentExpenses.length} | Top: {topCategory}
-      </p>
+      {mfTotals.totalInvested > 0 && (
+        <p className={`text-[10px] font-medium ${
+          mfTotals.totalReturnsPercent >= 0 ? 'text-emerald-400' : 'text-red-400'
+        }`}>
+          MF Returns: {mfTotals.totalReturnsPercent >= 0 ? '+' : ''}{mfTotals.totalReturnsPercent}%
+        </p>
+      )}
     </div>
   );
 }
@@ -215,6 +221,49 @@ function ChatsPreview() {
   );
 }
 
+function MutualFundsPreview() {
+  const funds = useMutualFundStore(s => s.funds);
+  const getPortfolioTotals = useMutualFundStore(s => s.getPortfolioTotals);
+  const computeFundStats = useMutualFundStore(s => s.computeFundStats);
+  const totals = getPortfolioTotals();
+
+  if (funds.length === 0) {
+    return <p className="text-xs text-jarvis-muted italic">No mutual funds tracked yet.</p>;
+  }
+
+  const isGain = totals.totalReturnsPercent >= 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="Invested" value={`₹${Math.round(totals.totalInvested).toLocaleString('en-IN')}`} />
+        <Stat label="Current" value={`₹${Math.round(totals.totalCurrentValue).toLocaleString('en-IN')}`} />
+        <Stat label="Returns" value={`${isGain ? '+' : ''}₹${Math.round(totals.totalReturns).toLocaleString('en-IN')}`} />
+        <Stat label="Overall %" value={`${isGain ? '+' : ''}${totals.totalReturnsPercent}%`} />
+      </div>
+      <div className="space-y-1 mt-1">
+        {funds.slice(0, 4).map(fund => {
+          const stats = computeFundStats(fund);
+          const rp = stats.returnsPercent;
+          return (
+            <div key={fund.id} className="flex items-center justify-between rounded-md bg-black/20 px-2 py-1.5 border border-jarvis-border/30">
+              <p className="text-[10px] text-jarvis-text truncate flex-1 pr-2 leading-snug">{fund.schemeName.split(' ').slice(0, 4).join(' ')}…</p>
+              <span className={`text-[10px] font-mono shrink-0 ${
+                rp === null ? 'text-jarvis-muted' : rp >= 0 ? 'text-emerald-400' : 'text-red-400'
+              }`}>
+                {rp !== null ? `${rp >= 0 ? '+' : ''}${rp}%` : '...'}
+              </span>
+            </div>
+          );
+        })}
+        {funds.length > 4 && (
+          <p className="text-[9px] text-jarvis-muted italic text-center">+{funds.length - 4} more funds</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PersonalPreview() {
   const selfCare = useSelfCareStore((s) => s.routines);
   const reading = useReadingStore((s) => s.library);
@@ -246,6 +295,8 @@ export default function CanvasModuleRenderer({ type }) {
       return <FitnessPreview />;
     case 'finance':
       return <FinancePreview />;
+    case 'mutualFunds':
+      return <MutualFundsPreview />;
     case 'academics':
       return <AcademicsPreview />;
     case 'crm':

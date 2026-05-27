@@ -67,7 +67,6 @@ const defaultValues = {
     completionNotes: '',
     linkedGoalIds: [],
     linkedAcademicIds: [],
-    linkedScheduleIds: [],
     linkedJournalIds: [],
   },
   crm: {
@@ -417,13 +416,6 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSub
           value={formData.linkedAcademicIds}
           onChange={(value) => setField('linkedAcademicIds', value)}
           placeholder="Link subjects"
-        />
-        <EntityLinkSelector
-          label="Schedules"
-          entities={relationshipOptions.linkedScheduleIds}
-          value={formData.linkedScheduleIds}
-          onChange={(value) => setField('linkedScheduleIds', value)}
-          placeholder="Link schedules"
         />
         <EntityLinkSelector
           label="Journal"

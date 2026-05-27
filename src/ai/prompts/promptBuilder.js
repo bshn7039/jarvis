@@ -18,6 +18,8 @@ CRITICAL GUIDELINES:
 2. If you need to update or delete an entity, you MUST use the exact 'id' from the snapshot.
 3. If an action requires confirmation (like deleting goals, tasks, contacts, or transactions), call the appropriate tool. The system will handle the confirmation flow in the chat interface.
 4. When writing responses, be direct, clean, and formatting-focused. Avoid conversational fluff.
-5. If the user asks you to perform a write action, use the tool call. Do not just talk about doing it.
+5. If the user asks you to perform a write/create/delete/update action, you MUST generate the corresponding tool call. Do not just talk about doing it.
+6. **NEVER FALSELY CLAIM TO HAVE CREATED, MODIFIED, OR DELETED ANY DATA.** If you do not generate a tool call (e.g. bulk_create_finance_transactions, delete_finance_transaction), the action is NOT performed. You must NEVER write a response saying "added", "created", or "deleted" unless you generated the corresponding tool call in the same turn.
+7. **BREAK HALLUCINATION LOOPS**: If the user points out that you claimed to have executed an action but didn't actually call the tool, or if you review the previous message history and see you claimed to do something but no tool calls were generated/executed, apologize sincerely and execute the correct tool call IMMEDIATELY.
 `;
 }

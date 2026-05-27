@@ -9,6 +9,68 @@ import { buildSystemPrompt } from '../ai/prompts/promptBuilder';
 import { TOOL_SCHEMAS, TOOL_PERMISSIONS, PERMISSION_LEVELS, TOOL_ALIASES } from '../ai/tools/toolRegistry';
 import { executeAiTool } from '../ai/execution/toolExecutor';
 
+function safeParseJson(str) {
+  if (!str) return {};
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    console.warn('[safeParseJson] Initial JSON parse failed, attempting automatic repair:', e, str);
+    
+    let repaired = str.trim();
+    
+    // Repair common single quote LLM errors: replace single quotes surrounding keys/values with double quotes
+    // protecting apostrophes in words like McDonald's
+    repaired = repaired
+      .replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (match, group) => {
+        return '"' + group.replace(/"/g, '\\"') + '"';
+      });
+      
+    // Remove trailing commas
+    repaired = repaired.replace(/,(\s*[\]}])/g, '$1');
+
+    // Fix unescaped control chars
+    repaired = repaired
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r');
+
+    try {
+      return JSON.parse(repaired);
+    } catch (innerErr) {
+      console.error('[safeParseJson] Repair failed, trying regex extraction: ', innerErr, repaired);
+      try {
+        const obj = {};
+        const keyValueRegex = /"([^"]+)"\s*:\s*(?:"([^"]*)"|(\d+(?:\.\d+)?)|(true|false)|(null))/g;
+        let match;
+        while ((match = keyValueRegex.exec(str)) !== null) {
+          const key = match[1];
+          const valStr = match[2];
+          const numStr = match[3];
+          const boolStr = match[4];
+          const nullStr = match[5];
+          
+          if (valStr !== undefined) {
+            obj[key] = valStr;
+          } else if (numStr !== undefined) {
+            obj[key] = Number(numStr);
+          } else if (boolStr !== undefined) {
+            obj[key] = boolStr === 'true';
+          } else if (nullStr !== undefined) {
+            obj[key] = null;
+          }
+        }
+        
+        if (Object.keys(obj).length > 0) {
+          console.log('[safeParseJson] Successfully recovered args via regex extraction:', obj);
+          return obj;
+        }
+      } catch (regexErr) {
+        console.error('[safeParseJson] Regex recovery failed:', regexErr);
+      }
+      throw e;
+    }
+  }
+}
+
 class ChatService extends BaseService {
   constructor() {
     super(STORES.CHATS);
@@ -122,7 +184,7 @@ export const useChatStore = create((set, get) => ({
     aiStore.setExecutionStatus('analyzing');
     aiStore.clearError();
 
-    const { contextSummary, formattedString } = buildAiContext(promptText);
+    const { contextSummary, formattedString } = buildAiContext(promptText, { historyMessages: currentMessages });
     const systemPrompt = buildSystemPrompt(formattedString);
 
     const historyMessages = currentMessages.slice(-15);
@@ -145,6 +207,7 @@ export const useChatStore = create((set, get) => ({
         id: crypto.randomUUID(),
         role: 'assistant',
         content: response.content,
+        reasoningContent: response.reasoningContent || null,
         createdAt: new Date().toISOString(),
         contextReferences: contextSummary,
         toolCalls: response.toolCalls ? response.toolCalls.map(tc => {
@@ -153,7 +216,7 @@ export const useChatStore = create((set, get) => ({
           return {
             id: tc.id,
             name: tc.function.name,
-            args: JSON.parse(tc.function.arguments || '{}'),
+            args: safeParseJson(tc.function.arguments || '{}'),
             status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
             result: null
           };
@@ -212,6 +275,7 @@ export const useChatStore = create((set, get) => ({
           ...historyMessages.map(m => ({
             role: m.role,
             content: m.content,
+            reasoningContent: m.reasoningContent || m.reasoning_content || null,
             toolCalls: m.toolCalls || m.tool_calls,
             tool_call_id: m.tool_call_id || m.toolCallId,
             name: m.name
@@ -219,6 +283,7 @@ export const useChatStore = create((set, get) => ({
           {
             role: 'assistant',
             content: assistantMsg.content,
+            reasoningContent: assistantMsg.reasoningContent || assistantMsg.reasoning_content || null,
             tool_calls: assistantMsg.toolCalls.map(tc => ({
               id: tc.id,
               type: 'function',
@@ -253,6 +318,7 @@ export const useChatStore = create((set, get) => ({
           id: crypto.randomUUID(),
           role: 'assistant',
           content: nextResponse.content,
+          reasoningContent: nextResponse.reasoningContent || null,
           createdAt: new Date().toISOString(),
           contextReferences: contextSummary
         };
@@ -357,13 +423,14 @@ export const useChatStore = create((set, get) => ({
         const historyIdx = chat.messages.findIndex(m => m.id === messageId);
         const historyMessages = chat.messages.slice(0, historyIdx).slice(-15);
         
-        const { formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '');
+        const { formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '', { historyMessages: chat.messages.slice(0, historyIdx) });
         const systemPrompt = buildSystemPrompt(formattedString);
 
         const messagesWithTools = [
           ...historyMessages.map(m => ({
             role: m.role,
             content: m.content,
+            reasoningContent: m.reasoningContent || m.reasoning_content || null,
             toolCalls: m.toolCalls || m.tool_calls,
             tool_call_id: m.tool_call_id || m.toolCallId,
             name: m.name
@@ -371,6 +438,7 @@ export const useChatStore = create((set, get) => ({
           {
             role: 'assistant',
             content: finalMsg.content,
+            reasoningContent: finalMsg.reasoningContent || finalMsg.reasoning_content || null,
             tool_calls: finalMsg.toolCalls.map(t => ({
               id: t.id,
               type: 'function',
@@ -405,6 +473,7 @@ export const useChatStore = create((set, get) => ({
           id: crypto.randomUUID(),
           role: 'assistant',
           content: nextResponse.content,
+          reasoningContent: nextResponse.reasoningContent || null,
           createdAt: new Date().toISOString()
         };
 
@@ -467,13 +536,14 @@ export const useChatStore = create((set, get) => ({
         const historyIdx = chat.messages.findIndex(m => m.id === messageId);
         const historyMessages = chat.messages.slice(0, historyIdx).slice(-15);
         
-        const { formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '');
+        const { formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '', { historyMessages: chat.messages.slice(0, historyIdx) });
         const systemPrompt = buildSystemPrompt(formattedString);
 
         const messagesWithTools = [
           ...historyMessages.map(m => ({
             role: m.role,
             content: m.content,
+            reasoningContent: m.reasoningContent || m.reasoning_content || null,
             toolCalls: m.toolCalls || m.tool_calls,
             tool_call_id: m.tool_call_id || m.toolCallId,
             name: m.name
@@ -481,6 +551,7 @@ export const useChatStore = create((set, get) => ({
           {
             role: 'assistant',
             content: finalMsg.content,
+            reasoningContent: finalMsg.reasoningContent || finalMsg.reasoning_content || null,
             tool_calls: finalMsg.toolCalls.map(t => ({
               id: t.id,
               type: 'function',

@@ -26,6 +26,8 @@ const MODULE_BINDINGS = {
   goals: { store: STORES.GOALS, schemaKey: 'goals', entityType: 'goal', collection: true },
   'journal.entries': { store: STORES.JOURNAL_ENTRIES, schemaKey: 'journalEntries', entityType: 'journal_entry', collection: true },
   'finance.transactions': { store: STORES.FINANCE_TRANSACTIONS, schemaKey: 'financeTransactions', entityType: 'transaction', collection: true },
+  'finance.accounts': { store: STORES.FINANCE_TRANSACTIONS, schemaKey: 'financeTransactions', entityType: 'transaction', collection: true },
+  'finance.mutualFunds': { store: STORES.MUTUAL_FUNDS, schemaKey: 'financeTransactions', entityType: 'mutual_fund', collection: true },
   'fitness.workouts': { store: STORES.FITNESS_LOGS, schemaKey: 'fitnessLogs', entityType: 'fitness_log', collection: true },
   'fitness.meals': { store: STORES.FITNESS_LOGS, schemaKey: 'fitnessLogs', entityType: 'fitness_log', collection: true },
   'fitness.hydrationLogs': { store: STORES.FITNESS_LOGS, schemaKey: 'fitnessLogs', entityType: 'fitness_log', collection: true },
@@ -182,8 +184,12 @@ function removeEntityFromLocalStore(binding, entityId, fullParts = []) {
     useJournalStore.setState((state) => ({ entries: state.entries.filter((item) => item.id !== entityId) }));
     return;
   }
-  if (binding.rootKey === 'finance.transactions') {
+  if (binding.rootKey === 'finance.transactions' || binding.rootKey === 'finance.accounts') {
     useFinanceStore.setState((state) => ({ transactions: state.transactions.filter((item) => item.id !== entityId) }));
+    return;
+  }
+  if (binding.rootKey === 'finance.mutualFunds') {
+    useMutualFundStore.setState((state) => ({ funds: state.funds.filter((item) => item.id !== entityId) }));
     return;
   }
   if (binding.rootKey === 'fitness.workouts') {

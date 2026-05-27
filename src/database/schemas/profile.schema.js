@@ -113,8 +113,6 @@ export const profileSchema = {
         { language: "Japanese", level: "A1" }
       ]
     },
-    personalityProfiles: [
-      { title: "Architect", description: "Analytical and strategic thinker.", tags: ["Logical", "Planner"] }
-    ]
+    personalityProfiles: []
   }
 };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Activity, GraduationCap, Target, Heart, ChevronDown, ChevronRight, Briefcase, Zap, Plus, Trash2, Languages, Shield, Info, LogOut } from 'lucide-react';
+import { User, Activity, GraduationCap, Target, Heart, ChevronDown, ChevronRight, Briefcase, Zap, Plus, Trash2, Languages, Shield, Info, LogOut, X } from 'lucide-react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import { useProfileStore } from '../store/profileStore';
 import { useAuthStore } from '../store/authStore';
@@ -55,6 +55,97 @@ function SectionWrapper({ title, icon: Icon, children, defaultOpen = true }) {
   );
 }
 
+function NewProfileCardModal({ onClose, onSave }) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+    onSave({
+      title: title.trim(),
+      description: description.trim(),
+      tags: tags.split(',').map(s => s.trim()).filter(Boolean),
+    });
+    onClose();
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="relative w-full max-w-md rounded-2xl border border-jarvis-border bg-jarvis-panel shadow-2xl p-6">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-jarvis-muted hover:text-jarvis-text transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="mb-5">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-jarvis-text">New Profile Card</h2>
+          <p className="mt-1 text-[11px] text-jarvis-muted">Define a personality archetype or mindset profile.</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-jarvis-muted">Profile Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Architect, Strategist, Builder..."
+              required
+              autoFocus
+              className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-sm text-jarvis-text focus:border-jarvis-muted/40 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-jarvis-muted">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe traits, thinking patterns, or behavioral tendencies..."
+              rows={4}
+              className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-sm text-jarvis-text resize-none focus:border-jarvis-muted/40 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] uppercase tracking-wider text-jarvis-muted">Tags <span className="normal-case opacity-60">(comma-separated)</span></label>
+            <input
+              type="text"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="Analytical, Strategic, Creative..."
+              className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-sm text-jarvis-text focus:border-jarvis-muted/40 focus:outline-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-jarvis-border bg-white/5 px-4 py-2 text-xs text-jarvis-muted hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="rounded-lg border border-jarvis-accent/40 bg-jarvis-accent/10 px-4 py-2 text-xs font-medium text-jarvis-accent hover:bg-jarvis-accent/20 transition-colors"
+            >
+              Create Card
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export default function Profile() {
@@ -62,6 +153,7 @@ export default function Profile() {
   const updateSection = useProfileStore((s) => s.updateSection);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const [showNewCardModal, setShowNewCardModal] = useState(false);
 
   if (!profile) return null;
 
@@ -92,8 +184,8 @@ export default function Profile() {
     updateSection('personalityProfiles', newProfiles);
   };
 
-  const handleAddPersonality = () => {
-    const newProfiles = [...(profile.personalityProfiles || []), { title: 'New Profile', description: '', tags: [] }];
+  const handleSavePersonality = (cardData) => {
+    const newProfiles = [...(profile.personalityProfiles || []), cardData];
     updateSection('personalityProfiles', newProfiles);
   };
 
@@ -104,6 +196,13 @@ export default function Profile() {
 
   return (
     <ModulePageLayout title="User Profile" subtitle="Permanent identity core and lifestyle metadata.">
+      {showNewCardModal && (
+        <NewProfileCardModal
+          onClose={() => setShowNewCardModal(false)}
+          onSave={handleSavePersonality}
+        />
+      )}
+
       <div className="mx-auto max-w-4xl space-y-6 pb-20">
         
         {/* ACCOUNT INFO */}
@@ -253,12 +352,19 @@ export default function Profile() {
           <div className="space-y-4">
             <div className="flex justify-end">
               <button 
-                onClick={handleAddPersonality}
+                onClick={() => setShowNewCardModal(true)}
                 className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-jarvis-accent hover:opacity-80 transition-opacity"
               >
                 <Plus className="h-3 w-3" /> New Profile Card
               </button>
             </div>
+            {profile.personalityProfiles?.length === 0 && (
+              <div className="rounded-xl border border-dashed border-jarvis-border bg-white/[0.01] p-6 text-center">
+                <Target className="mx-auto mb-2 h-6 w-6 text-jarvis-muted/40" />
+                <p className="text-xs text-jarvis-muted">No personality profiles yet.</p>
+                <p className="mt-1 text-[11px] text-jarvis-muted/60">Click "New Profile Card" to define your first archetype.</p>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {profile.personalityProfiles?.map((p, index) => (
                 <div key={index} className="relative rounded-xl border border-jarvis-border bg-white/[0.02] p-4 group">
