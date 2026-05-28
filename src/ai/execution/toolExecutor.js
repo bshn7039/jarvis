@@ -76,6 +76,97 @@ export async function executeAiTool(name, args) {
     }
   }
 
+  // Academic operational existence checks
+  if (resolvedName === 'update_academic_subject' || resolvedName === 'delete_academic_subject') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useAcademicStore } = await import('../../store/academicStore');
+    const exists = (useAcademicStore.getState().subjects || []).some(s => s.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Subject ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_academic_skill' || resolvedName === 'delete_academic_skill') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useAcademicStore } = await import('../../store/academicStore');
+    const exists = (useAcademicStore.getState().skills || []).some(s => s.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Skill ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_academic_project' || resolvedName === 'delete_academic_project') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useAcademicStore } = await import('../../store/academicStore');
+    const exists = (useAcademicStore.getState().projects || []).some(p => p.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Project ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_academic_tech_stack' || resolvedName === 'delete_academic_tech_stack') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useAcademicStore } = await import('../../store/academicStore');
+    const exists = (useAcademicStore.getState().techStack || []).some(t => t.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Tech stack ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_academic_certification' || resolvedName === 'delete_academic_certification') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useAcademicStore } = await import('../../store/academicStore');
+    const exists = (useAcademicStore.getState().certifications || []).some(c => c.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Certification ID '${args.id}' does not exist.`);
+  }
+
+  // Personal Hub & Self Care operational existence checks
+  if (resolvedName === 'update_personal_item' || resolvedName === 'delete_personal_item') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    if (!args.categoryType) throw new Error(`Validation Error: Missing required field 'categoryType' for action '${name}'.`);
+    const { usePersonalStore } = await import('../../store/personalStore');
+    const list = usePersonalStore.getState()[args.categoryType] || [];
+    const exists = list.some(i => i.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Personal item ID '${args.id}' under category '${args.categoryType}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_self_care_routine' || resolvedName === 'delete_self_care_routine' || resolvedName === 'complete_self_care_routine') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useSelfCareStore } = await import('../../store/selfCareStore');
+    const exists = (useSelfCareStore.getState().routines || []).some(r => r.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Self-care routine ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_goal') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const goalStore = useGoalStore.getState();
+    const exists = (goalStore.goals || []).some(g => g.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Goal ID '${args.id}' does not exist in the active store.`);
+  }
+
+  if (resolvedName === 'update_journal_entry' || resolvedName === 'delete_journal_entry') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useJournalStore } = await import('../../store/journalStore');
+    const exists = (useJournalStore.getState().entries || []).some(e => e.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Journal entry ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_crm_entry' || resolvedName === 'delete_crm_entry') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useCrmStore } = await import('../../store/crmStore');
+    const exists = (useCrmStore.getState().contacts || []).some(c => c.id === args.id);
+    if (!exists) throw new Error(`Validation Error: CRM contact ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'delete_fitness_log' || resolvedName === 'update_fitness_log') {
+    if (!args.id) throw new Error(`Validation Error: Missing required field 'id' for action '${name}'.`);
+    const { useFitnessStore } = await import('../../store/fitnessStore');
+    const state = useFitnessStore.getState();
+    const allLogs = [...(state.workouts || []), ...(state.meals || []), ...(state.hydrationLogs || [])];
+    const exists = allLogs.some(l => l.id === args.id);
+    if (!exists) throw new Error(`Validation Error: Fitness log ID '${args.id}' does not exist.`);
+  }
+
+  if (resolvedName === 'update_roadmap' || resolvedName === 'delete_roadmap' || resolvedName === 'add_roadmap_log') {
+    const lookupId = args.id || args.roadmapId;
+    if (!lookupId) throw new Error(`Validation Error: Missing required roadmap ID for action '${name}'.`);
+    const { usePersonalRoadmapStore } = await import('../../store/personalRoadmapStore');
+    const exists = (usePersonalRoadmapStore.getState().roadmaps || []).some(r => r.id === lookupId);
+    if (!exists) throw new Error(`Validation Error: Roadmap ID '${lookupId}' does not exist.`);
+  }
+
   // 3. Perform execution
   const result = await executeToolAction(name, args);
 
@@ -145,6 +236,108 @@ export async function executeAiTool(name, args) {
         activityAction = `AI deleted purchase ID: ${args.purchaseId} from mutual fund ID: ${args.fundId}`;
         entityType = 'finance';
         entityId = args.fundId;
+      } else if (resolvedName === 'create_academic_subject') {
+        activityAction = `AI created academic subject: "${args.name}"`;
+        entityType = 'academic';
+      } else if (resolvedName === 'update_academic_subject') {
+        activityAction = `AI updated academic subject details`;
+        entityType = 'academic';
+      } else if (resolvedName === 'delete_academic_subject') {
+        activityAction = `AI deleted academic subject`;
+        entityType = 'academic';
+      } else if (resolvedName === 'create_academic_skill') {
+        activityAction = `AI logged placement skill target: "${args.name}"`;
+        entityType = 'academic';
+      } else if (resolvedName === 'update_academic_skill') {
+        activityAction = `AI updated placement skill details`;
+        entityType = 'academic';
+      } else if (resolvedName === 'delete_academic_skill') {
+        activityAction = `AI deleted placement skill`;
+        entityType = 'academic';
+      } else if (resolvedName === 'create_academic_project') {
+        activityAction = `AI logged portfolio project: "${args.name}"`;
+        entityType = 'academic';
+      } else if (resolvedName === 'update_academic_project') {
+        activityAction = `AI updated portfolio project details`;
+        entityType = 'academic';
+      } else if (resolvedName === 'delete_academic_project') {
+        activityAction = `AI deleted portfolio project`;
+        entityType = 'academic';
+      } else if (resolvedName === 'create_academic_tech_stack') {
+        activityAction = `AI logged technology target: "${args.name}"`;
+        entityType = 'academic';
+      } else if (resolvedName === 'update_academic_tech_stack') {
+        activityAction = `AI updated technology target details`;
+        entityType = 'academic';
+      } else if (resolvedName === 'delete_academic_tech_stack') {
+        activityAction = `AI deleted technology target`;
+        entityType = 'academic';
+      } else if (resolvedName === 'create_academic_dsa') {
+        activityAction = `AI logged solved DSA question: "${args.title}"`;
+        entityType = 'academic';
+      } else if (resolvedName === 'create_academic_certification') {
+        activityAction = `AI registered course certification: "${args.course}"`;
+        entityType = 'academic';
+      } else if (resolvedName === 'update_academic_certification') {
+        activityAction = `AI updated course certification details`;
+        entityType = 'academic';
+      } else if (resolvedName === 'delete_academic_certification') {
+        activityAction = `AI deleted course certification`;
+        entityType = 'academic';
+      } else if (resolvedName === 'create_personal_item') {
+        activityAction = `AI added personal ${args.categoryType} item: "${args.title}"`;
+        entityType = 'personal';
+      } else if (resolvedName === 'update_personal_item') {
+        activityAction = `AI updated personal ${args.categoryType} item`;
+        entityType = 'personal';
+      } else if (resolvedName === 'delete_personal_item') {
+        activityAction = `AI deleted personal ${args.categoryType} item`;
+        entityType = 'personal';
+      } else if (resolvedName === 'create_self_care_routine') {
+        activityAction = `AI created self-care routine: "${args.title}"`;
+        entityType = 'personal';
+      } else if (resolvedName === 'update_self_care_routine') {
+        activityAction = `AI updated self-care routine`;
+        entityType = 'personal';
+      } else if (resolvedName === 'delete_self_care_routine') {
+        activityAction = `AI deleted self-care routine`;
+        entityType = 'personal';
+      } else if (resolvedName === 'complete_self_care_routine') {
+        activityAction = `AI logged self-care completion`;
+        entityType = 'personal';
+      } else if (resolvedName === 'update_goal') {
+        activityAction = `AI updated goal details`;
+        entityType = 'goal';
+      } else if (resolvedName === 'update_journal_entry') {
+        activityAction = `AI updated journal entry`;
+        entityType = 'journal';
+      } else if (resolvedName === 'delete_journal_entry') {
+        activityAction = `AI deleted journal entry ID: ${args.id}`;
+        entityType = 'journal';
+      } else if (resolvedName === 'update_crm_entry') {
+        activityAction = `AI updated CRM contact`;
+        entityType = 'crm';
+      } else if (resolvedName === 'delete_crm_entry') {
+        activityAction = `AI deleted CRM contact ID: ${args.id}`;
+        entityType = 'crm';
+      } else if (resolvedName === 'delete_fitness_log') {
+        activityAction = `AI deleted fitness log ID: ${args.id}`;
+        entityType = 'fitness';
+      } else if (resolvedName === 'update_fitness_log') {
+        activityAction = `AI updated ${args.logType} log ID: ${args.id}`;
+        entityType = 'fitness';
+      } else if (resolvedName === 'create_roadmap') {
+        activityAction = `AI created personal roadmap: "${args.title}"`;
+        entityType = 'personal';
+      } else if (resolvedName === 'update_roadmap') {
+        activityAction = `AI updated personal roadmap`;
+        entityType = 'personal';
+      } else if (resolvedName === 'delete_roadmap') {
+        activityAction = `AI deleted personal roadmap ID: ${args.id}`;
+        entityType = 'personal';
+      } else if (resolvedName === 'add_roadmap_log') {
+        activityAction = `AI logged roadmap entry under key '${args.logKey}'`;
+        entityType = 'personal';
       }
 
       await activityStore.logActivity({

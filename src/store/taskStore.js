@@ -511,6 +511,24 @@ export const useTaskStore = create((set, get) => ({
     const draft = normalizeTask({ ...input, createdAt: new Date().toISOString() });
     const savedTask = normalizeTask(await taskService.create(draft));
     set((state) => ({ tasks: uniqueTasksById([savedTask, ...state.tasks]) }));
+
+    // Sync journal store for bidirectional linking
+    if (savedTask.linkedJournalIds && savedTask.linkedJournalIds.length > 0) {
+      try {
+        const { useJournalStore } = await import('./journalStore');
+        const journalStore = useJournalStore.getState();
+        for (const journalId of savedTask.linkedJournalIds) {
+          const entry = journalStore.entries.find(e => e.id === journalId);
+          if (entry) {
+            const nextTaskIds = Array.from(new Set([...(entry.linkedTaskIds || []), savedTask.id]));
+            await journalStore.updateEntry(journalId, { linkedTaskIds: nextTaskIds });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to bidirectionally sync journals on task creation:', err);
+      }
+    }
+
     await withActivity('created', savedTask.id, { title: savedTask.title, bucket: savedTask.bucket });
     return savedTask;
   },
@@ -528,6 +546,20 @@ export const useTaskStore = create((set, get) => ({
 
   deleteTask: async (taskId) => {
     const task = get().tasks.find((item) => item.id === taskId);
+
+    // Sync journal store to remove this task link
+    try {
+      const { useJournalStore } = await import('./journalStore');
+      const journalStore = useJournalStore.getState();
+      const linkedJournals = journalStore.entries.filter(e => e.linkedTaskIds?.includes(taskId));
+      for (const entry of linkedJournals) {
+        const nextTaskIds = (entry.linkedTaskIds || []).filter(id => id !== taskId);
+        await journalStore.updateEntry(entry.id, { linkedTaskIds: nextTaskIds });
+      }
+    } catch (err) {
+      console.warn('Failed to bidirectionally clean up journals on task deletion:', err);
+    }
+
     await taskService.delete(taskId);
     set((state) => {
       const idx = state.tasks.findIndex((item) => item.id === taskId);

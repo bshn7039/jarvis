@@ -20,6 +20,7 @@ export const useFitnessTransformation = () => {
   const hydrationLogs = fitnessStore.hydrationLogs;
   const workouts = fitnessStore.workouts;
   const bodyMetrics = fitnessStore.bodyMetrics;
+  const stepLogs = fitnessStore.stepLogs || [];
   const targets = fitnessStore.targets;
 
   return useMemo(() => {
@@ -54,6 +55,7 @@ export const useFitnessTransformation = () => {
     const caloriesToday = meals.filter(m => m.date === DAY).reduce((sum, m) => sum + m.calories, 0);
     const proteinToday = meals.filter(m => m.date === DAY).reduce((sum, m) => sum + m.protein, 0);
     const waterToday = hydrationLogs.filter(l => l.date === DAY).reduce((sum, l) => sum + l.amountMl, 0);
+    const stepsToday = stepLogs.filter(l => l.date === DAY).reduce((sum, l) => sum + l.steps, 0);
     const workoutDone = workouts.some(w => w.date === DAY && w.completed);
     
     // 3. Tasks & Repetitive Tasks
@@ -98,10 +100,12 @@ export const useFitnessTransformation = () => {
         calories: caloriesToday,
         protein: proteinToday,
         water: waterToday,
+        steps: stepsToday,
         workoutDone,
         targets,
         meals: meals.filter(m => m.date === DAY),
         hydration: hydrationLogs.filter(l => l.date === DAY),
+        stepsLogs: stepLogs.filter(l => l.date === DAY),
       },
       tasks: {
         today: fitnessTasks.filter(t => t.bucket === 'today'),
@@ -115,6 +119,7 @@ export const useFitnessTransformation = () => {
       history: {
         bodyMetrics: bodyMetrics.slice(0, 10),
         workouts: workouts.slice(0, 10),
+        stepLogs: stepLogs.slice(0, 10),
       }
     };
   }, [profile, tasks, repetitiveTasks, goals, journalEntries, fitnessStore, selectedDay]);

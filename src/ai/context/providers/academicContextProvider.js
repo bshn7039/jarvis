@@ -1,16 +1,20 @@
 import { useAcademicStore } from '../../../store/academicStore';
 
-export function getAcademicContext() {
+export function getAcademicContext(prompt) {
   const state = useAcademicStore.getState();
+  const activeSemester = state.activeSemester || 'Sem 3';
 
-  const subjectsSummary = (state.subjects || []).map(s => ({
-    id: s.id,
-    name: s.name,
-    code: s.code,
-    instructor: s.instructor,
-    attendance: s.attendance || 0,
-    status: s.status || 'Ongoing'
-  }));
+  // Only include subjects for the currently active semester to keep context clean and highly efficient
+  const subjectsSummary = (state.subjects || [])
+    .filter(s => s.semester === activeSemester)
+    .map(s => ({
+      id: s.id,
+      name: s.name,
+      code: s.code,
+      instructor: s.instructor,
+      attendance: s.attendance || 0,
+      status: s.status || 'Ongoing'
+    }));
 
   const activeAssignments = (state.assignments || [])
     .filter(a => a.status !== 'completed' && a.progress < 100)
@@ -37,9 +41,17 @@ export function getAcademicContext() {
       stack: p.stack
     }));
 
+  // Context efficiency: only load DSA questions list if user explicitly talks about coding progress or solved problems
+  const p = prompt ? prompt.toLowerCase() : '';
+  const needsDsaDetail = p.includes('dsa') || p.includes('leet') || p.includes('solve') || p.includes('problem') || p.includes('coding');
+  
+  const recentDsaSolved = needsDsaDetail && state.dsaQuestions?.length > 0
+    ? state.dsaQuestions.slice(-5).map(q => ({ id: q.id, title: q.title, platform: q.platform, difficulty: q.difficulty, date: q.date }))
+    : undefined;
+
   return {
     semesterInfo: {
-      currentSemester: state.currentSemester || 'Sem 1',
+      activeSemester,
       termEndDate: state.termEndDate || 'TBD'
     },
     coding: {
@@ -48,6 +60,7 @@ export function getAcademicContext() {
       streakDays: state.codingProgress?.streakDays || 0,
       currentTopic: state.codingProgress?.currentTopic || ''
     },
+    recentSolvedQuestions: recentDsaSolved,
     subjects: subjectsSummary,
     pendingAssignments: activeAssignments,
     ongoingProjects: activeProjects,

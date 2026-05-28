@@ -7,11 +7,46 @@ import { useMemo } from 'react';
 export default function JournalEditor({ entry, onUpdate }) {
   const goals = useGoalStore((s) => s.goals);
   const tasks = useTaskStore((s) => s.tasks);
+  const updateTask = useTaskStore((s) => s.updateTask);
 
   const relationshipOptions = useMemo(() => ({
     linkedGoalIds: goals.map((g) => ({ id: g.id, title: g.title })),
     linkedTaskIds: tasks.map((t) => ({ id: t.id, title: t.title })),
   }), [goals, tasks]);
+
+  const activeLinkedTaskIds = useMemo(() => {
+    if (!entry) return [];
+    const directLinks = entry.linkedTaskIds || [];
+    const inverseLinks = tasks
+      .filter((t) => t.linkedJournalIds?.includes(entry.id))
+      .map((t) => t.id);
+    return Array.from(new Set([...directLinks, ...inverseLinks]));
+  }, [entry?.linkedTaskIds, entry?.id, tasks]);
+
+  const handleTaskLinksChange = async (newIds) => {
+    // 1. Update direct journal entry links
+    onUpdate({ linkedTaskIds: newIds });
+
+    // 2. Sync inverse links in the task store
+    const added = newIds.filter(id => !activeLinkedTaskIds.includes(id));
+    const removed = activeLinkedTaskIds.filter(id => !newIds.includes(id));
+
+    for (const taskId of added) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        const nextJournalIds = Array.from(new Set([...(task.linkedJournalIds || []), entry.id]));
+        await updateTask(taskId, { linkedJournalIds: nextJournalIds });
+      }
+    }
+
+    for (const taskId of removed) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) {
+        const nextJournalIds = (task.linkedJournalIds || []).filter(id => id !== entry.id);
+        await updateTask(taskId, { linkedJournalIds: nextJournalIds });
+      }
+    }
+  };
 
   if (!entry) {
     return (
@@ -119,8 +154,8 @@ export default function JournalEditor({ entry, onUpdate }) {
             </div>
             <EntityLinkSelector
               entities={relationshipOptions.linkedTaskIds}
-              value={entry.linkedTaskIds || []}
-              onChange={(val) => onUpdate({ linkedTaskIds: val })}
+              value={activeLinkedTaskIds}
+              onChange={handleTaskLinksChange}
               placeholder="Link tasks..."
               hideLabel
             />

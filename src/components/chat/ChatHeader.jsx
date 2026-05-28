@@ -3,6 +3,7 @@ import IconButton from '../ui/IconButton';
 import { useChatStore } from '../../store/chatStore';
 import { useAiStore } from '../../store/aiStore';
 import { MODEL_CONFIG } from '../../config/aiModels';
+import NowPlayingBar from '../layout/NowPlayingBar';
 import { useState } from 'react';
 
 export default function ChatHeader({ title, onMenuClick }) {
@@ -14,7 +15,7 @@ export default function ChatHeader({ title, onMenuClick }) {
   const selectedModel = MODEL_CONFIG.find(m => m.id === currentModel) || MODEL_CONFIG[0];
 
   return (
-    <header className="relative flex shrink-0 items-center justify-between border-b border-jarvis-border px-4 py-3 md:px-6">
+    <header className="relative flex shrink-0 items-center justify-between border-b border-jarvis-border/20 jarvis-glass px-4 py-3 md:px-6">
       <div className="flex items-center gap-3">
         <IconButton
           icon={Menu}
@@ -30,6 +31,9 @@ export default function ChatHeader({ title, onMenuClick }) {
             <span className="text-sm text-jarvis-muted md:hidden">Jarvis</span>
           )}
         </div>
+
+        {/* Now Playing / Ambient — always visible beside header title */}
+        <NowPlayingBar />
       </div>
 
       <div className="flex items-center gap-2">

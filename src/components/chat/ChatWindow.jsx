@@ -1,12 +1,21 @@
+import { useEffect } from 'react';
 import MessageBubble from './MessageBubble';
 import { CHAT_EMPTY_STATE } from '../../utils/constants';
 import { useAiStore } from '../../store/aiStore';
 import { AlertCircle } from 'lucide-react';
+import { soundService } from '../../services/soundService';
+import CinematicLoader from '../ui/CinematicLoader';
 
 export default function ChatWindow({ messages = [], showEmpty = true }) {
   const isGenerating = useAiStore((s) => s.isGenerating);
   const lastError = useAiStore((s) => s.lastError);
   const clearError = useAiStore((s) => s.clearError);
+
+  useEffect(() => {
+    if (isGenerating) {
+      soundService.playResponseCue();
+    }
+  }, [isGenerating]);
   
   const isEmpty = showEmpty && messages.length === 0;
 
@@ -43,15 +52,8 @@ export default function ChatWindow({ messages = [], showEmpty = true }) {
           ))}
 
           {isGenerating && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-2 rounded-2xl bg-transparent px-4 py-3 text-jarvis-muted">
-                <div className="flex gap-1">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-jarvis-muted/40 [animation-delay:-0.3s]"></span>
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-jarvis-muted/40 [animation-delay:-0.15s]"></span>
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-jarvis-muted/40"></span>
-                </div>
-                <span className="text-[13px] font-medium tracking-wide">JARVIS is thinking...</span>
-              </div>
+            <div className="flex justify-start pl-4 py-2">
+              <CinematicLoader size="sm" message="JARVIS is thinking..." />
             </div>
           )}
 

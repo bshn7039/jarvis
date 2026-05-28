@@ -113,72 +113,93 @@ export const academicSubjectFormConfig = [
   { name: 'code', label: 'Course Code', type: 'text' },
   { name: 'credits', label: 'Credits', type: 'number' },
   {
+    name: 'category',
+    label: 'Category',
+    type: 'select',
+    options: [
+      { value: 'Core', label: 'Core Subject' },
+      { value: 'Lab', label: 'Lab / Practical' },
+      { value: 'Elective', label: 'Elective' },
+      { value: 'Project', label: 'Project' },
+    ],
+  },
+  {
     name: 'status',
     label: 'Status',
     type: 'select',
     options: [
       { value: 'Ongoing', label: 'Ongoing' },
       { value: 'Completed', label: 'Completed' },
-      { value: 'Backlog', label: 'Backlog' },
+      { value: 'Upcoming', label: 'Upcoming' },
     ],
   },
-  { name: 'attendance', label: 'Attendance (%)', type: 'number' },
-  { name: 'syllabus', label: 'Syllabus/Topics', type: 'textarea' },
-  { name: 'revisionStatus', label: 'Revision Status', type: 'text' },
-  { name: 'weakTopics', label: 'Weak Topics', type: 'tags' },
-  { name: 'internalMarks', label: 'Internal Marks', type: 'text' },
-  { name: 'practicals', label: 'Practicals Progress', type: 'text' },
+  { name: 'internalMarks', label: 'Internal Marks', type: 'text', placeholder: 'e.g. 18/20' },
+  { name: 'revisionStatus', label: 'Revision Status', type: 'text', placeholder: 'Not Started / In Progress / Done' },
+  { name: 'weakTopics', label: 'Weak Topics', type: 'tags', placeholder: 'Recursion, Trees, etc.' },
   { name: 'vivaPrep', label: 'Viva Prep Notes', type: 'textarea' },
   { name: 'instructor', label: 'Instructor', type: 'text' },
+  // Note: Units / Topics / Subtopics are managed inline in the subject card
 ];
 
 export const academicProjectFormConfig = [
   { name: 'name', label: 'Project Title', type: 'text', required: true },
   {
     name: 'category',
-    label: 'Project Category',
+    label: 'Type',
     type: 'select',
     options: [
-      { value: 'Academic', label: 'Academic Project' },
-      { value: 'Portfolio', label: 'Portfolio Project' },
+      { value: 'Academic', label: 'Academic / Lab Project' },
+      { value: 'Portfolio', label: 'Portfolio / Personal Project' },
     ],
   },
-  { name: 'description', label: 'Description', type: 'textarea' },
-  { name: 'stack', label: 'Tech Stack', type: 'text', placeholder: 'React, Node, MongoDB...' },
-  { name: 'progress', label: 'Progress (%)', type: 'number' },
+  { name: 'description', label: 'What are you building?', type: 'textarea', placeholder: 'Brief description of the project...' },
+  { name: 'stack', label: 'Tech Stack', type: 'text', placeholder: 'Java, C++, Python, etc.' },
   {
     name: 'status',
     label: 'Status',
     type: 'select',
     options: [
-      { value: 'idea', label: 'Idea' },
+      { value: 'idea', label: 'Idea / Draft' },
       { value: 'planning', label: 'Planning' },
       { value: 'building', label: 'Building' },
       { value: 'paused', label: 'Paused' },
       { value: 'completed', label: 'Completed' },
     ],
   },
-  { name: 'github', label: 'GitHub Link', type: 'text' },
-  { name: 'link', label: 'Live Link', type: 'text' },
-  { name: 'roadmap', label: 'Roadmap/Next Steps', type: 'textarea' },
+  { name: 'progress', label: 'Progress (%)', type: 'number', placeholder: '0-100' },
+  { name: 'github', label: 'GitHub Repository Link', type: 'text', placeholder: 'https://github.com/...' },
+  { name: 'link', label: 'Live/Demo Link', type: 'text', placeholder: 'https://...' },
+  { name: 'roadmap', label: 'Next Steps / Roadmap', type: 'textarea', placeholder: 'What needs to be done next?' },
   { name: 'notes', label: 'Notes', type: 'textarea' },
 ];
 
 export const academicTechStackFormConfig = [
-  { name: 'name', label: 'Technology', type: 'text', required: true },
-  { name: 'category', label: 'Category', type: 'text', placeholder: 'Language, Framework, Tool...' },
+  { name: 'name', label: 'Technology / Language / Tool', type: 'text', required: true, placeholder: 'Java, Python, Git...' },
   {
-    name: 'proficiency',
-    label: 'Proficiency',
+    name: 'category',
+    label: 'Category',
     type: 'select',
     options: [
-      { value: 'Beginner', label: 'Beginner' },
-      { value: 'Intermediate', label: 'Intermediate' },
-      { value: 'Advanced', label: 'Advanced' },
+      { value: 'Language', label: 'Programming Language' },
+      { value: 'Framework', label: 'Framework / Library' },
+      { value: 'Tool', label: 'Development Tool' },
+      { value: 'Database', label: 'Database' },
+      { value: 'Platform', label: 'Cloud / Platform' },
+      { value: 'Other', label: 'Other' },
     ],
   },
-  { name: 'currentlyLearning', label: 'Currently Learning', type: 'checkbox' },
-  { name: 'notes', label: 'Notes', type: 'textarea' },
+  {
+    name: 'proficiency',
+    label: 'Current Proficiency',
+    type: 'select',
+    options: [
+      { value: 'Beginner', label: 'Beginner — Just started' },
+      { value: 'Intermediate', label: 'Intermediate — Can build things' },
+      { value: 'Advanced', label: 'Advanced — Deep knowledge' },
+    ],
+  },
+  { name: 'currentlyLearning', label: 'Currently Actively Learning', type: 'checkbox' },
+  { name: 'notes', label: 'Notes / Resources', type: 'textarea', placeholder: 'Links, goals, or context...' },
 ];
 
 export const academicLearningFormConfig = [
@@ -224,20 +245,12 @@ export const academicDsaProgressFormConfig = [
 ];
 
 export const profileEntityFormConfig = [
-  { name: 'degree.collegeName', label: 'College Name', type: 'text' },
-  { name: 'degree.degreeName', label: 'Course Name', type: 'text' },
-  { name: 'degree.semester', label: 'Current Semester', type: 'text' },
-  { name: 'degree.cgpa', label: 'Current CGPA', type: 'number' },
-  { name: 'degree.targetCgpa', label: 'Target CGPA', type: 'number' },
-  { name: 'degree.specialization', label: 'Specialization', type: 'text' },
-  { name: 'degree.entry', label: 'Entry Type', type: 'text' },
-  { name: 'degree.durationYears', label: 'Duration (Years)', type: 'number' },
-  { name: 'degree.totalSemesters', label: 'Total Semesters', type: 'number' },
-  { name: 'degree.status', label: 'Degree Status', type: 'text' },
-  { name: 'degree.academicNotes', label: 'Academic Notes', type: 'textarea' },
-  { name: 'degree.transitionGoals', label: 'Transition Goals', type: 'textarea' },
-  { name: 'degree.placementPrepNotes', label: 'Placement Prep Notes', type: 'textarea' },
-  { name: 'degree.higherStudiesNotes', label: 'Higher Studies Notes', type: 'textarea' },
+  { name: 'degree.collegeName', label: 'College Name', type: 'text', placeholder: 'Pillai New Panvel' },
+  { name: 'degree.entry', label: 'Entry Mode', type: 'text', placeholder: 'Lateral Entry (DSE)' },
+  { name: 'degree.durationYears', label: 'Duration (Years)', type: 'number', placeholder: '3' },
+  { name: 'degree.totalSemesters', label: 'Total Semesters', type: 'number', placeholder: '6' },
+  { name: 'degree.cgpa', label: 'Current CGPA', type: 'number', placeholder: '0.0' },
+  { name: 'degree.targetCgpa', label: 'Target CGPA', type: 'number', placeholder: '8' },
 ];
 
 export const academicCertificationFormConfig = [

@@ -3,6 +3,7 @@ import { Paperclip, Mic, Send } from 'lucide-react';
 import IconButton from '../ui/IconButton';
 import { useChatStore } from '../../store/chatStore';
 import { useAiStore } from '../../store/aiStore';
+import { soundService } from '../../services/soundService';
 
 export default function PromptBar() {
   const [value, setValue] = useState('');
@@ -12,6 +13,7 @@ export default function PromptBar() {
 
   const handleSend = () => {
     if (!value.trim() || isGenerating) return;
+    soundService.playConfirm();
     addMessage(activeChatId, value.trim());
     setValue('');
   };
@@ -20,7 +22,7 @@ export default function PromptBar() {
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-4 pb-6 pt-8 md:px-6 md:pb-8">
       <div
         className={[
-          "pointer-events-auto w-full max-w-3xl rounded-2xl border border-jarvis-border bg-jarvis-panel shadow-[0_8px_32px_rgba(0,0,0,0.4)] transition-all duration-200 focus-within:border-jarvis-border focus-within:shadow-[0_8px_40px_rgba(0,0,0,0.5)]",
+          "pointer-events-auto w-full max-w-3xl rounded-2xl border border-jarvis-border/20 jarvis-glass transition-all duration-200 focus-within:border-jarvis-border/30",
           isGenerating ? "opacity-70 grayscale-[0.5]" : ""
         ].join(' ')}
       >

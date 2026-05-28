@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pencil, Plus, Trash2, RefreshCcw } from 'lucide-react';
+import CinematicLoader from '../ui/CinematicLoader';
 import { categoryStyles } from '../../utils/constants';
 import { useUiStore } from '../../store/uiStore';
 import { useAiStore } from '../../store/aiStore';
@@ -155,7 +156,11 @@ export default function TodaySchedule({ schedule, onRefresh, isGenerating }) {
             </form>
           )}
 
-          {schedule.length > 0 ? (
+          {isGenerating ? (
+            <div className="py-4">
+              <CinematicLoader size="sm" message="Recalibrating schedule grid..." />
+            </div>
+          ) : schedule.length > 0 ? (
             <div className="relative ml-2 border-l border-jarvis-border/80 pl-6">
               {schedule.map((item) => (
                 <div

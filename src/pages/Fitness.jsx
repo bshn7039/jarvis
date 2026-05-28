@@ -16,7 +16,8 @@ import {
   Edit2,
   Check,
   Sparkles,
-  Info
+  Info,
+  Footprints
 } from 'lucide-react';
 import ModulePageLayout from '../components/layout/ModulePageLayout';
 import PagePanel from '../components/ui/PagePanel';
@@ -28,6 +29,7 @@ import { useFitnessStore } from '../store/fitnessStore';
 import { useFitnessTransformation } from '../store/selectors/fitness.selectors';
 import { useTaskStore } from '../store/taskStore';
 import { useEntityStore } from '../store/entityStore';
+import FitnessAiInsights from '../components/fitness/FitnessAiInsights';
 
 const MOCK_NUTRITION_DB = {
   chicken: { calories: 239, protein: 27 },
@@ -84,6 +86,7 @@ export default function Fitness() {
   const updateBodyMetricLog = useFitnessStore((s) => s.updateBodyMetricLog);
   const updateMealLog = useFitnessStore((s) => s.updateMealLog);
   const deleteLog = useFitnessStore((s) => s.deleteLog);
+  const addStepLog = useFitnessStore((s) => s.addStepLog);
   
   const tasks = useTaskStore((s) => s.tasks);
   const createTask = useTaskStore((s) => s.createTask);
@@ -131,9 +134,37 @@ export default function Fitness() {
     setWorkoutForm({ title: '', duration: '45m', intensity: 'Medium' });
   };
 
+  const dailyInfos = useFitnessStore((s) => s.dailyInfos || []);
+  const saveDailyInfo = useFitnessStore((s) => s.saveDailyInfo);
+
+  const [infoText, setInfoText] = useState('');
+  const [isSavingInfo, setIsSavingInfo] = useState(false);
+
+  useEffect(() => {
+    const todayInfo = dailyInfos.find(i => i.date === selectedDay);
+    setInfoText(todayInfo ? todayInfo.info : '');
+  }, [selectedDay, dailyInfos]);
+
+  const handleSaveInfo = async () => {
+    setIsSavingInfo(true);
+    await saveDailyInfo(selectedDay, infoText);
+    setIsSavingInfo(false);
+  };
+
+  const handleAddSteps = async () => {
+    const value = window.prompt("Enter number of steps to log:", "1000");
+    if (value) {
+      const steps = parseInt(value, 10);
+      if (!isNaN(steps) && steps > 0) {
+        await addStepLog(steps);
+      }
+    }
+  };
+
   const caloriesPct = Math.round((daily.calories / daily.targets.calories) * 100);
   const proteinPct = Math.round((daily.protein / daily.targets.protein) * 100);
   const waterPct = Math.round((daily.water / daily.targets.hydrationMl) * 100);
+  const stepsPct = Math.round((daily.steps / (daily.targets.steps || 10000)) * 100);
 
   const selectedEntity = useMemo(() => {
     if (activeType === 'task') return tasks.find(t => t.id === selectedId) || null;
@@ -268,7 +299,7 @@ Provide a JSON response ONLY, with no extra text or markdown formatting (except 
       title="Fitness OS" 
       subtitle="Physical transformation layer of your life operating system."
     >
-      <div className="grid gap-4 lg:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-xl border border-jarvis-border bg-black/20 p-4">
           <div className="flex items-center gap-2 text-jarvis-muted">
             <Scale className="h-4 w-4" />
@@ -297,34 +328,32 @@ Provide a JSON response ONLY, with no extra text or markdown formatting (except 
           <p className="mt-2 text-2xl font-light text-jarvis-text">{overview.consistencyScore}%</p>
           <p className="mt-1 text-xs text-jarvis-muted">Last 7 logs</p>
         </article>
-
-        <article className="rounded-xl border border-jarvis-border bg-black/20 p-4">
-          <div className="flex items-center gap-2 text-jarvis-muted">
-            <Brain className="h-4 w-4" />
-            <span className="text-xs uppercase tracking-wider">Recovery</span>
-          </div>
-          <p className="mt-2 text-2xl font-light text-jarvis-text">{recovery.mood ? `${recovery.mood}/10` : '--'}</p>
-          <p className="mt-1 text-xs text-jarvis-muted">Daily average mood</p>
-        </article>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-12">
         <div className="space-y-6 xl:col-span-8">
           <PagePanel title="Daily Summary" subtitle={`Transformation status for ${selectedDay}`}>
             <div className="flex flex-wrap items-center gap-4">
-               <div className="flex-1 min-w-[200px]">
+               <div className="flex-1 min-w-[150px]">
                   <div className="flex justify-between text-[11px] mb-1">
                     <span className="text-jarvis-muted uppercase">Fueling (Calories)</span>
                     <span className="text-jarvis-text">{daily.calories} / {daily.targets.calories} kcal</span>
                   </div>
                   <ProgressBar value={caloriesPct} />
                </div>
-               <div className="flex-1 min-w-[200px]">
+               <div className="flex-1 min-w-[150px]">
                   <div className="flex justify-between text-[11px] mb-1">
                     <span className="text-jarvis-muted uppercase">Hydration</span>
                     <span className="text-jarvis-text">{daily.water} / {daily.targets.hydrationMl} ml</span>
                   </div>
                   <ProgressBar value={waterPct} />
+               </div>
+               <div className="flex-1 min-w-[150px]">
+                  <div className="flex justify-between text-[11px] mb-1">
+                    <span className="text-jarvis-muted uppercase">Daily Steps</span>
+                    <span className="text-jarvis-text">{daily.steps || 0} / {daily.targets.steps || 10000} steps</span>
+                  </div>
+                  <ProgressBar value={stepsPct} />
                </div>
                <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-white/5 border border-jarvis-border">
                   <div className={`h-2 w-2 rounded-full ${daily.workoutDone ? 'bg-green-500' : 'bg-jarvis-muted'}`} />
@@ -332,12 +361,18 @@ Provide a JSON response ONLY, with no extra text or markdown formatting (except 
                </div>
             </div>
             
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex gap-2 flex-wrap">
                <button 
                   onClick={() => addHydrationLog(300)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-jarvis-border bg-white/5 text-xs text-jarvis-text hover:bg-white/10 transition-colors"
                >
                  <Plus className="h-3 w-3" /> Water
+               </button>
+               <button 
+                  onClick={handleAddSteps}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-jarvis-border bg-white/5 text-xs text-jarvis-text hover:bg-white/10 transition-colors"
+               >
+                 <Footprints className="h-3 w-3 text-jarvis-accent" /> Steps
                </button>
                <button 
                   onClick={() => setIsWorkoutModalOpen(true)}
@@ -350,12 +385,6 @@ Provide a JSON response ONLY, with no extra text or markdown formatting (except 
                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-jarvis-border bg-white/5 text-xs text-jarvis-text hover:bg-white/10 transition-colors"
                >
                  <Sparkles className="h-3 w-3 text-jarvis-accent" /> AI Meal
-               </button>
-               <button 
-                  onClick={() => openCreateModal('task')}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-jarvis-border bg-white/5 text-xs text-jarvis-text hover:bg-white/10 transition-colors"
-               >
-                 <Plus className="h-3 w-3" /> GYM Task
                </button>
                <button 
                   onClick={() => handleOpenMetricModal()}
@@ -509,77 +538,36 @@ Provide a JSON response ONLY, with no extra text or markdown formatting (except 
         </div>
 
         <div className="space-y-6 xl:col-span-4">
-          <PagePanel title="Consistency & Habits">
+          <PagePanel 
+            title="Daily Info Notes" 
+            subtitle="Physical details & daily context used by JARVIS to customize insights."
+          >
              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-jarvis-muted">Weekly Workout Adherence</span>
-                  <span className="text-xs text-jarvis-text">{overview.consistencyScore}%</span>
-                </div>
-                <div className="flex gap-1">
-                  {overview.consistencyBars.map((v, i) => (
-                    <div key={i} className={`h-1.5 flex-1 rounded-full ${v ? 'bg-jarvis-accent' : 'bg-white/5'}`} />
-                  ))}
-                </div>
-                {fitnessGoals.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <p className="text-[10px] uppercase text-jarvis-muted tracking-wider mb-2">Linked Goals</p>
-                    {fitnessGoals.map(goal => (
-                      <div key={goal.id} className="p-2 rounded border border-jarvis-border bg-black/20">
-                          <p className="text-xs text-jarvis-text truncate">{goal.title}</p>
-                          <ProgressBar value={goal.progress} className="mt-1.5 h-1" />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <textarea
+                  value={infoText}
+                  onChange={(e) => setInfoText(e.target.value)}
+                  placeholder="Type physical feelings, workout fatigue, sleep comments, diet updates, or general context for today..."
+                  className="w-full bg-black/20 border border-jarvis-border rounded-xl p-3 text-xs text-jarvis-text focus:outline-none focus:border-jarvis-accent h-32 resize-none font-light leading-relaxed"
+                />
+                <button
+                  onClick={handleSaveInfo}
+                  disabled={isSavingInfo}
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-jarvis-accent/15 border border-jarvis-accent/20 px-4 py-2 text-xs text-jarvis-accent hover:bg-jarvis-accent/25 transition w-full font-semibold disabled:opacity-50"
+                >
+                  {isSavingInfo ? (
+                    <>
+                      <RefreshCw className="h-3 w-3 animate-spin" /> Saving Notes...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3 w-3" /> Save Daily Info
+                    </>
+                  )}
+                </button>
              </div>
           </PagePanel>
 
-          <PagePanel title="Recovery & Energy">
-             <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                   <div className="p-2 rounded-lg bg-white/5 border border-jarvis-border">
-                      <Zap className="h-4 w-4 text-jarvis-accent" />
-                   </div>
-                   <div>
-                      <p className="text-xs text-jarvis-muted">Energy Level</p>
-                      <p className="text-sm text-jarvis-text">{recovery.mood ? `${recovery.mood}/10` : 'Not Logged'}</p>
-                   </div>
-                </div>
-                <div className="p-3 rounded-xl border border-jarvis-border bg-black/20">
-                   <p className="text-[11px] uppercase text-jarvis-muted mb-2 flex items-center gap-1">
-                     <Brain className="h-3 w-3" /> Recovery Notes
-                   </p>
-                   <p className="text-xs text-jarvis-text italic leading-relaxed">
-                     {recovery.notes === 'No recovery notes for today.' ? (
-                        <span className="text-jarvis-muted">No journal entry for today.</span>
-                     ) : (
-                        `"${recovery.notes}"`
-                     )}
-                   </p>
-                </div>
-             </div>
-          </PagePanel>
-
-          <PagePanel title="Self-Care">
-             <div className="opacity-50 space-y-2">
-                <div className="flex items-center justify-between text-xs p-2 rounded border border-jarvis-border border-dashed">
-                   <span className="text-jarvis-muted">Personal Grooming</span>
-                   <AlertCircle className="h-3 w-3" />
-                </div>
-                <div className="flex items-center justify-between text-xs p-2 rounded border border-jarvis-border border-dashed">
-                   <span className="text-jarvis-muted">Sleep Hygiene</span>
-                   <AlertCircle className="h-3 w-3" />
-                </div>
-             </div>
-          </PagePanel>
-
-          <PagePanel title="AI Insights" subtitle="Predictive transformation analysis">
-             <div className="space-y-3">
-                <div className="p-8 rounded-xl border border-jarvis-dashed bg-black/10 text-center">
-                   <p className="text-xs text-jarvis-muted italic">Insufficient data for AI generation. Keep logging to unlock insights.</p>
-                </div>
-             </div>
-          </PagePanel>
+          <FitnessAiInsights />
         </div>
       </div>
 

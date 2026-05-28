@@ -11,6 +11,7 @@ import {
   academicDsaProgressFormConfig,
   academicCertificationFormConfig,
   academicPortfolioFormConfig,
+  academicSubjectFormConfig,
   profileEntityFormConfig,
   selfCareFormConfig,
   communicationFormConfig,
@@ -43,6 +44,7 @@ const configs = {
   dsaProgress: academicDsaProgressFormConfig,
   certification: academicCertificationFormConfig,
   portfolio: academicPortfolioFormConfig,
+  subject: academicSubjectFormConfig,
   profile: profileEntityFormConfig,
   selfCare: selfCareFormConfig,
   communication: communicationFormConfig,
@@ -107,6 +109,7 @@ const defaultValues = {
   dsaProgress: { targetProblems: 0, currentTopic: '', weakTopics: [] },
   certification: { course: '', platform: '', progress: 0, status: 'In Progress', certificateLink: '', notes: '' },
   portfolio: { title: '', link: '', notes: '' },
+  subject: { name: '', code: '', credits: 3, instructor: 'TBD', category: 'Core', status: 'Ongoing', syllabus: '', attendedDays: 0, totalDays: 0, revisionStatus: 'Not Started', weakTopics: [], internalMarks: '', practicals: '', vivaPrep: '' },
   profile: {},
   selfCare: { title: '', description: '', frequency: 'Daily', status: 'pending', notes: '', tags: [] },
   communication: { title: '', subType: 'practice', duration: '', difficulty: 'Medium', progress: 0, notes: [] },
@@ -403,30 +406,32 @@ export default function EntityForm({ initialData = {}, onSubmit, onCancel, isSub
         ))}
       </div>
 
-      <div className="grid gap-2 lg:grid-cols-2">
-        <EntityLinkSelector
-          label="Goals"
-          entities={relationshipOptions.linkedGoalIds}
-          value={formData.linkedGoalIds}
-          onChange={(value) => setField('linkedGoalIds', value)}
-          placeholder="Link goals"
-        />
-        <EntityLinkSelector
-          label="Academics"
-          entities={relationshipOptions.linkedSubjectIds}
-          value={formData.linkedAcademicIds}
-          onChange={(value) => setField('linkedAcademicIds', value)}
-          placeholder="Link subjects"
-        />
-        <EntityLinkSelector
-          label="Journal"
-          entities={relationshipOptions.linkedJournalIds}
-          value={formData.linkedJournalIds}
-          onChange={(value) => setField('linkedJournalIds', value)}
-          placeholder="Link journal entries"
-          groupByDate
-        />
-      </div>
+      {['task', 'crm', 'journal'].includes(activeType) && (
+        <div className="grid gap-2 lg:grid-cols-2">
+          <EntityLinkSelector
+            label="Goals"
+            entities={relationshipOptions.linkedGoalIds}
+            value={formData.linkedGoalIds}
+            onChange={(value) => setField('linkedGoalIds', value)}
+            placeholder="Link goals"
+          />
+          <EntityLinkSelector
+            label="Academics"
+            entities={relationshipOptions.linkedSubjectIds}
+            value={formData.linkedAcademicIds}
+            onChange={(value) => setField('linkedAcademicIds', value)}
+            placeholder="Link subjects"
+          />
+          <EntityLinkSelector
+            label="Journal"
+            entities={relationshipOptions.linkedJournalIds}
+            value={formData.linkedJournalIds}
+            onChange={(value) => setField('linkedJournalIds', value)}
+            placeholder="Link journal entries"
+            groupByDate
+          />
+        </div>
+      )}
 
       <div className="flex items-center justify-end gap-2 pt-1">
         <button

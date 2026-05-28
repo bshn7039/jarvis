@@ -1,5 +1,5 @@
 const DEFAULT_DB_NAME = 'JARVIS_DB';
-const DB_VERSION = 11; // Added mutualFunds store
+const DB_VERSION = 12; // Added academicOutputLogs store
 
 export const STORES = {
   TASKS: 'tasks',
@@ -45,6 +45,7 @@ export const STORES = {
   TRASH: 'trash',
   VERSIONS: 'versions',
   MUTUAL_FUNDS: 'mutualFunds',
+  ACADEMIC_OUTPUT_LOGS: 'academicOutputLogs',
 };
 
 class LocalDatabase {

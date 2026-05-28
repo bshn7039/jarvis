@@ -68,6 +68,19 @@ export const useJournalStore = create((set, get) => ({
   },
 
   deleteEntry: async (entryId) => {
+    // Sync task store to remove this journal link
+    try {
+      const { useTaskStore } = await import('./taskStore');
+      const taskStore = useTaskStore.getState();
+      const linkedTasks = taskStore.tasks.filter(t => t.linkedJournalIds?.includes(entryId));
+      for (const task of linkedTasks) {
+        const nextJournalIds = (task.linkedJournalIds || []).filter(id => id !== entryId);
+        await taskStore.updateTask(task.id, { linkedJournalIds: nextJournalIds });
+      }
+    } catch (err) {
+      console.warn('Failed to bidirectionally clean up tasks on journal entry deletion:', err);
+    }
+
     await journalService.delete(entryId);
     set((state) => ({
       entries: state.entries.filter((e) => e.id !== entryId),
@@ -99,6 +112,24 @@ export const useJournalStore = create((set, get) => ({
       entries: [savedEntry, ...state.entries].sort((a, b) => b.entryDate.localeCompare(a.entryDate)),
       selectedEntryId: savedEntry.id,
     }));
+
+    // Sync task store for bidirectional linking
+    if (savedEntry.linkedTaskIds && savedEntry.linkedTaskIds.length > 0) {
+      try {
+        const { useTaskStore } = await import('./taskStore');
+        const taskStore = useTaskStore.getState();
+        for (const taskId of savedEntry.linkedTaskIds) {
+          const task = taskStore.tasks.find(t => t.id === taskId);
+          if (task) {
+            const nextJournalIds = Array.from(new Set([...(task.linkedJournalIds || []), savedEntry.id]));
+            await taskStore.updateTask(taskId, { linkedJournalIds: nextJournalIds });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to bidirectionally sync tasks on journal entry creation:', err);
+      }
+    }
+
     await get().logActivity({ 
       action: 'created', 
       entityId: savedEntry.id,

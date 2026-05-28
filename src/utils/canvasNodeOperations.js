@@ -51,8 +51,65 @@ function parsePath(path) {
 }
 
 function resolvePath(data, path) {
-  const segments = parsePath(path);
+  let segments = parsePath(path);
   if (!segments.length) return null;
+
+  // Tree-to-Store Path Normalization for Academics Subjects branch
+  if (segments[0] === 'academics' && segments[1] === 'subjects' && segments.length >= 4) {
+    const sem = segments[2];
+    const subId = segments[3];
+    const subjects = data?.academics?.subjects || [];
+    const subIndex = subjects.findIndex(s => String(s.id) === subId || String(s.name) === subId);
+    
+    if (subIndex >= 0) {
+      const mapped = ['academics', 'subjects', String(subIndex)];
+      const subObj = subjects[subIndex];
+      
+      if (segments.length === 4) {
+        segments = mapped;
+      } else {
+        const remaining = segments.slice(4);
+        const nextSeg = remaining[0];
+        
+        // Let's check if nextSeg is a unit ID (starting with 'u-') or in units array
+        const units = subObj.units || [];
+        const unitIndex = units.findIndex(u => String(u.id) === nextSeg || String(u.name) === nextSeg);
+        
+        if (unitIndex >= 0) {
+          mapped.push('units', String(unitIndex));
+          
+          if (remaining.length === 1) {
+            segments = mapped;
+          } else {
+            const topicSeg = remaining[1];
+            const topics = units[unitIndex].topics || [];
+            const topicIndex = topics.findIndex(t => String(t.id) === topicSeg || String(t.name) === topicSeg);
+            
+            if (topicIndex >= 0) {
+              mapped.push('topics', String(topicIndex));
+              
+              if (remaining.length === 2) {
+                segments = mapped;
+              } else {
+                const subtopicSeg = remaining[2]; // e.g. 'st0'
+                if (subtopicSeg.startsWith('st')) {
+                  const stIdx = parseInt(subtopicSeg.replace('st', ''), 10);
+                  if (!isNaN(stIdx)) {
+                    mapped.push('subtopics', String(stIdx));
+                    segments = mapped;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Standard fields on subject: e.g. 'vivaPrep', 'attendance', 'internalMarks', 'syllabus', 'revisionStatus'
+          mapped.push(nextSeg);
+          segments = mapped;
+        }
+      }
+    }
+  }
 
   let current = data;
   let parent = null;
@@ -298,6 +355,18 @@ export async function updateNodeAtPath({ path, combinedState, nextValue }) {
     if (fieldParts.length === 0) {
       await localDb.put(store, { ...record, ...nextValue });
       await logActivity('entity_updated', binding.entityType, entityId, { path });
+      await refreshAllStores();
+      return true;
+    }
+
+    if (fieldParts.join('.') === 'attendance') {
+      const updated = {
+        ...record,
+        attendedDays: Number(nextValue.attendedDays) || 0,
+        totalDays: Number(nextValue.totalDays) || 0,
+      };
+      await localDb.put(store, updated);
+      await logActivity('field_updated', binding.entityType, entityId, { path, field: 'attendance' });
       await refreshAllStores();
       return true;
     }

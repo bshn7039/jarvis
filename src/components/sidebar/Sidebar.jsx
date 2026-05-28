@@ -80,7 +80,7 @@ export default function Sidebar() {
 
       <aside
         className={[
-          'flex flex-col border-r border-jarvis-border bg-jarvis-panel transition-all duration-200 ease-out',
+          'flex flex-col border-r border-jarvis-border/20 jarvis-glass transition-all duration-200 ease-out',
           widthClass,
           positionClasses,
         ].join(' ')}

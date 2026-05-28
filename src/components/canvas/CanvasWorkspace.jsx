@@ -141,7 +141,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
           onReset={() => {}}
           onMenuClick={onMenuClick}
         />
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-jarvis-bg">
+        <div className="flex min-h-0 flex-1 items-center justify-center bg-transparent">
           <span className="text-sm text-jarvis-muted">Loading workspace…</span>
         </div>
       </div>
@@ -203,7 +203,7 @@ export default function CanvasWorkspace({ onMenuClick }) {
                 }}
                 onMenuClick={onMenuClick}
               />
-              <div className="canvas-viewport relative min-h-0 flex-1 overflow-hidden bg-jarvis-bg">
+              <div className="canvas-viewport relative min-h-0 flex-1 overflow-hidden bg-transparent">
                 <TransformComponent wrapperClass="canvas-zoom-wrapper">
                   <WorkspaceGrid>
                     {visibleModules.map((module) => {

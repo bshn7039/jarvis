@@ -248,6 +248,93 @@ export function buildNode(data, path, depth = 0) {
     return node;
   }
 
+  // Special handling for Fitness to group by date, then by categories (Meals, Hydration, Workouts)
+  if (path === 'fitness' && data) {
+    const workouts = data.workouts || [];
+    const meals = data.meals || [];
+    const hydrationLogs = data.hydrationLogs || [];
+    
+    const allDates = [...new Set([
+      ...workouts.map(w => w.date),
+      ...meals.map(m => m.date),
+      ...hydrationLogs.map(h => h.date)
+    ])].filter(Boolean).sort((a, b) => b.localeCompare(a));
+    
+    node.type = 'folder';
+    node.children = allDates.map(date => {
+      let displayDate = date;
+      if (date.includes('-')) {
+        const parts = date.split('-');
+        if (parts.length === 3) {
+          const [y, m, d] = parts;
+          displayDate = `${parseInt(d)}-${parseInt(m)}-${y}`;
+        }
+      }
+      
+      const dayWorkouts = workouts.filter(w => w.date === date);
+      const dayMeals = meals.filter(m => m.date === date);
+      const dayHydration = hydrationLogs.filter(h => h.date === date);
+      
+      const dateChildren = [];
+      
+      if (dayWorkouts.length > 0) {
+        dateChildren.push({
+          id: `fitness.day.${date}.workouts`,
+          label: 'Workouts',
+          type: 'folder',
+          checked: true,
+          expanded: false,
+          children: dayWorkouts.map(w => {
+            const wNode = buildNode(w, `fitness.workouts.${w.id}`, depth + 3);
+            wNode.label = `${w.title} (${w.duration})`;
+            return wNode;
+          })
+        });
+      }
+      
+      if (dayMeals.length > 0) {
+        dateChildren.push({
+          id: `fitness.day.${date}.meals`,
+          label: 'Meals',
+          type: 'folder',
+          checked: true,
+          expanded: false,
+          children: dayMeals.map(m => {
+            const mNode = buildNode(m, `fitness.meals.${m.id}`, depth + 3);
+            mNode.label = `${m.meal}: ${m.title} (${m.calories} kcal)`;
+            return mNode;
+          })
+        });
+      }
+      
+      if (dayHydration.length > 0) {
+        dateChildren.push({
+          id: `fitness.day.${date}.hydration`,
+          label: 'Hydration Logs',
+          type: 'folder',
+          checked: true,
+          expanded: false,
+          children: dayHydration.map(h => {
+            const hNode = buildNode(h, `fitness.hydrationLogs.${h.id}`, depth + 3);
+            hNode.label = `Water: ${h.amountMl}ml`;
+            return hNode;
+          })
+        });
+      }
+      
+      return {
+        id: `fitness.day.${date}`,
+        label: `Day (${displayDate})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: dateChildren
+      };
+    });
+    
+    return node;
+  }
+
   // Special handling for Trash to group by original entity type
   if (path === 'trash' && Array.isArray(data)) {
     const types = [...new Set(data.map(item => item.entityType))];
@@ -303,6 +390,165 @@ export function buildNode(data, path, depth = 0) {
       subNode.type = 'folder';
       return subNode;
     });
+    return node;
+  }
+
+  // Special handling for Academics — group by semester → subjects → units → topics → subtopics
+  if (path === 'academics' && data) {
+    const subjects = data.subjects || [];
+    const projects = data.projects || [];
+    const dsaQuestions = data.dsaQuestions || [];
+    const skills = data.skills || [];
+    const techStack = data.techStack || [];
+
+    // Group subjects by semester
+    const semesterMap = {};
+    subjects.forEach(sub => {
+      const sem = sub.semester || 'Unknown';
+      if (!semesterMap[sem]) semesterMap[sem] = [];
+      semesterMap[sem].push(sub);
+    });
+
+    const semesters = Object.keys(semesterMap).sort();
+
+    node.type = 'folder';
+    node.children = [
+      // Subjects grouped by semester
+      {
+        id: 'academics.subjects',
+        label: `Subjects (${subjects.length})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: semesters.map(sem => ({
+          id: `academics.subjects.${sem}`,
+          label: sem,
+          type: 'folder',
+          checked: true,
+          expanded: false,
+          children: semesterMap[sem].map(sub => {
+            const pct = sub.totalDays > 0 ? Math.round((sub.attendedDays || 0) / sub.totalDays * 100) : 0;
+            const subNode = {
+              id: `academics.subjects.${sem}.${sub.id}`,
+              label: `${sub.name} (${pct}%)`,
+              type: 'folder',
+              checked: true,
+              expanded: false,
+              children: [
+                {
+                  id: `academics.subjects.${sem}.${sub.id}.attendance`,
+                  label: `Attendance: ${sub.attendedDays || 0}/${sub.totalDays || 0} (${pct}%)`,
+                  type: 'leaf',
+                  checked: true,
+                },
+                {
+                  id: `academics.subjects.${sem}.${sub.id}.internalMarks`,
+                  label: `Internal Marks: ${sub.internalMarks || '—'}`,
+                  type: 'leaf',
+                  checked: true,
+                },
+                {
+                  id: `academics.subjects.${sem}.${sub.id}.vivaPrep`,
+                  label: `Viva Prep: ${sub.vivaPrep || '—'}`,
+                  type: 'leaf',
+                  checked: true,
+                },
+                {
+                  id: `academics.subjects.${sem}.${sub.id}.syllabus`,
+                  label: `Syllabus: ${sub.syllabus || '—'}`,
+                  type: 'leaf',
+                  checked: true,
+                },
+                {
+                  id: `academics.subjects.${sem}.${sub.id}.revisionStatus`,
+                  label: `Revision Status: ${sub.revisionStatus || 'Not Started'}`,
+                  type: 'leaf',
+                  checked: true,
+                },
+                ...(sub.units || []).map(unit => ({
+                  id: `academics.subjects.${sem}.${sub.id}.${unit.id}`,
+                  label: unit.name,
+                  type: 'folder',
+                  checked: true,
+                  expanded: false,
+                  children: (unit.topics || []).map(topic => ({
+                    id: `academics.subjects.${sem}.${sub.id}.${unit.id}.${topic.id}`,
+                    label: `${topic.done ? '✓ ' : ''}${topic.name}`,
+                    type: topic.subtopics?.length > 0 ? 'folder' : 'leaf',
+                    checked: true,
+                    expanded: false,
+                    children: (topic.subtopics || []).map((st, i) => ({
+                      id: `academics.subjects.${sem}.${sub.id}.${unit.id}.${topic.id}.st${i}`,
+                      label: st,
+                      type: 'leaf',
+                      checked: true,
+                    })),
+                  })),
+                })),
+              ],
+            };
+            return subNode;
+          }),
+        })),
+      },
+      // DSA
+      {
+        id: 'academics.dsa',
+        label: `DSA Progress (${dsaQuestions.length} solved)`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: dsaQuestions.map(q => ({
+          id: `academics.dsa.${q.id}`,
+          label: `${q.title} · ${q.difficulty}`,
+          type: 'leaf',
+          checked: true,
+        })),
+      },
+      // Skills
+      {
+        id: 'academics.skills',
+        label: `Language Mastery (${skills.length})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: skills.map(s => ({
+          id: `academics.skills.${s.id}`,
+          label: `${s.name} — ${s.progress || 0}%`,
+          type: 'leaf',
+          checked: true,
+        })),
+      },
+      // Tech Stack
+      {
+        id: 'academics.techStack',
+        label: `Tech Stack (${techStack.length})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: techStack.map(t => ({
+          id: `academics.techStack.${t.id}`,
+          label: `${t.name} · ${t.proficiency || t.category || ''}`,
+          type: 'leaf',
+          checked: true,
+        })),
+      },
+      // Projects
+      {
+        id: 'academics.projects',
+        label: `Projects (${projects.length})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: projects.map(p => ({
+          id: `academics.projects.${p.id}`,
+          label: `${p.name} · ${p.progress || 0}%`,
+          type: 'leaf',
+          checked: true,
+        })),
+      },
+    ];
+
     return node;
   }
 

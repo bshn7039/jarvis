@@ -61,7 +61,7 @@ export function useCombinedState(selector) {
     certifications: s.certifications,
     portfolio: s.portfolio,
     codingProgress: s.codingProgress,
-    currentSemester: s.currentSemester,
+    activeSemester: s.activeSemester,
     termEndDate: s.termEndDate
   })));
 

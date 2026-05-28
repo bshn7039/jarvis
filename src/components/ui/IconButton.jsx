@@ -1,3 +1,5 @@
+import { soundService } from '../../services/soundService';
+
 export default function IconButton({
   icon: Icon,
   label,
@@ -22,10 +24,15 @@ export default function IconButton({
       'bg-jarvis-text text-jarvis-bg hover:bg-white/90',
   };
 
+  const handleClick = (e) => {
+    soundService.playClick();
+    if (onClick) onClick(e);
+  };
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       aria-label={label}
       title={label}

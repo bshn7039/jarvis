@@ -19,6 +19,7 @@ import { useMusicStore } from '../store/musicStore';
 import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
+import { usePersonalRoadmapStore } from '../store/personalRoadmapStore';
 import { useActivityStore } from '../store/activityStore';
 import { useEntityStore } from '../store/entityStore';
 import { useTrashStore } from '../store/trashStore';
@@ -51,6 +52,7 @@ export function useStoreHydration() {
   const hydrateWriting = useWritingStore(s => s.hydrate);
   const hydrateReading = useReadingStore(s => s.hydrate);
   const hydrateVault = useVaultStore(s => s.hydrate);
+  const hydratePersonalRoadmaps = usePersonalRoadmapStore(s => s.hydrate);
   const hydrateActivities = useActivityStore(s => s.hydrate);
   const hydrateEntities = useEntityStore(s => s.hydrate);
   const hydrateTrash = useTrashStore(s => s.hydrate);
@@ -93,6 +95,7 @@ export function useStoreHydration() {
             hydrateWriting(),
             hydrateReading(),
             hydrateVault(),
+            hydratePersonalRoadmaps(),
             hydrateActivities(),
             hydrateEntities(),
             hydrateTrash(),

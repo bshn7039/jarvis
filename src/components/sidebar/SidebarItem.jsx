@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { soundService } from '../../services/soundService';
 
 const itemClasses = (active, collapsed) =>
   [
@@ -20,6 +21,11 @@ export default function SidebarItem({
 }) {
   const classes = `${itemClasses(active, collapsed)} ${className}`;
 
+  const handleClick = (e) => {
+    soundService.playClick();
+    if (onClick) onClick(e);
+  };
+
   const content = (
     <>
       {Icon && (
@@ -36,7 +42,7 @@ export default function SidebarItem({
     return (
       <Link
         to={to}
-        onClick={onClick}
+        onClick={handleClick}
         className={classes}
         title={collapsed ? label : undefined}
       >
@@ -48,7 +54,7 @@ export default function SidebarItem({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       className={classes}
       title={collapsed ? label : undefined}
     >

@@ -7,14 +7,20 @@ import PromptBar from '../chat/PromptBar';
 import BootPanel from '../chat/BootPanel';
 import JarvisLetterAnimation from '../chat/JarvisLetterAnimation';
 import SpotifyPanel from './SpotifyPanel';
+import LiveStatusHeader from './LiveStatusHeader';
+import LiveWallpaper from './LiveWallpaper';
+import FocusControls from './FocusControls';
+import { useFocusStore } from '../../store/focusStore';
 import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
+import { useProfileStore } from '../../store/profileStore';
 import { Terminal } from 'lucide-react';
 
 function CenteredLandingState({ showEntrance }) {
   const [animationFinished, setAnimationFinished] = useState(false);
   const user = useAuthStore((s) => s.user);
-  const userName = user?.username || 'Commander';
+  const profile = useProfileStore((s) => s.profile);
+  const userName = profile?.identity?.displayName || user?.username || 'Commander';
 
   const showGreeting = !showEntrance || animationFinished;
 
@@ -72,15 +78,42 @@ function MainLayoutContent() {
     return false;
   });
   const [bootOpen, setBootOpen]         = useState(false);
+  const [voiceEngine, setVoiceEngine]   = useState(() => localStorage.getItem('jarvis_boot_voice_engine') || 'elevenlabs');
+
+  useEffect(() => {
+    const handleSync = () => {
+      setVoiceEngine(localStorage.getItem('jarvis_boot_voice_engine') || 'elevenlabs');
+    };
+    window.addEventListener('jarvis_voice_engine_changed', handleSync);
+    return () => window.removeEventListener('jarvis_voice_engine_changed', handleSync);
+  }, []);
+
+  const toggleVoiceEngine = () => {
+    const nextEngine = voiceEngine === 'elevenlabs' ? 'browser' : 'elevenlabs';
+    setVoiceEngine(nextEngine);
+    localStorage.setItem('jarvis_boot_voice_engine', nextEngine);
+    window.dispatchEvent(new Event('jarvis_voice_engine_changed'));
+  };
 
   const activeChat = chatHistory.find((c) => c.id === activeChatId);
   const messages   = activeChat?.messages || [];
+  const brightness = useFocusStore((s) => s.brightness);
+  const dimOpacity = (100 - brightness) / 100;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-jarvis-bg text-jarvis-text">
+    <div className="flex h-screen w-full overflow-hidden bg-transparent text-jarvis-text">
+      {/* Screen Dimmer Overlay */}
+      <div 
+        className="pointer-events-none fixed inset-0 z-50 bg-black transition-opacity duration-200" 
+        style={{ opacity: dimOpacity }} 
+      />
+      <LiveWallpaper />
       <Sidebar />
 
       <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        {/* Live status strip — homepage only */}
+        {!activeChatId && <LiveStatusHeader />}
+
         <ChatHeader
           title={activeChatId ? (activeChat?.title || 'Conversation') : null}
           onMenuClick={openMobile}
@@ -96,7 +129,18 @@ function MainLayoutContent() {
           {/* BOOT button — only in idle state (no active chat) */}
           {!activeChatId && (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center justify-end px-4 pb-[7rem]">
-              <div className="pointer-events-auto flex flex-col items-center gap-2">
+              <div className="pointer-events-auto flex items-center gap-3">
+                <button
+                  onClick={toggleVoiceEngine}
+                  className={`group relative inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-[11px] font-mono font-bold uppercase tracking-wider transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.3)] backdrop-blur-sm hover:scale-105 active:scale-95 cursor-pointer ${
+                    voiceEngine === 'elevenlabs' 
+                      ? 'bg-jarvis-accent/15 border-jarvis-accent/35 text-jarvis-accent shadow-[0_0_15px_rgba(125,211,252,0.1)]' 
+                      : 'bg-indigo-500/15 border-indigo-500/35 text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.1)]'
+                  }`}
+                  title="Toggle Voice Engine: ElevenLabs vs Free Browser Voice"
+                >
+                  {voiceEngine === 'elevenlabs' ? '11Labs Voice' : 'Browser Voice (Free)'}
+                </button>
                 <BootButton onClick={() => setBootOpen(true)} />
               </div>
             </div>
@@ -111,6 +155,9 @@ function MainLayoutContent() {
 
       {/* Boot panel overlay */}
       <BootPanel isOpen={bootOpen} onClose={() => setBootOpen(false)} />
+
+      {/* Focus Controls */}
+      <FocusControls />
     </div>
   );
 }

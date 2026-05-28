@@ -138,15 +138,25 @@ export default function SpotifyPanel() {
 
   // On mount: process PKCE callback (if redirected from Spotify) then init SDK
   useEffect(() => {
-    handleCallback().then(() => {
-      const t = useSpotifyStore.getState().token;
+    const initSpotify = async () => {
+      await handleCallback();
+      let t = useSpotifyStore.getState().token;
+      
+      // If access token is expired or missing but we have a refresh token, auto-refresh!
+      if (!t && localStorage.getItem('jarvis_spotify_refresh')) {
+        console.log('[Spotify] Access token missing or expired. Attempting automatic refresh...');
+        t = await useSpotifyStore.getState().refreshToken();
+      }
+
       if (t) {
         initSDK();
         fetchCurrentPlayback();
         fetchPlaylists();
         useSpotifyStore.getState().fetchQueue();
       }
-    });
+    };
+
+    initSpotify();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

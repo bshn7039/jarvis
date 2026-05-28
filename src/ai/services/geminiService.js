@@ -18,7 +18,7 @@ export class GeminiService {
       tools,
       signal,
       timeout = 60000,
-      retries = 3
+      retries = 4
     } = options;
 
     // Combine system prompt if provided
@@ -143,7 +143,11 @@ export class GeminiService {
         }
 
         if (attempt < retries) {
-          const delay = Math.pow(2, attempt) * 1000;
+          let delay = Math.pow(2, attempt) * 1000;
+          if (error.status === 429) {
+            console.warn(`[Gemini Service] Rate limit (429) hit on attempt ${attempt}. Applying extended 5s minimum backoff...`);
+            delay = Math.max(5000, delay * 2);
+          }
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }

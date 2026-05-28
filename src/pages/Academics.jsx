@@ -5,7 +5,6 @@ import GrowthOverview from '../components/academics/GrowthOverview';
 import DiplomaDegreeSection from '../components/academics/DiplomaDegreeSection';
 import CodingSystem from '../components/academics/CodingSystem';
 import CareerSystem from '../components/academics/CareerSystem';
-import ProductivityDiscipline from '../components/academics/ProductivityDiscipline';
 import StudyExecution from '../components/academics/StudyExecution';
 import AiInsightsPanel from '../components/academics/AiInsightsPanel';
 
@@ -18,14 +17,14 @@ import { useTaskStore } from '../store/taskStore';
 
 export default function Academics() {
   const [isSaving, setIsSaving] = useState(false);
-  
-  const { 
-    isModalOpen, 
-    activeType, 
-    selectedId, 
-    draftMode, 
-    closeModal, 
-    initialData 
+
+  const {
+    isModalOpen,
+    activeType,
+    selectedId,
+    draftMode,
+    closeModal,
+    initialData
   } = useEntityStore(useShallow(s => ({
     isModalOpen: s.isModalOpen,
     activeType: s.activeType,
@@ -35,16 +34,17 @@ export default function Academics() {
     initialData: s.initialData
   })));
 
-  const { 
-    skills, 
-    projects, 
+  const {
+    skills,
+    projects,
     subjects,
-    techStack, 
-    activeLearning, 
-    dsaQuestions, 
+    techStack,
+    activeLearning,
+    dsaQuestions,
     codingProgress,
-    certifications, 
+    certifications,
     portfolio,
+    activeSemester,
     addSkill,
     updateSkill,
     addProject,
@@ -72,6 +72,7 @@ export default function Academics() {
     codingProgress: s.codingProgress,
     certifications: s.certifications,
     portfolio: s.portfolio,
+    activeSemester: s.activeSemester,
     addSkill: s.addSkill,
     updateSkill: s.updateSkill,
     addProject: s.addProject,
@@ -88,12 +89,12 @@ export default function Academics() {
     addCertification: s.addCertification,
     updateCertification: s.updateCertification,
     addPortfolioItem: s.addPortfolioItem,
-    updatePortfolioItem: s.updatePortfolioItem
+    updatePortfolioItem: s.updatePortfolioItem,
   })));
 
   const profile = useProfileStore(s => s.profile);
   const updateProfile = useProfileStore(s => s.updateProfile);
-  
+
   const { createTask, updateTask, tasks } = useTaskStore(useShallow(s => ({
     createTask: s.createTask,
     updateTask: s.updateTask,
@@ -102,7 +103,7 @@ export default function Academics() {
 
   const selectedEntity = useMemo(() => {
     if (!selectedId && activeType !== 'dsaProgress') return initialData;
-    
+
     switch (activeType) {
       case 'skill': return skills.find(s => s.id === selectedId);
       case 'project': return projects.find(p => p.id === selectedId);
@@ -160,43 +161,38 @@ export default function Academics() {
   const academicEntityTypes = ['skill', 'project', 'subject', 'techStack', 'activeLearning', 'dsa', 'dsaProgress', 'certification', 'portfolio', 'profile', 'task'];
 
   return (
-    <ModulePageLayout 
-      title="Growth Engine" 
-      subtitle="Unified operational system for academics, coding, and career progression."
+    <ModulePageLayout
+      title="Academic Cockpit"
+      subtitle={`B.Tech Computer Engineering — Lateral Entry | ${activeSemester} Active`}
     >
-      <div className="space-y-8 pb-10">
+      <div className="space-y-10 pb-10">
         <section>
           <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">01. Growth Overview</h2>
           <GrowthOverview />
         </section>
 
         <section>
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">02 & 03. Academic Systems</h2>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">02. Degree System & Subject Tracker</h2>
           <DiplomaDegreeSection />
         </section>
 
         <section>
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">04. Coding & Development</h2>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">03. Coding & Development</h2>
           <CodingSystem />
         </section>
 
         <section>
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">05. Career System</h2>
-          <CareerSystem />
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">04. Career OS</h2>
+          <CareerSystem semester={activeSemester} />
         </section>
 
         <section>
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">06. Productivity & Discipline</h2>
-          <ProductivityDiscipline />
-        </section>
-
-        <section>
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">07. Study Execution Layer</h2>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">05. Study Task Queue</h2>
           <StudyExecution />
         </section>
 
         <section>
-          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">08. AI Insights</h2>
+          <h2 className="mb-4 text-xs font-bold uppercase tracking-widest text-jarvis-muted">06. Neural Layer & Output Log</h2>
           <AiInsightsPanel />
         </section>
       </div>

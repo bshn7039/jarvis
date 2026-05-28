@@ -1,4 +1,5 @@
 import { RefreshCcw, Sparkles } from 'lucide-react';
+import CinematicLoader from '../ui/CinematicLoader';
 
 export default function AiDailyBrief({ brief, onRefresh, isGenerating = false }) {
   return (
@@ -20,29 +21,33 @@ export default function AiDailyBrief({ brief, onRefresh, isGenerating = false })
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="rounded-xl border border-jarvis-accent/20 bg-jarvis-accent/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-jarvis-accent">
-            <Sparkles className="h-4 w-4" strokeWidth={1.75} />
-            <span className="text-xs font-medium uppercase tracking-wider">Primary Priority</span>
+      {isGenerating ? (
+        <CinematicLoader message="Syncing daily brief..." />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="rounded-xl border border-jarvis-accent/20 bg-jarvis-accent/5 p-4">
+            <div className="mb-2 flex items-center gap-2 text-jarvis-accent">
+              <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+              <span className="text-xs font-medium uppercase tracking-wider">Primary Priority</span>
+            </div>
+            <p className="text-sm font-medium text-jarvis-text">{brief.primary}</p>
           </div>
-          <p className="text-sm font-medium text-jarvis-text">{brief.primary}</p>
-        </div>
 
-        <div className="rounded-xl border border-jarvis-border/60 bg-jarvis-bg/40 p-4">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-jarvis-muted/80">
-            Secondary Priority
-          </h3>
-          <p className="text-sm text-jarvis-text/90">{brief.secondary}</p>
-        </div>
+          <div className="rounded-xl border border-jarvis-border/60 bg-jarvis-bg/40 p-4">
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-jarvis-muted/80">
+              Secondary Priority
+            </h3>
+            <p className="text-sm text-jarvis-text/90">{brief.secondary}</p>
+          </div>
 
-        <div className="rounded-xl border border-jarvis-border/40 bg-white/[0.02] p-4">
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-jarvis-muted/80">
-            Watch-outs
-          </h3>
-          <p className="text-sm text-jarvis-text/80">{brief.watchOuts}</p>
+          <div className="rounded-xl border border-jarvis-border/40 bg-white/[0.02] p-4">
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wider text-jarvis-muted/80">
+              Watch-outs
+            </h3>
+            <p className="text-sm text-jarvis-text/80">{brief.watchOuts}</p>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

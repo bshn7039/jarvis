@@ -34,7 +34,9 @@ export function getDomainPriorities(prompt, matchedDomains) {
     'journal',
     'crm',
     'activity',
-    'personal'
+    'personal',
+    'roadmap',
+    'schedule',
   ];
 
   // Put matched domains at the front (after profile)
@@ -89,6 +91,11 @@ export function truncateContextCollections(contextData) {
 
   if (data.activity && Array.isArray(data.activity.recentActivities)) {
     data.activity.recentActivities = data.activity.recentActivities.slice(0, 5);
+  }
+
+  if (data.roadmap && Array.isArray(data.roadmap.roadmaps)) {
+    // Limit to 5 roadmaps max in context
+    data.roadmap.roadmaps = data.roadmap.roadmaps.slice(0, 5);
   }
 
   return data;

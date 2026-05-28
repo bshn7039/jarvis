@@ -91,6 +91,15 @@ export const useAiStore = create((set, get) => ({
     try { return JSON.parse(localStorage.getItem('jarvis_daily_schedule')) || []; } catch { return []; }
   })(),
   lastGeneratedDate: localStorage.getItem('jarvis_last_generated_date') || null,
+  bootBrief: (() => {
+    try {
+      const cached = localStorage.getItem('jarvis_boot_brief');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  })(),
+  isBootGenerating: false,
 
   generateDailyCommandData: async (force = false) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -254,6 +263,181 @@ ${force ? 'Strictly use only these categories for schedule items: "Coding", "Aca
     } catch (e) {
       console.warn('[JARVIS AI Store] Failed to save daily data to localStorage:', e);
     }
+  },
+
+  generateBootBrief: async (force = false) => {
+    const today = new Date().toISOString().slice(0, 10);
+    
+    if (!force) {
+      const cached = get().bootBrief;
+      if (cached && cached.date === today) {
+        return cached;
+      }
+    }
+    
+    set({ isBootGenerating: true, lastError: null });
+    
+    let parsedResult = null;
+    let contextData = null;
+    
+    try {
+      // Dynamic imports to prevent circular dependencies
+      const { useTaskStore } = await import('./taskStore');
+      const { useFitnessStore } = await import('./fitnessStore');
+      const { useFinanceStore } = await import('./financeStore');
+      const { useAcademicStore } = await import('./academicStore');
+      const { useGoalStore } = await import('./goalStore');
+      const { useSelfCareStore } = await import('./selfCareStore');
+      const { useAuthStore } = await import('./authStore');
+      const { useProfileStore } = await import('./profileStore');
+      
+      const user = useAuthStore.getState().user;
+      const profile = useProfileStore.getState().profile;
+      const userName = profile?.identity?.displayName || user?.username || 'Commander';
+      
+      const tasks = useTaskStore.getState().tasks || [];
+      const repetitiveTasks = useTaskStore.getState().repetitiveTasks || [];
+      const meals = useFitnessStore.getState().meals || [];
+      const hydrationLogs = useFitnessStore.getState().hydrationLogs || [];
+      const workouts = useFitnessStore.getState().workouts || [];
+      const fitnessTargets = useFitnessStore.getState().targets || {};
+      const transactions = useFinanceStore.getState().transactions || [];
+      const financeOverview = useFinanceStore.getState().balanceOverview || { monthlySpending: 0, balance: 0 };
+      const codingProgress = useAcademicStore.getState().codingProgress || {};
+      const dsaQuestions = useAcademicStore.getState().dsaQuestions || [];
+      const selfCareRoutines = useSelfCareStore.getState().routines || [];
+      const goals = useGoalStore.getState().goals || [];
+      
+      // Calculate today metrics
+      const calories = meals.filter(m => m.date === today).reduce((sum, m) => sum + m.calories, 0);
+      const protein = meals.filter(m => m.date === today).reduce((sum, m) => sum + m.protein, 0);
+      const waterMl = hydrationLogs.filter(l => l.date === today).reduce((sum, l) => sum + l.amountMl, 0);
+      const workoutDone = workouts.some(w => w.date === today && w.completed);
+      
+      const todayTasks = tasks.filter(t => t.bucket === 'today' && !t.completed);
+      const overdueTasks = tasks.filter(t => !t.completed && t.dueDate && t.dueDate.slice(0, 10) < today);
+      const completedToday = tasks.filter(t => t.completed && t.completedAt?.slice(0, 10) === today);
+      const activeGoals = goals.filter(g => !g.completed);
+      const activeSelfCare = selfCareRoutines.filter(r => !r.completed);
+      
+      contextData = {
+        userName,
+        date: today,
+        dayOfWeek: new Date().toLocaleDateString('en-US', { weekday: 'long' }),
+        tasks: {
+          pendingTodayCount: todayTasks.length,
+          overdueCount: overdueTasks.length,
+          overdueSample: overdueTasks.slice(0, 3).map(t => t.title),
+          completedTodayCount: completedToday.length,
+          routinesCount: repetitiveTasks.filter(r => r.active).length,
+        },
+        goals: activeGoals.map(g => ({ title: g.title, progress: g.progress || 0 })),
+        fitness: {
+          calories,
+          caloriesTarget: fitnessTargets.calories || 2500,
+          protein,
+          proteinTarget: fitnessTargets.protein || 140,
+          waterMl,
+          waterTargetMl: fitnessTargets.hydrationMl || 3500,
+          workoutDone
+        },
+        finance: {
+          monthlySpending: financeOverview.monthlySpending,
+          balance: financeOverview.balance,
+          recentTransactions: transactions.slice(0, 3).map(t => ({ title: t.title, amount: t.amount, type: t.type }))
+        },
+        coding: {
+          solvedProblemsCount: dsaQuestions.length,
+          weeklySolved: codingProgress.weeklySolved,
+          targetProblems: codingProgress.targetProblems
+        },
+        selfCare: activeSelfCare.map(r => ({ title: r.title, category: r.category, streak: r.streak }))
+      };
+      
+      const promptContext = JSON.stringify(contextData, null, 2);
+      
+      const systemPrompt = `You are JARVIS, a calm, precise, and highly capable AI operating layer.
+Analyze the user's daily life metrics and tasks provided below, and generate:
+1. "speechText": A highly natural-sounding spoken audio greeting and summary that starts by greeting the user by name (e.g. "Good morning, Commander" or "Welcome back, Bhuvan") and covers the most critical parts of the data. Keep this speech text EXTREMELY CONCISE (maximum 3-4 sentences, 60-70 words) to save cost on text-to-speech APIs while retaining all important alerts (overdue tasks, finance warnings, coding targets, low hydration).
+2. "visualBrief": A structured visualization summary object containing:
+   - "primary": The single most critical focus area for today.
+   - "secondary": Secondary action item or streak risk.
+   - "watchOuts": Low-hydration or budget warnings, or overdue tasks alerts.
+   - "goalsSummary": A short 1-sentence update summarizing their goals status.
+   - "systemHealth": A percentage (e.g. "90%") rating current daily progression/discipline.
+
+Return a JSON object ONLY, with no extra text or markdown formatting (except a standard JSON code block), in this exact format:
+{
+  "speechText": "Spoken text summarizing their metrics...",
+  "visualBrief": {
+    "primary": "Primary priority text...",
+    "secondary": "Secondary priority text...",
+    "watchOuts": "Alerts or risks...",
+    "goalsSummary": "Goal overview text...",
+    "systemHealth": "90%"
+  }
+}
+`;
+
+      const { aiDispatcher } = await import('../ai/services/aiDispatcher');
+      const response = await aiDispatcher.sendMessage([
+        { role: 'user', content: `Here is my system snapshot:\n${promptContext}` }
+      ], {
+        systemPrompt,
+        temperature: 0.3
+      });
+      
+      if (response && response.content) {
+        let cleanContent = response.content.trim();
+        if (cleanContent.startsWith('```json')) {
+          cleanContent = cleanContent.slice(7);
+        }
+        if (cleanContent.startsWith('```')) {
+          cleanContent = cleanContent.slice(3);
+        }
+        if (cleanContent.endsWith('```')) {
+          cleanContent = cleanContent.slice(0, -3);
+        }
+        cleanContent = cleanContent.trim();
+        
+        parsedResult = JSON.parse(cleanContent);
+        console.log('[JARVIS AI Store] Successfully generated boot diagnostics data from AI API.');
+      }
+    } catch (err) {
+      console.error('[JARVIS AI Store] AI API generation for boot failed. Detailed error:', err);
+    }
+    
+    if (!parsedResult || !parsedResult.speechText || !parsedResult.visualBrief) {
+      console.log('[JARVIS AI Store] Generating dynamic offline fallback for boot...');
+      parsedResult = {
+        speechText: `Welcome back, Commander. System metrics loaded. You have some pending items to review.`,
+        visualBrief: {
+          primary: "Review daily objectives and maintain system discipline.",
+          secondary: "Ensure all fitness and routine metrics are logged.",
+          watchOuts: "Check overdue tasks and financial thresholds.",
+          goalsSummary: "Active goals are loaded and tracking.",
+          systemHealth: "85%"
+        }
+      };
+    }
+    
+    const bootData = {
+      date: today,
+      ...parsedResult
+    };
+    
+    set({
+      bootBrief: bootData,
+      isBootGenerating: false
+    });
+    
+    try {
+      localStorage.setItem('jarvis_boot_brief', JSON.stringify(bootData));
+    } catch (e) {
+      console.warn('[JARVIS AI Store] Failed to save boot data to localStorage:', e);
+    }
+    
+    return bootData;
   },
   
   addToSchedule: (item) => {

@@ -2,6 +2,7 @@ import { useCallback, useState, useEffect } from 'react';
 import { LayoutProvider, useLayout } from '../context/LayoutContext';
 import Sidebar from '../components/sidebar/Sidebar';
 import CommandHeader from '../components/command/CommandHeader';
+import LiveWallpaper from '../components/layout/LiveWallpaper';
 import AiDailyBrief from '../components/command/AiDailyBrief';
 import CriticalDeadlines from '../components/command/CriticalDeadlines';
 import TaskOperations from '../components/command/TaskOperations';
@@ -184,7 +185,8 @@ function CommandDashboard() {
 export default function Command() {
   return (
     <LayoutProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-jarvis-bg">
+      <div className="flex h-screen w-full overflow-hidden bg-transparent">
+        <LiveWallpaper />
         <Sidebar />
         <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <CommandDashboard />

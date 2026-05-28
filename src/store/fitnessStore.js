@@ -6,16 +6,19 @@ import { useActivityStore } from './activityStore';
 
 const initialState = {
   targets: {
-    calories: 2500,
+    calories: 1700,
     protein: 140,
-    hydrationMl: 3500,
-    weeklyWorkouts: 5,
+    hydrationMl: 6000,
+    weeklyWorkouts: 4,
+    steps: 10000,
   },
   workouts: [],
   meals: [],
   hydrationLogs: [],
   bodyMetrics: [],
   routines: [],
+  dailyInfos: [],
+  stepLogs: [],
   selectedDay: new Date().toISOString().slice(0, 10),
   isHydrated: false,
 };
@@ -33,6 +36,8 @@ export const useFitnessStore = create((set, get) => ({
         meals: logs.filter(l => l.type === 'meal'),
         hydrationLogs: logs.filter(l => l.type === 'hydration'),
         bodyMetrics: logs.filter(l => l.type === 'bodyMetric'),
+        dailyInfos: logs.filter(l => l.type === 'dailyInfo'),
+        stepLogs: logs.filter(l => l.type === 'step'),
         routines,
         isHydrated: true 
       });
@@ -84,6 +89,24 @@ export const useFitnessStore = create((set, get) => ({
       action: 'created', 
       entityId: savedLog.id,
       metadata: { amountMl: savedLog.amountMl }
+    });
+  },
+
+  addStepLog: async (steps) => {
+    const next = {
+      type: 'step',
+      date: get().selectedDay || new Date().toISOString().slice(0, 10),
+      steps: Math.max(0, Number(steps) || 0),
+    };
+    
+    const savedLog = await fitnessService.create(next);
+    set((state) => ({
+      stepLogs: [savedLog, ...state.stepLogs],
+    }));
+    await get().logActivity({ 
+      action: 'created', 
+      entityId: savedLog.id,
+      metadata: { steps: savedLog.steps }
     });
   },
 
@@ -146,7 +169,7 @@ export const useFitnessStore = create((set, get) => ({
   },
 
   deleteLog: async (id) => {
-    const item = [...get().workouts, ...get().meals, ...get().hydrationLogs, ...get().bodyMetrics].find(i => i.id === id);
+    const item = [...get().workouts, ...get().meals, ...get().hydrationLogs, ...get().bodyMetrics, ...get().stepLogs].find(i => i.id === id);
     if (!item) return;
 
     await fitnessService.delete(id);
@@ -155,6 +178,7 @@ export const useFitnessStore = create((set, get) => ({
       meals: state.meals.filter(m => m.id !== id),
       hydrationLogs: state.hydrationLogs.filter(h => h.id !== id),
       bodyMetrics: state.bodyMetrics.filter(b => b.id !== id),
+      stepLogs: state.stepLogs.filter(s => s.id !== id),
     }));
     await get().logActivity({ 
       action: 'deleted', 
@@ -192,5 +216,26 @@ export const useFitnessStore = create((set, get) => ({
     await fitnessService.update(id, updated);
     set({ workouts: workouts.map(w => w.id === id ? updated : w) });
   },
-}));
 
+  saveDailyInfo: async (date, infoText) => {
+    const dailyInfos = get().dailyInfos || [];
+    const existing = dailyInfos.find(i => i.date === date);
+    if (existing) {
+      const updated = { ...existing, info: infoText, updatedAt: new Date().toISOString() };
+      await fitnessService.update(existing.id, updated);
+      set({
+        dailyInfos: dailyInfos.map(i => i.id === existing.id ? updated : i)
+      });
+    } else {
+      const next = {
+        type: 'dailyInfo',
+        date,
+        info: infoText,
+      };
+      const savedLog = await fitnessService.create(next);
+      set({
+        dailyInfos: [savedLog, ...dailyInfos]
+      });
+    }
+  },
+}));

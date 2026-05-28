@@ -1,4 +1,5 @@
 import { RefreshCcw } from 'lucide-react';
+import CinematicLoader from '../ui/CinematicLoader';
 
 const typeStyles = {
   neutral: 'border-jarvis-border text-jarvis-muted',
@@ -22,26 +23,30 @@ export default function InsightFeed({ insights, onRefresh, isGenerating }) {
           <RefreshCcw className={`h-3.5 w-3.5 ${isGenerating ? 'animate-spin' : 'hover:rotate-45 transition-transform duration-300'}`} />
         </button>
       </div>
-      <div className="flex flex-col gap-2 font-mono text-[13px]">
-        {insights.length > 0 ? (
-          insights.filter(Boolean).map((insight, index) => (
-            <div
-              key={insight.id || `insight-${index}`}
-              className={[
-                'rounded-lg border bg-jarvis-bg/40 px-3 py-2.5 transition-colors duration-200 hover:bg-white/[0.02]',
-                typeStyles[insight.type],
-              ].join(' ')}
-            >
-              <span className="text-jarvis-accent/60">&gt;</span>{' '}
-              <span className="text-jarvis-text/90">{insight.text}</span>
+      {isGenerating ? (
+        <CinematicLoader size="sm" message="Syncing insight feed..." />
+      ) : (
+        <div className="flex flex-col gap-2 font-mono text-[13px]">
+          {insights.length > 0 ? (
+            insights.filter(Boolean).map((insight, index) => (
+              <div
+                key={insight.id || `insight-${index}`}
+                className={[
+                  'rounded-lg border bg-jarvis-bg/40 px-3 py-2.5 transition-colors duration-200 hover:bg-white/[0.02]',
+                  typeStyles[insight.type],
+                ].join(' ')}
+              >
+                <span className="text-jarvis-accent/60">&gt;</span>{' '}
+                <span className="text-jarvis-text/90">{insight.text}</span>
+              </div>
+            ))
+          ) : (
+            <div className="py-4 text-center text-xs text-jarvis-muted italic">
+              No insights available. Click refresh to generate.
             </div>
-          ))
-        ) : (
-          <div className="py-4 text-center text-xs text-jarvis-muted italic">
-            No insights available. Click refresh to generate.
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

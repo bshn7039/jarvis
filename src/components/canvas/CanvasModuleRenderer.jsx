@@ -12,6 +12,7 @@ import { useReadingStore } from '../../store/readingStore';
 import { useMusicStore } from '../../store/musicStore';
 import { useVaultStore } from '../../store/vaultStore';
 import { useMutualFundStore } from '../../store/mutualFundStore';
+import { usePersonalRoadmapStore } from '../../store/personalRoadmapStore';
 
 function Stat({ label, value }) {
   return (
@@ -138,7 +139,7 @@ function FinancePreview() {
 }
 
 function AcademicsPreview() {
-  const semester = useAcademicStore((s) => s.currentSemester);
+  const semester = useAcademicStore((s) => s.activeSemester);
   const assignments = useAcademicStore((s) => s.assignments);
   const revisionLogs = useAcademicStore((s) => s.revisionLogs);
   const codingProgress = useAcademicStore((s) => s.codingProgress);
@@ -265,22 +266,27 @@ function MutualFundsPreview() {
 }
 
 function PersonalPreview() {
-  const selfCare = useSelfCareStore((s) => s.routines);
-  const reading = useReadingStore((s) => s.library);
-  const music = useMusicStore((s) => s.practiceLogs);
-  const vault = useVaultStore((s) => s.ideas);
+  const roadmaps = usePersonalRoadmapStore((s) => s.roadmaps);
+  const goals = useGoalStore((s) => s.goals);
+  const tasks = useTaskStore((s) => s.tasks);
   
-  const activeReading = reading.filter((b) => b.status === 'reading').length;
-  const vaultIdeas = vault.length;
-  const selfCarePending = selfCare.filter((s) => !s.completed).length;
-  const musicLogs = music.length;
+  const total = roadmaps.length;
+  const active = roadmaps.filter(r => r.active).length;
+  
+  // Find all step tasks connected to these roadmaps
+  const roadmapGoalIds = roadmaps.map(r => r.id);
+  const phaseGoalIds = goals.filter(g => roadmapGoalIds.includes(g.parentId)).map(g => g.id);
+  const roadmapTasks = tasks.filter(t => (t.linkedGoalIds || []).some(id => phaseGoalIds.includes(id)));
+  
+  const completedTasks = roadmapTasks.filter(t => t.completed).length;
+  const totalTasks = roadmapTasks.length;
 
   return (
     <div className="grid grid-cols-2 gap-2">
-      <Stat label="Self Care" value={`${selfCarePending} pending`} />
-      <Stat label="Reading" value={`${activeReading} books`} />
-      <Stat label="Creative" value={`${vaultIdeas} ideas`} />
-      <Stat label="Music" value={`${musicLogs} logs`} />
+      <Stat label="Blueprints" value={`${active}/${total} active`} />
+      <Stat label="Steps Done" value={`${completedTasks}/${totalTasks}`} />
+      <Stat label="Ecosystem" value="Synced Goals" />
+      <Stat label="Progress" value={`${totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0}%`} />
     </div>
   );
 }

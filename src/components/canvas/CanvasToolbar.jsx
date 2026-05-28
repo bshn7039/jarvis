@@ -11,7 +11,7 @@ export default function CanvasToolbar({
   onMenuClick,
 }) {
   return (
-    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-jarvis-border bg-jarvis-bg px-4 py-3 md:px-6">
+    <header className="flex shrink-0 items-center justify-between gap-4 border-b border-jarvis-border/20 jarvis-glass px-4 py-3 md:px-6">
       <div className="flex min-w-0 items-center gap-3">
         <IconButton
           icon={Menu}

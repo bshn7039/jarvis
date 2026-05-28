@@ -55,7 +55,7 @@ export function useModuleData(moduleId) {
     certifications: s.certifications,
     portfolio: s.portfolio,
     codingProgress: s.codingProgress,
-    currentSemester: s.currentSemester,
+    activeSemester: s.activeSemester,
     termEndDate: s.termEndDate
   })));
   const schedules = useScheduleStore(s => s.schedules);

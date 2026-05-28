@@ -9,6 +9,7 @@ import { getActivityContext } from './providers/activityContextProvider';
 import { getProfileContext } from './providers/profileContextProvider';
 import { getPersonalContext } from './providers/personalContextProvider';
 import { getScheduleContext } from './providers/scheduleContextProvider';
+import { getRoadmapContext } from './providers/roadmapContextProvider';
 import { enforceBudget } from './contextBudgetManager';
 
 const PROVIDERS = {
@@ -23,6 +24,7 @@ const PROVIDERS = {
   profile: getProfileContext,
   personal: getPersonalContext,
   schedule: getScheduleContext,
+  roadmap: getRoadmapContext,
 };
 
 const KEYWORD_MAP = {
@@ -36,7 +38,8 @@ const KEYWORD_MAP = {
   activity: ['activity', 'log', 'recent', 'history', 'action'],
   profile: ['profile', 'age', 'height', 'gender', 'blood', 'location', 'timezone', 'identity', 'physical', 'user'],
   personal: ['personal', 'bio', 'hobby', 'interest', 'selfcare', 'self-care', 'music', 'writing', 'reading', 'vault', 'book', 'song', 'log', 'creative'],
-  schedule: ['schedule', 'calendar', 'routine', 'slot', 'command center schedule', 'daily schedule', 'today schedule']
+  schedule: ['schedule', 'calendar', 'routine', 'slot', 'command center schedule', 'daily schedule', 'today schedule'],
+  roadmap: ['roadmap', 'blueprint', 'self-improvement', 'improvement plan', 'phase', 'microdose', 'micro dose', 'skincare log', 'sleep log', 'social challenge', 'shadowbox', 'voice training', 'fighting', 'style', 'grooming'],
 };
 
 export function detectContextTypes(prompt = '', options = {}) {
@@ -98,7 +101,7 @@ export function buildAiContext(prompt, options = {}) {
     const provider = PROVIDERS[type];
     if (provider) {
       try {
-        contextData[type] = provider();
+        contextData[type] = provider(prompt);
       } catch (err) {
         console.error(`[ContextResolver] Provider '${type}' failed:`, err);
       }

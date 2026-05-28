@@ -2,6 +2,9 @@ import { LayoutProvider, useLayout } from '../context/LayoutContext';
 import Sidebar from '../components/sidebar/Sidebar';
 import CanvasWorkspace from '../components/canvas/CanvasWorkspace';
 import DatabaseTree from '../components/canvas/DatabaseTree';
+import LiveWallpaper from '../components/layout/LiveWallpaper';
+import FocusControls from '../components/layout/FocusControls';
+import { useFocusStore } from '../store/focusStore';
 import { useUiStore } from '../store/uiStore';
 import { useLiveDatabaseTree } from '../store/selectors/tree.selectors';
 import { Database, Search, Filter } from 'lucide-react';
@@ -12,7 +15,7 @@ function DatabaseExplorer() {
   const toggleExplorerExpand = useUiStore((s) => s.toggleExplorerExpand);
 
   return (
-    <aside className="flex h-full w-[300px] shrink-0 flex-col border-r border-jarvis-border bg-jarvis-panel/30 backdrop-blur-xl">
+    <aside className="flex h-full w-[300px] shrink-0 flex-col border-r border-jarvis-border/20 jarvis-glass">
       <header className="flex h-[64px] shrink-0 items-center justify-between border-b border-jarvis-border px-5">
         <div className="flex items-center gap-2.5">
           <Database className="h-4 w-4 text-jarvis-muted" strokeWidth={2} />
@@ -45,9 +48,17 @@ function DatabaseExplorer() {
 
 function CanvasShell() {
   const { openMobile } = useLayout();
+  const brightness = useFocusStore((s) => s.brightness);
+  const dimOpacity = (100 - brightness) / 100;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-jarvis-bg">
+    <div className="flex h-screen w-full overflow-hidden bg-transparent">
+      {/* Screen Dimmer Overlay */}
+      <div 
+        className="pointer-events-none fixed inset-0 z-50 bg-black transition-opacity duration-200" 
+        style={{ opacity: dimOpacity }} 
+      />
+      <LiveWallpaper />
       {/* Column 1: App Navigation */}
       <Sidebar />
       
@@ -55,9 +66,12 @@ function CanvasShell() {
       <DatabaseExplorer />
 
       {/* Column 3: Infinite Workspace */}
-      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-jarvis-bg">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-transparent">
         <CanvasWorkspace onMenuClick={openMobile} />
       </main>
+
+      {/* Focus Controls */}
+      <FocusControls />
     </div>
   );
 }

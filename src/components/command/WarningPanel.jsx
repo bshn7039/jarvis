@@ -1,4 +1,5 @@
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
+import CinematicLoader from '../ui/CinematicLoader';
 
 const severityStyles = {
   low: 'border-jarvis-border/80',
@@ -22,26 +23,30 @@ export default function WarningPanel({ warnings, onRefresh, isGenerating }) {
           <RefreshCcw className={`h-3.5 w-3.5 ${isGenerating ? 'animate-spin' : 'hover:rotate-45 transition-transform duration-300'}`} />
         </button>
       </div>
-      <ul className="flex flex-col gap-2">
-        {warnings.length > 0 ? (
-          warnings.filter(Boolean).map((warning, index) => (
-            <li
-              key={warning.id || `warning-${index}`}
-              className={[
-                'flex items-start gap-3 rounded-lg border bg-jarvis-bg/30 px-3 py-3 transition-colors duration-200 hover:bg-white/[0.02]',
-                severityStyles[warning.severity] || severityStyles.medium,
-              ].join(' ')}
-            >
-              <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${warning.severity === 'high' ? 'text-red-400' : 'text-jarvis-muted/70'}`} strokeWidth={1.75} />
-              <span className="text-sm">{warning.text}</span>
+      {isGenerating ? (
+        <CinematicLoader size="sm" message="Analyzing potential warnings..." />
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {warnings.length > 0 ? (
+            warnings.filter(Boolean).map((warning, index) => (
+              <li
+                key={warning.id || `warning-${index}`}
+                className={[
+                  'flex items-start gap-3 rounded-lg border bg-jarvis-bg/30 px-3 py-3 transition-colors duration-200 hover:bg-white/[0.02]',
+                  severityStyles[warning.severity] || severityStyles.medium,
+                ].join(' ')}
+              >
+                <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${warning.severity === 'high' ? 'text-red-400' : 'text-jarvis-muted/70'}`} strokeWidth={1.75} />
+                <span className="text-sm">{warning.text}</span>
+              </li>
+            ))
+          ) : (
+            <li className="py-4 text-center text-xs text-jarvis-muted italic border border-jarvis-dashed rounded-lg bg-black/10">
+              No system warnings detected.
             </li>
-          ))
-        ) : (
-          <li className="py-4 text-center text-xs text-jarvis-muted italic border border-jarvis-dashed rounded-lg bg-black/10">
-            No system warnings detected.
-          </li>
-        )}
-      </ul>
+          )}
+        </ul>
+      )}
     </section>
   );
 }

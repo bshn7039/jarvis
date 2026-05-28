@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useMutualFundStore } from '../../store/mutualFundStore';
 import { aiDispatcher } from '../../ai/services/aiDispatcher';
+import CinematicLoader from '../ui/CinematicLoader';
 
 const INSIGHT_STYLES = {
   risk: {
@@ -415,25 +416,8 @@ Return a JSON response ONLY, with no extra text or markdown formatting (except a
 
       {/* ── Loading State ── */}
       {isGenerating && (
-        <div className="space-y-4 py-2">
-          <div className="flex items-center gap-3.5 bg-black/20 p-4 rounded-xl border border-jarvis-border/40 animate-pulse">
-            <div className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center">
-              <RefreshCw className="h-5 w-5 text-jarvis-accent animate-spin" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="h-3 w-1/3 bg-white/10 rounded mb-2"></div>
-              <div className="h-2 w-2/3 bg-white/5 rounded"></div>
-            </div>
-          </div>
-          <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map(n => (
-              <div key={n} className="rounded-xl border border-jarvis-border/30 bg-black/15 p-4 space-y-2 animate-pulse">
-                <div className="h-3.5 w-3/5 bg-white/10 rounded"></div>
-                <div className="h-2 w-4/5 bg-white/5 rounded"></div>
-                <div className="h-2 w-2/5 bg-white/5 rounded"></div>
-              </div>
-            ))}
-          </div>
+        <div className="py-8 bg-black/20 rounded-xl border border-jarvis-border/40">
+          <CinematicLoader message="Analyzing Portfolio Compounding..." />
         </div>
       )}
 
