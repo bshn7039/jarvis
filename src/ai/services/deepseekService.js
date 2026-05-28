@@ -6,8 +6,9 @@ export class DeepSeekService {
   }
 
   async sendMessage(messages, options = {}) {
-    if (!this.apiKey) {
-      throw new Error('DeepSeek API key is missing. Please check your .env file.');
+    const activeKey = localStorage.getItem('jarvis_api_key_deepseek') || this.apiKey || import.meta.env.VITE_DEEPSEEK_API_KEY;
+    if (!activeKey) {
+      throw new Error('DeepSeek API key is missing. Please configure it in Settings or check your .env file.');
     }
 
     const {
@@ -94,7 +95,7 @@ export class DeepSeekService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${activeKey}`,
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal,

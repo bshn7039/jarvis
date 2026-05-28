@@ -6,8 +6,9 @@ export class GeminiService {
   }
 
   async sendMessage(messages, options = {}) {
-    if (!this.apiKey) {
-      throw new Error('Gemini API key is missing. Please add VITE_GEMINI_API_KEY to your .env file.');
+    const activeKey = localStorage.getItem('jarvis_api_key_gemini') || this.apiKey || import.meta.env.VITE_GEMINI_API_KEY;
+    if (!activeKey) {
+      throw new Error('Gemini API key is missing. Please configure it in Settings or add VITE_GEMINI_API_KEY to your .env file.');
     }
 
     const {
@@ -89,7 +90,7 @@ export class GeminiService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${activeKey}`,
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal,

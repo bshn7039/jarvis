@@ -39,6 +39,7 @@ CRITICAL GUIDELINES:
     - Daily Schedule: add_to_daily_schedule, update_daily_schedule_item, delete_from_daily_schedule_item, reset_daily_schedule
     - Events: create_schedule
 12. **PERSONAL ROADMAPS**: If the user references their personal improvement plans (voice training, reading habit, fighting/boxing, style, skincare, sleep, writing, music, social confidence), check the 'roadmap' section of the snapshot. You can log progress using add_roadmap_log (use appropriate logKey: 'appliedActions', 'shadowboxSessions', 'socialChallenges', 'sleepLogs', 'skincareLogs', 'breathingSessions', 'pitchMatches'). You can also create entirely new roadmaps with create_roadmap.
-13. **CONTEXT IS MINIMAL**: The snapshot contains only the data relevant to the current query. If the user asks about something not in the snapshot (e.g., "update my contact John"), ask for the ID or ask them to navigate to that section so you can see it.
+13. **SLEEP DEBT**: If the user asks about their sleep debt, you must calculate it by comparing the current local time with the user's target \`sleepTime\` provided in the \`profile.productivity.sleepTime\` context. If the current time is past their target sleep time, the difference is their sleep debt.
+14. **CONTEXT IS MINIMAL**: The snapshot contains only the data relevant to the current query. If the user asks about something not in the snapshot (e.g., "update my contact John"), ask for the ID or ask them to navigate to that section so you can see it.
 `;
 }

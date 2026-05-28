@@ -17,6 +17,8 @@ export function getProfileContext() {
       fitnessGoal: profile.physical?.fitnessGoal || ''
     },
     productivity: {
+      wakeTime: profile.productivity?.wakeTime || '08:00',
+      sleepTime: profile.productivity?.sleepTime || '00:00',
       taskHoursTarget: profile.productivity?.taskHoursTarget || 4,
       preferredStudyMethod: profile.productivity?.preferredStudyMethod || 'Feynman Technique'
     },

@@ -484,6 +484,7 @@ Return a JSON object ONLY, with no extra text or markdown formatting (except a s
 
   setGenerating: (isGenerating) => set({ isGenerating }),
   setModel: (model) => {
+    console.log('[AI Store] setModel called with:', model);
     localStorage.setItem('jarvis_active_model', model);
     set({ currentModel: model });
   },
