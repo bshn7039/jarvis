@@ -69,6 +69,13 @@ export const TOOL_PERMISSIONS = {
   delete_from_daily_schedule_item: PERMISSION_LEVELS.SAFE_WRITE,
   reset_daily_schedule: PERMISSION_LEVELS.SAFE_WRITE,
   
+  spotify_play: PERMISSION_LEVELS.SAFE_WRITE,
+  spotify_pause: PERMISSION_LEVELS.SAFE_WRITE,
+  spotify_next: PERMISSION_LEVELS.SAFE_WRITE,
+  spotify_prev: PERMISSION_LEVELS.SAFE_WRITE,
+  spotify_search_and_play: PERMISSION_LEVELS.SAFE_WRITE,
+  spotify_add_to_queue: PERMISSION_LEVELS.SAFE_WRITE,
+
   purge_all_data: PERMISSION_LEVELS.SYSTEM_RESTRICTED,
 };
 
@@ -528,6 +535,71 @@ export const TOOL_SCHEMAS = [
         required: ['fundId', 'purchaseId']
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_play',
+      description: 'Start or resume music playback on Spotify. Can play a specific track, album, or playlist URI if provided.',
+      parameters: {
+        type: 'object',
+        properties: {
+          uri: { type: 'string', description: 'Optional Spotify URI to play (e.g. spotify:track:XXXX, spotify:playlist:XXXX)' }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_pause',
+      description: 'Pause the currently playing music on Spotify.',
+      parameters: { type: 'object', properties: {} }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_next',
+      description: 'Skip to the next song in the Spotify playback queue.',
+      parameters: { type: 'object', properties: {} }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_prev',
+      description: 'Skip to the previous song in the Spotify playback history.',
+      parameters: { type: 'object', properties: {} }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_search_and_play',
+      description: 'Search for a track by song name/artist on Spotify and play the top result instantly.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', description: 'The search query containing track name and optional artist, e.g. "Blinding Lights by The Weeknd"' }
+        },
+        required: ['query']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_add_to_queue',
+      description: 'Add a track to the active Spotify play queue by track URI.',
+      parameters: {
+        type: 'object',
+        properties: {
+          uri: { type: 'string', description: 'The Spotify track URI to queue (must start with spotify:track:)' }
+        },
+        required: ['uri']
+      }
+    }
   }
 ];
 
@@ -751,6 +823,73 @@ export async function executeToolAction(name, args) {
       const { useAiStore } = await import('../../store/aiStore');
       useAiStore.getState().resetSchedule();
       return { success: true, message: "Reset Today's Schedule to default Wake up (8:00 AM) and Sleep (12:00 AM) rhythm." };
+    }
+
+    case 'spotify_play': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected. Tell the user to connect Spotify in the right panel first.' };
+      }
+      await store.play(sanitizedArgs.uri);
+      return { success: true, message: `Spotify play command sent successfully.` };
+    }
+
+    case 'spotify_pause': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected.' };
+      }
+      await store.pause();
+      return { success: true, message: 'Spotify pause command sent successfully.' };
+    }
+
+    case 'spotify_next': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected.' };
+      }
+      await store.next();
+      return { success: true, message: 'Spotify skip-next command sent successfully.' };
+    }
+
+    case 'spotify_prev': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected.' };
+      }
+      await store.prev();
+      return { success: true, message: 'Spotify skip-previous command sent successfully.' };
+    }
+
+    case 'spotify_search_and_play': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected. Tell the user to connect Spotify in the right panel first.' };
+      }
+      await store.search(sanitizedArgs.query);
+      const results = useSpotifyStore.getState().searchResults;
+      if (results && results.length > 0) {
+        const topTrack = results[0];
+        await store.play(topTrack.uri);
+        return { success: true, message: `Found and playing top result '${topTrack.name}' by ${topTrack.artists?.map(a => a.name).join(', ')}` };
+      } else {
+        return { success: false, message: `No tracks found on Spotify matching query '${sanitizedArgs.query}'` };
+      }
+    }
+
+    case 'spotify_add_to_queue': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected.' };
+      }
+      await store.addToQueue(sanitizedArgs.uri);
+      return { success: true, message: `Successfully queued track ${sanitizedArgs.uri} on Spotify.` };
     }
 
     default:

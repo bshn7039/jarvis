@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import AmbientBackground from '../components/landing/AmbientBackground';
 import { bootstrapDatabase } from '../database/core/bootstrap';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, login, init } = useAuthStore();
+  const fromLanding = location.state?.fromLanding ?? false;
   
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -16,13 +18,21 @@ export default function Login() {
 
   useEffect(() => {
     init();
+    // Debug helper to print all users on the active origin
+    import('../database/services/authService').then(({ authService }) => {
+      authService.getUsers().then(users => {
+        console.log('[JARVIS Debug] Registered users on origin:', window.location.origin, users.map(u => ({ username: u.username, email: u.email })));
+      }).catch(err => {
+        console.error('[JARVIS Debug] Failed to read users:', err);
+      });
+    });
   }, [init]);
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/home');
+      navigate('/home', { state: { fromLanding } });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, fromLanding]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,7 +44,7 @@ export default function Login() {
       if (success) {
         const authUser = useAuthStore.getState().user;
         await bootstrapDatabase(authUser.userId);
-        navigate('/home');
+        navigate('/home', { state: { fromLanding } });
       } else {
         setError('Invalid credentials');
       }

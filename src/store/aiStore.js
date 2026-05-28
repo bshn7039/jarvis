@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { DEFAULT_MODEL } from '../config/aiModels';
 
-function generateOfflineFallback(data) {
+function generateOfflineFallback(data, includeSchedule = true) {
   const schedule = [];
   
   // 1. Brief Generator
@@ -27,36 +27,38 @@ function generateOfflineFallback(data) {
   const brief = { primary, secondary, watchOuts };
   
   // 2. Schedule Generator
-  const todayTasks = data.tasks || [];
-  if (todayTasks.length > 0) {
-    todayTasks.forEach((task, index) => {
-      schedule.push({
-        id: `sched-fallback-${index}`,
-        time: task.time || (index === 0 ? '08:00' : '23:59'),
-        label: task.title,
-        category: task.category || 'Routines',
-        status: task.completed ? 'done' : 'upcoming'
+  if (includeSchedule) {
+    const todayTasks = data.tasks || [];
+    if (todayTasks.length > 0) {
+      todayTasks.forEach((task, index) => {
+        schedule.push({
+          id: `sched-fallback-${index}`,
+          time: task.time || (index === 0 ? '08:00' : '23:59'),
+          label: task.title,
+          category: task.category || 'Routines',
+          status: task.completed ? 'done' : 'upcoming'
+        });
       });
-    });
-  } else {
-    const baseSlots = [
-      { time: '08:00', label: 'Morning routine & hydration', category: 'Routines' },
-      { time: '09:00', label: 'Deep Work: Coding & DSA Target Session', category: 'Coding' },
-      { time: '12:00', label: 'Lunch & nutrition log', category: 'Fitness' },
-      { time: '14:00', label: 'Academic study & learning queue', category: 'Academics' },
-      { time: '17:30', label: 'Gym workout session', category: 'Gym' },
-      { time: '20:00', label: 'Dinner & personal reflection', category: 'Personal' },
-      { time: '21:30', label: 'Journal entry & daily wrap-up', category: 'Journal' },
-    ];
-    baseSlots.forEach((slot, index) => {
-      schedule.push({
-        id: `sched-fallback-${index}`,
-        time: slot.time,
-        label: slot.label,
-        category: slot.category,
-        status: 'upcoming'
+    } else {
+      const baseSlots = [
+        { time: '08:00', label: 'Morning routine & hydration', category: 'Routines' },
+        { time: '09:00', label: 'Deep Work: Coding & DSA Target Session', category: 'Coding' },
+        { time: '12:00', label: 'Lunch & nutrition log', category: 'Fitness' },
+        { time: '14:00', label: 'Academic study & learning queue', category: 'Academics' },
+        { time: '17:30', label: 'Gym workout session', category: 'Gym' },
+        { time: '20:00', label: 'Dinner & personal reflection', category: 'Personal' },
+        { time: '21:30', label: 'Journal entry & daily wrap-up', category: 'Journal' },
+      ];
+      baseSlots.forEach((slot, index) => {
+        schedule.push({
+          id: `sched-fallback-${index}`,
+          time: slot.time,
+          label: slot.label,
+          category: slot.category,
+          status: 'upcoming'
+        });
       });
-    });
+    }
   }
   
   return { brief, schedule };
@@ -64,7 +66,7 @@ function generateOfflineFallback(data) {
 
 export const useAiStore = create((set, get) => ({
   isGenerating: false,
-  currentModel: DEFAULT_MODEL,
+  currentModel: localStorage.getItem('jarvis_active_model') || DEFAULT_MODEL,
   lastError: null,
   
   // Daily Command Center AI generated items (hydrated from localStorage)
@@ -161,7 +163,7 @@ export const useAiStore = create((set, get) => ({
       const systemPrompt = `You are JARVIS, a calm, precise, and highly capable AI operating layer.
 Analyze the user's daily life metrics and tasks provided below, and generate:
 1. An AI Daily Brief consisting of a Primary Priority, a Secondary Priority, and a Watch-out (each 1-2 concise, highly personalized sentences highlighting key focal points, spend warning, low study/workouts, or tasks).
-2. A structured, hour-by-hour Today's Schedule using their actual tasks, routines, and fitness goals.
+${force ? '2. A structured, hour-by-hour Today\'s Schedule using their actual tasks, routines, and fitness goals.' : ''}
 
 Return a JSON object ONLY, with no extra text or markdown formatting (except a standard JSON code block), in this exact format:
 {
@@ -169,18 +171,17 @@ Return a JSON object ONLY, with no extra text or markdown formatting (except a s
     "primary": "Primary daily focus based on metrics...",
     "secondary": "Secondary focus or habit risk...",
     "watchOuts": "Key watch-out (e.g., budget alert, dehydration threat, overdue tasks)..."
-  },
+  }${force ? `,
   "schedule": [
     { "id": "sched-1", "time": "08:00", "label": "Morning routine & hydration", "category": "Routines", "status": "upcoming" }
-  ]
+  ]` : ''}
 }
 
-Strictly use only these categories for schedule items: "Coding", "Academics", "Journal", "Gym", "Fitness", "Routines", "Personal".
-Keep the times in HH:MM 24-hour format. Ensure the schedule items are ordered chronologically.
+${force ? 'Strictly use only these categories for schedule items: "Coding", "Academics", "Journal", "Gym", "Fitness", "Routines", "Personal".\nKeep the times in HH:MM 24-hour format. Ensure the schedule items are ordered chronologically.' : ''}
 `;
       
-      const { deepSeekService } = await import('../ai/services/deepseekService');
-      const response = await deepSeekService.sendMessage([
+      const { aiDispatcher } = await import('../ai/services/aiDispatcher');
+      const response = await aiDispatcher.sendMessage([
         { role: 'user', content: `Here is my system snapshot:\n${promptContext}` }
       ], {
         systemPrompt,
@@ -201,13 +202,13 @@ Keep the times in HH:MM 24-hour format. Ensure the schedule items are ordered ch
         cleanContent = cleanContent.trim();
         
         parsedResult = JSON.parse(cleanContent);
-        console.log('[JARVIS AI Store] Successfully generated daily data from DeepSeek API.');
+        console.log('[JARVIS AI Store] Successfully generated daily data from AI API.');
       }
     } catch (err) {
-      console.warn('[JARVIS AI Store] DeepSeek API generation failed or was bypassed. Running offline cognitive fallback:', err);
+      console.warn('[JARVIS AI Store] AI API generation failed or was bypassed. Running offline fallback:', err);
     }
     
-    if (!parsedResult || !parsedResult.brief || !parsedResult.schedule) {
+    if (!parsedResult || !parsedResult.brief || (force && !parsedResult.schedule)) {
       console.log('[JARVIS AI Store] Generating dynamic offline fallback...');
       if (!contextData) {
         // Safe mock context if import or store query failed completely
@@ -220,7 +221,7 @@ Keep the times in HH:MM 24-hour format. Ensure the schedule items are ordered ch
           coding: { solvedProblemsCount: 0, targetProblems: 0 }
         };
       }
-      parsedResult = generateOfflineFallback(contextData);
+      parsedResult = generateOfflineFallback(contextData, force);
     }
     
     const brief = parsedResult.brief || {
@@ -228,7 +229,14 @@ Keep the times in HH:MM 24-hour format. Ensure the schedule items are ordered ch
       secondary: 'Hydrate properly and follow your active schedules.',
       watchOuts: 'Keep monitoring task deadlines and transaction thresholds.'
     };
-    const schedule = (parsedResult.schedule || []).sort((a, b) => a.time.localeCompare(b.time));
+    
+    // If manually forced, generate schedule.
+    // If auto-loaded (force=false):
+    //   - If it's a new day (lastGen !== today), keep/set it blank (empty array).
+    //   - If it's the same day, preserve the existing dailySchedule.
+    const schedule = force
+      ? ((parsedResult.schedule || []).sort((a, b) => a.time.localeCompare(b.time)))
+      : (lastGen === today ? get().dailySchedule : []);
     
     set({
       dailyBrief: brief,
@@ -291,7 +299,10 @@ Keep the times in HH:MM 24-hour format. Ensure the schedule items are ordered ch
   toolCooldowns: {}, // { toolName: timestamp }
 
   setGenerating: (isGenerating) => set({ isGenerating }),
-  setModel: (model) => set({ currentModel: model }),
+  setModel: (model) => {
+    localStorage.setItem('jarvis_active_model', model);
+    set({ currentModel: model });
+  },
   setError: (error) => set({ lastError: error }),
   clearError: () => set({ lastError: null }),
   

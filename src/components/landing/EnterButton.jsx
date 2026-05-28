@@ -9,7 +9,8 @@ export default function EnterButton({ onTransitionStart }) {
     if (isExiting) return;
     setIsExiting(true);
     onTransitionStart?.();
-    window.setTimeout(() => navigate('/login'), 1000);
+    sessionStorage.setItem('jarvis_entrance', '1');
+    window.setTimeout(() => navigate('/home', { state: { fromLanding: true } }), 1000);
   };
 
   return (

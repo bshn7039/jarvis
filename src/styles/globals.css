@@ -160,3 +160,73 @@
 .canvas-modules-layer .module-drag-handle {
   touch-action: none;
 }
+
+/* static flying letter animations for JARVIS entrance */
+@keyframes jfly-letter-0 {
+  0%   { opacity: 0; transform: translate(-340px, -180px) rotate(-42deg) scale(0.65); filter: blur(3px); }
+  30%  { opacity: 1; }
+  85%  { transform: translate(-2px, -2px) rotate(-1.5deg) scale(1.05); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0px); }
+}
+@keyframes jfly-letter-1 {
+  0%   { opacity: 0; transform: translate(390px, -160px) rotate(33deg) scale(0.65); filter: blur(3px); }
+  30%  { opacity: 1; }
+  85%  { transform: translate(-2px, -2px) rotate(-1.5deg) scale(1.05); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0px); }
+}
+@keyframes jfly-letter-2 {
+  0%   { opacity: 0; transform: translate(-270px, 290px) rotate(-28deg) scale(0.65); filter: blur(3px); }
+  30%  { opacity: 1; }
+  85%  { transform: translate(-2px, -2px) rotate(-1.5deg) scale(1.05); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0px); }
+}
+@keyframes jfly-letter-3 {
+  0%   { opacity: 0; transform: translate(360px, 230px) rotate(52deg) scale(0.65); filter: blur(3px); }
+  30%  { opacity: 1; }
+  85%  { transform: translate(-2px, -2px) rotate(-1.5deg) scale(1.05); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0px); }
+}
+@keyframes jfly-letter-4 {
+  0%   { opacity: 0; transform: translate(-430px, -95px) rotate(-58deg) scale(0.65); filter: blur(3px); }
+  30%  { opacity: 1; }
+  85%  { transform: translate(-2px, -2px) rotate(-1.5deg) scale(1.05); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0px); }
+}
+@keyframes jfly-letter-5 {
+  0%   { opacity: 0; transform: translate(310px, -270px) rotate(44deg) scale(0.65); filter: blur(3px); }
+  30%  { opacity: 1; }
+  85%  { transform: translate(-2px, -2px) rotate(-1.5deg) scale(1.05); filter: blur(0px); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); filter: blur(0px); }
+}
+
+.jfly-letter-0 { display: inline-block; animation: jfly-letter-0 2.5s cubic-bezier(0.16, 1, 0.3, 1) 0ms both; }
+.jfly-letter-1 { display: inline-block; animation: jfly-letter-1 2.5s cubic-bezier(0.16, 1, 0.3, 1) 150ms both; }
+.jfly-letter-2 { display: inline-block; animation: jfly-letter-2 2.5s cubic-bezier(0.16, 1, 0.3, 1) 300ms both; }
+.jfly-letter-3 { display: inline-block; animation: jfly-letter-3 2.5s cubic-bezier(0.16, 1, 0.3, 1) 450ms both; }
+.jfly-letter-4 { display: inline-block; animation: jfly-letter-4 2.5s cubic-bezier(0.16, 1, 0.3, 1) 600ms both; }
+.jfly-letter-5 { display: inline-block; animation: jfly-letter-5 2.5s cubic-bezier(0.16, 1, 0.3, 1) 750ms both; }
+
+@keyframes jPulseStatic {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(125,211,252,0.35)); }
+  50%     { filter: drop-shadow(0 0 7px rgba(125,211,252,0.7)); }
+}
+
+.jarvis-pulse-active {
+  animation: jPulseStatic 3.5s ease-in-out infinite;
+}
+
+@keyframes jFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-greeting-in {
+  animation: jFadeInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+}
+

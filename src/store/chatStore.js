@@ -3,7 +3,7 @@ import { BaseService } from '../database/services/baseService';
 import { STORES } from '../database/core/localDatabase';
 import { deepClone } from '../utils/deepClone';
 import { useAiStore } from './aiStore';
-import { deepSeekService } from '../ai/services/deepseekService';
+import { aiDispatcher } from '../ai/services/aiDispatcher';
 import { buildAiContext } from '../ai/context/contextResolver';
 import { buildSystemPrompt } from '../ai/prompts/promptBuilder';
 import { TOOL_SCHEMAS, TOOL_PERMISSIONS, PERMISSION_LEVELS, TOOL_ALIASES } from '../ai/tools/toolRegistry';
@@ -190,7 +190,7 @@ export const useChatStore = create((set, get) => ({
     const historyMessages = currentMessages.slice(-15);
 
     try {
-      const response = await deepSeekService.sendMessage(historyMessages, {
+      const response = await aiDispatcher.sendMessage(historyMessages, {
         systemPrompt,
         tools: TOOL_SCHEMAS,
         model
@@ -301,7 +301,7 @@ export const useChatStore = create((set, get) => ({
           }))
         ];
 
-        const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
+        const nextResponse = await aiDispatcher.sendMessage(messagesWithTools, {
           systemPrompt,
           model,
           tools: TOOL_SCHEMAS
@@ -456,7 +456,7 @@ export const useChatStore = create((set, get) => ({
           }))
         ];
 
-        const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
+        const nextResponse = await aiDispatcher.sendMessage(messagesWithTools, {
           systemPrompt,
           model: useAiStore.getState().currentModel,
           tools: TOOL_SCHEMAS
@@ -569,7 +569,7 @@ export const useChatStore = create((set, get) => ({
           }))
         ];
 
-        const nextResponse = await deepSeekService.sendMessage(messagesWithTools, {
+        const nextResponse = await aiDispatcher.sendMessage(messagesWithTools, {
           systemPrompt,
           model: useAiStore.getState().currentModel,
           tools: TOOL_SCHEMAS

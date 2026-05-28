@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RefreshCw, Trash2, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { useMutualFundStore } from '../../store/mutualFundStore';
 import BaseModal from '../modals/BaseModal';
+import MutualFundAiInsights from './MutualFundAiInsights';
 
 function fmt(n, digits = 0) {
   if (n === null || n === undefined || isNaN(n)) return '—';
@@ -265,6 +266,9 @@ export default function MutualFundTracker({ onAddFund }) {
           </div>
         </div>
       </div>
+
+      {/* AI Portfolio Insights */}
+      <MutualFundAiInsights />
 
       {/* Fund list */}
       {funds.length === 0 ? (

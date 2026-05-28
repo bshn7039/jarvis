@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { deepSeekService } from '../ai/services/deepseekService';
+import { aiDispatcher } from '../ai/services/aiDispatcher';
 import { 
   Dumbbell, 
   Utensils, 
@@ -188,7 +188,7 @@ Provide a JSON response ONLY, with no extra text or markdown formatting (except 
   "protein": 25 // estimated protein in grams as an integer
 }
 `;
-      const response = await deepSeekService.sendMessage([
+      const response = await aiDispatcher.sendMessage([
         { role: 'user', content: `Analyze this meal description: "${mealInput}"` }
       ], {
         systemPrompt,
