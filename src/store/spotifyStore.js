@@ -305,13 +305,18 @@ export const useSpotifyStore = create((set, get) => ({
     set({ progressMs: positionMs });
   },
 
-  search: async (query) => {
+  search: async (query, type = 'track') => {
     const { token } = get();
     if (!token || !query.trim()) { set({ searchResults: [] }); return; }
     set({ isSearching: true });
     try {
-      const data = await spotifyFetch(`/search?q=${encodeURIComponent(query)}&type=track&limit=8`, token);
-      set({ searchResults: data?.tracks?.items || [], isSearching: false });
+      const data = await spotifyFetch(`/search?q=${encodeURIComponent(query)}&type=${type}&limit=8`, token);
+      const results = type === 'track'
+        ? data?.tracks?.items
+        : type === 'playlist'
+        ? data?.playlists?.items
+        : data?.albums?.items;
+      set({ searchResults: results || [], isSearching: false });
     } catch { set({ isSearching: false }); }
   },
 

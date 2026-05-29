@@ -14,6 +14,7 @@ import TodaySchedule from '../components/command/TodaySchedule';
 import EntityModal from '../components/modals/EntityModal';
 import EntityForm from '../components/forms/EntityForm';
 import TransactionModal from '../components/finance/TransactionModal';
+import CommandAnalytics from '../components/command/CommandAnalytics';
 import { useUiStore } from '../store/uiStore';
 import { useTaskStore } from '../store/taskStore';
 import { useFinanceStore } from '../store/financeStore';
@@ -51,6 +52,7 @@ function CommandDashboard() {
 
   const [activeModal, setActiveModal] = useState(null); // 'task' | 'expense' | null
   const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'analytics'
 
 
 
@@ -109,53 +111,84 @@ function CommandDashboard() {
       <CommandHeader onMenuClick={openMobile} />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-[1600px] space-y-6 p-4 pb-10 md:p-6 lg:p-8">
-          <AiDailyBrief brief={dailyBrief} onRefresh={handleRefreshBrief} isGenerating={isGenerating} />
           
-          <CriticalDeadlines deadlines={criticalDeadlines} />
-          
-          <TaskOperations summaries={taskSummaries} />
-
-          <section>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-medium uppercase tracking-wider text-jarvis-muted">
-                Daily Metrics
-              </h2>
-              <button
-                onClick={handleRefreshMetrics}
-                className="flex items-center gap-1.5 rounded-lg border border-jarvis-border px-2.5 py-1 text-xs text-jarvis-muted transition-colors hover:border-jarvis-muted/50 hover:text-jarvis-text"
-              >
-                <RefreshCcw className="h-3 w-3" strokeWidth={1.75} />
-                Refresh Metrics
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
-              {dailyMetrics.map((metric) => (
-                <MetricCard key={metric.id} metric={metric} />
-              ))}
-            </div>
-          </section>
-
-          <StreakCard streaks={streaks} />
-
-          <section>
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-jarvis-muted">
-              Weekly Progress
-            </h2>
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {weeklyProgressData.map((item) => (
-                <ProgressCard key={item.id} item={item} />
-              ))}
-            </div>
-          </section>
-
-
-
-          <div className="grid gap-6 xl:grid-cols-3">
-            <div className="xl:col-span-2">
-              <QuickActions actions={quickActions} onAction={handleAction} />
-            </div>
-            <TodaySchedule schedule={dailySchedule} onRefresh={handleRefreshBrief} isGenerating={isGenerating} />
+          {/* Tab Selector Bar */}
+          <div className="flex items-center gap-1 rounded-xl border border-jarvis-border/60 bg-jarvis-panel/60 p-1 w-fit select-none">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`rounded-lg px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'overview'
+                  ? 'bg-jarvis-accent/15 text-jarvis-accent border border-jarvis-accent/25 shadow-sm'
+                  : 'text-jarvis-muted hover:text-jarvis-text border border-transparent'
+              }`}
+            >
+              Command Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`rounded-lg px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                activeTab === 'analytics'
+                  ? 'bg-jarvis-accent/15 text-jarvis-accent border border-jarvis-accent/25 shadow-sm'
+                  : 'text-jarvis-muted hover:text-jarvis-text border border-transparent'
+              }`}
+            >
+              Dynamic Analytics
+            </button>
           </div>
+
+          {activeTab === 'overview' ? (
+            <>
+              <AiDailyBrief brief={dailyBrief} onRefresh={handleRefreshBrief} isGenerating={isGenerating} />
+              
+              <CriticalDeadlines deadlines={criticalDeadlines} />
+              
+              <TaskOperations summaries={taskSummaries} />
+
+              <section>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className="text-sm font-medium uppercase tracking-wider text-jarvis-muted">
+                    Daily Metrics
+                  </h2>
+                  <button
+                    onClick={handleRefreshMetrics}
+                    className="flex items-center gap-1.5 rounded-lg border border-jarvis-border px-2.5 py-1 text-xs text-jarvis-muted transition-colors hover:border-jarvis-muted/50 hover:text-jarvis-text cursor-pointer"
+                  >
+                    <RefreshCcw className="h-3 w-3" strokeWidth={1.75} />
+                    Refresh Metrics
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+                  {dailyMetrics.map((metric) => (
+                    <MetricCard key={metric.id} metric={metric} />
+                  ))}
+                </div>
+              </section>
+
+              <StreakCard streaks={streaks} />
+
+              <section>
+                <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-jarvis-muted">
+                  Weekly Progress
+                </h2>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {weeklyProgressData.map((item) => (
+                    <ProgressCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </section>
+
+              <div className="grid gap-6 xl:grid-cols-3">
+                <div className="xl:col-span-2">
+                  <QuickActions actions={quickActions} onAction={handleAction} />
+                </div>
+                <TodaySchedule schedule={dailySchedule} onRefresh={handleRefreshBrief} isGenerating={isGenerating} />
+              </div>
+            </>
+          ) : (
+            <div className="animate-[fade-in_0.3s_ease-out_1]">
+              <CommandAnalytics />
+            </div>
+          )}
 
         </div>
       </div>

@@ -7,7 +7,7 @@ import FocusControls from '../components/layout/FocusControls';
 import { useFocusStore } from '../store/focusStore';
 import { useUiStore } from '../store/uiStore';
 import { useLiveDatabaseTree } from '../store/selectors/tree.selectors';
-import { Database, Search, Filter } from 'lucide-react';
+import { Database } from 'lucide-react';
 
 function DatabaseExplorer() {
   const tree = useLiveDatabaseTree();
@@ -17,10 +17,10 @@ function DatabaseExplorer() {
   return (
     <aside className="flex h-full w-[300px] shrink-0 flex-col border-r border-jarvis-border/20 jarvis-glass">
       <header className="flex h-[64px] shrink-0 items-center justify-between border-b border-jarvis-border px-5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <Database className="h-4 w-4 text-jarvis-muted" strokeWidth={2} />
-          <h2 className="text-[10px] font-bold uppercase tracking-[0.25em] text-jarvis-text">
-            Explorer
+          <h2 className="text-[9px] font-bold uppercase tracking-[0.2em] text-jarvis-text">
+            Canvas Board
           </h2>
         </div>
       </header>

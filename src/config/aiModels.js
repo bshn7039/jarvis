@@ -14,7 +14,7 @@ export const MODEL_CONFIG = [
   },
   {
     id: AI_MODELS.GEMINI_FLASH,
-    name: 'Gemini 2.5 Flash',
+    name: 'Gemini 2.5 Flash, Lite',
     description: 'Ultra-fast, cost-effective Google AI model.',
   },
   {

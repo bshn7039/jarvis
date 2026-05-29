@@ -248,6 +248,41 @@ export function buildNode(data, path, depth = 0) {
     return node;
   }
 
+  // Special handling for Schedules to group by date
+  if (path === 'schedules' && Array.isArray(data)) {
+    const dates = [...new Set(data.map(s => s.date))].filter(Boolean).sort((a, b) => b.localeCompare(a));
+    
+    node.type = 'folder';
+    node.children = dates.map(date => {
+      let displayDate = date;
+      if (date.includes('-')) {
+        const parts = date.split('-');
+        if (parts.length === 3) {
+          const [y, m, d] = parts;
+          displayDate = `${parseInt(d)}-${parseInt(m)}-${y}`;
+        }
+      }
+      
+      const daySchedules = data
+        .filter(s => s.date === date)
+        .sort((a, b) => (a.time || a.startTime || '').localeCompare(b.time || b.startTime || ''));
+        
+      return {
+        id: `schedules.${date}`,
+        label: `Schedule (${displayDate})`,
+        type: 'folder',
+        checked: true,
+        expanded: false,
+        children: daySchedules.map(item => {
+          const itemNode = buildNode(item, `schedules.${item.id}`, depth + 2);
+          itemNode.label = `[${item.time || item.startTime || '00:00'}] ${item.title || item.label || 'Activity'}`;
+          return itemNode;
+        })
+      };
+    });
+    return node;
+  }
+
   // Special handling for Fitness to group by date, then by categories (Meals, Hydration, Workouts)
   if (path === 'fitness' && data) {
     const workouts = data.workouts || [];

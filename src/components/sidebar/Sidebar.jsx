@@ -13,7 +13,7 @@ import {
   GraduationCap,
   Activity as ActivityIcon,
   Smile,
-  X,
+  X
 } from 'lucide-react';
 import SidebarSection from './SidebarSection';
 import SidebarItem from './SidebarItem';

@@ -34,15 +34,36 @@ function parseSleepTime(sleepStr) {
   return null;
 }
 
-function getSleepDebt(sleepTimeStr) {
-  const parsed = parseSleepTime(sleepTimeStr);
-  if (!parsed) return null;
+function getSleepDebt(sleepTimeStr, wakeTimeStr) {
+  const parsedSleep = parseSleepTime(sleepTimeStr || '00:00');
+  const parsedWake = parseSleepTime(wakeTimeStr || '08:00');
+  if (!parsedSleep || !parsedWake) return null;
 
   const now = new Date();
-  const sleepDate = new Date(now);
-  sleepDate.setHours(parsed.hours, parsed.minutes, 0, 0);
+  const currentMins = now.getHours() * 60 + now.getMinutes();
+  const sleepMins = parsedSleep.hours * 60 + parsedSleep.minutes;
+  const wakeMins = parsedWake.hours * 60 + parsedWake.minutes;
 
-  // If sleep time is in the future today, no debt
+  // Determine if current time falls within the sleep window
+  let inWindow = false;
+  if (sleepMins < wakeMins) {
+    inWindow = currentMins >= sleepMins && currentMins < wakeMins;
+  } else {
+    inWindow = currentMins >= sleepMins || currentMins < wakeMins;
+  }
+
+  // If outside the sleep/wake window, hide the sleep debt indicator
+  if (!inWindow) return null;
+
+  const sleepDate = new Date(now);
+  sleepDate.setHours(parsedSleep.hours, parsedSleep.minutes, 0, 0);
+
+  // If current time is in the morning before wake-up, and sleep started yesterday evening
+  if (currentMins < wakeMins && sleepMins >= wakeMins) {
+    sleepDate.setDate(sleepDate.getDate() - 1);
+  }
+
+  // If sleep time is in the future relative to the calculated date, no debt
   if (now <= sleepDate) return null;
 
   const diffMs = now - sleepDate;
@@ -73,7 +94,8 @@ export default function LiveStatusHeader() {
   // Derived data
   const location = profile?.identity?.location || 'Earth';
   const sleepTimeStr = profile?.productivity?.sleepTime;
-  const sleepDebt = useMemo(() => getSleepDebt(sleepTimeStr), [sleepTimeStr, now]);
+  const wakeTimeStr = profile?.productivity?.wakeTime;
+  const sleepDebt = useMemo(() => getSleepDebt(sleepTimeStr, wakeTimeStr), [sleepTimeStr, wakeTimeStr, now]);
 
   const pendingPriorities = useMemo(() => {
     return tasks.filter(

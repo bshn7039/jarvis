@@ -2,6 +2,7 @@ export class ElevenlabsService {
   constructor() {
     // Expose ElevenLabs key to Vite client-side
     this.apiKey = import.meta.env.VITE_ELEVENLABS_API_KEY;
+    this.useBrowserFallback = false;
   }
 
   /**
@@ -12,7 +13,7 @@ export class ElevenlabsService {
    * @returns {Promise<{audioUrl?: string, utterance?: SpeechSynthesisUtterance, source: 'elevenlabs' | 'browser' | null}>}
    */
   async textToSpeech(text, voiceId, forceBrowser = false) {
-    if (forceBrowser) {
+    if (forceBrowser || this.useBrowserFallback) {
       console.log('[TTS] Bypassing ElevenLabs, forcing browser synthesis.');
       return this.fallbackSpeechSynthesis(text);
     }
@@ -24,6 +25,7 @@ export class ElevenlabsService {
 
     if (!this.apiKey || this.apiKey.includes('elevenlabs-sk_YOUR_KEY')) {
       console.warn('[ElevenLabs] API key is missing. Falling back to browser synthesis.');
+      this.useBrowserFallback = true;
       return this.fallbackSpeechSynthesis(text);
     }
 
@@ -55,6 +57,7 @@ export class ElevenlabsService {
       return { audioUrl, source: 'elevenlabs' };
     } catch (err) {
       console.error('[ElevenLabs] API call failed, falling back to browser synthesis:', err);
+      this.useBrowserFallback = true;
       return this.fallbackSpeechSynthesis(text);
     }
   }
@@ -69,27 +72,38 @@ export class ElevenlabsService {
       
       const utterance = new SpeechSynthesisUtterance(text);
       
-      // Fetch all voices available in Chrome, Edge, Safari
-      const voices = window.speechSynthesis.getVoices();
-      
-      // 1. Prioritize Indian English voices (e.g. en-IN, Ravi, Karishma, Heera, etc.)
-      // 2. Fall back to standard Google, Microsoft, or system English voices
-      const preferredVoice = voices.find(v => v.lang === 'en-IN')
-        || voices.find(v => v.lang.startsWith('en-IN'))
-        || voices.find(v => v.name.toLowerCase().includes('india'))
-        || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('google')) 
-        || voices.find(v => v.lang.startsWith('en')) 
-        || voices[0];
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-        console.log(`[TTS Fallback] Speaking with native voice: ${preferredVoice.name} (${preferredVoice.lang})`);
+      const speakWithVoices = () => {
+        // Fetch all voices available in Chrome, Edge, Safari
+        const voices = window.speechSynthesis.getVoices();
+        
+        // 1. Prioritize Indian English voices (e.g. en-IN, Ravi, Karishma, Heera, etc.)
+        // 2. Fall back to standard Google, Microsoft, or system English voices
+        const preferredVoice = voices.find(v => v.lang === 'en-IN')
+          || voices.find(v => v.lang.startsWith('en-IN'))
+          || voices.find(v => v.name.toLowerCase().includes('india'))
+          || voices.find(v => v.lang.startsWith('en') && v.name.toLowerCase().includes('google')) 
+          || voices.find(v => v.lang.startsWith('en')) 
+          || voices[0];
+        
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+          console.log(`[TTS Fallback] Speaking with native voice: ${preferredVoice.name} (${preferredVoice.lang})`);
+        }
+        
+        utterance.rate = 1.15; // Slightly faster professional, helpful assistant tone
+        utterance.pitch = 1.0;
+        
+        resolve({ utterance, source: 'browser' });
+      };
+
+      // In Chrome/Edge, voices are loaded asynchronously and getVoices() might be empty initially
+      if (window.speechSynthesis.getVoices().length > 0) {
+        speakWithVoices();
+      } else {
+        window.speechSynthesis.onvoiceschanged = () => {
+          speakWithVoices();
+        };
       }
-      
-      utterance.rate = 1.05; // Adjust speed for a professional, helpful assistant tone
-      utterance.pitch = 1.0;
-      
-      resolve({ utterance, source: 'browser' });
     });
   }
 }

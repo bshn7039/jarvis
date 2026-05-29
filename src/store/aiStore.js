@@ -100,12 +100,101 @@ export const useAiStore = create((set, get) => ({
     }
   })(),
   isBootGenerating: false,
-
   generateDailyCommandData: async (force = false) => {
     const today = new Date().toISOString().slice(0, 10);
     const lastGen = get().lastGeneratedDate;
+
+    // Load today's schedule from IndexedDB if it exists
+    let todayDbSchedules = [];
+    try {
+      const { localDb, STORES } = await import('../database/core/localDatabase');
+      const allSchedules = await localDb.getAll(STORES.SCHEDULES);
+      todayDbSchedules = allSchedules.filter(s => s.date === today);
+    } catch (e) {
+      console.warn('[JARVIS AI Store] Failed to load schedules from IndexedDB on daily generation check:', e);
+    }
     
-    if (lastGen === today && !force && get().dailyBrief.primary && get().dailyBrief.primary !== 'Review daily objectives and maintain system discipline.') {
+    // STRICT MANUAL RULES: Skip API generation unless explicitly forced via manual click
+    if (!force) {
+      console.log('[JARVIS AI Store] Eager daily generation bypassed. Loading cached or fallback structures.');
+      const cachedBrief = get().dailyBrief || {
+        primary: 'Review daily objectives and maintain system discipline.',
+        secondary: 'Hydrate properly and follow your active schedules.',
+        watchOuts: 'Keep monitoring task deadlines and transaction thresholds.'
+      };
+      
+      let insights = [];
+      let warnings = [];
+      try {
+        const { insightsEngine } = await import('../ai/services/insightsEngine');
+        const engineResult = await insightsEngine.generateDailyInsights();
+        insights = engineResult.insights || [];
+        warnings = engineResult.warnings || [];
+      } catch (e) {
+        console.warn('[JARVIS AI Store] Bypassed heuristics insights compiler:', e);
+      }
+
+      // Determine what schedule to set
+      let finalSchedule = get().dailySchedule || [];
+      if (todayDbSchedules.length > 0) {
+        finalSchedule = todayDbSchedules.map(s => ({
+          id: s.id,
+          time: s.time || s.startTime || '08:00',
+          label: s.label || s.title || 'Schedule slot',
+          category: s.category || 'Routines',
+          status: s.status || 'upcoming'
+        })).sort((a, b) => a.time.localeCompare(b.time));
+      } else if (lastGen !== today) {
+        // New day and no DB schedules yet: generate offline fallback daily items and save them to DB
+        const fallbackResult = generateOfflineFallback({
+          overdueTasksCount: 0,
+          tasks: [],
+          routines: [],
+          fitness: { calories: 0, caloriesTarget: 2500, protein: 0, proteinTarget: 140, waterMl: 0, waterTargetMl: 3500, workoutDone: false },
+          finance: { monthlySpending: 0, recentTransactions: [] },
+          coding: { solvedProblemsCount: 0, targetProblems: 0 }
+        }, true);
+        
+        finalSchedule = (fallbackResult.schedule || []).sort((a, b) => a.time.localeCompare(b.time));
+        
+        // Save to IndexedDB
+        try {
+          const { localDb, STORES } = await import('../database/core/localDatabase');
+          const { useScheduleStore } = await import('./scheduleStore');
+          for (const item of finalSchedule) {
+            await localDb.put(STORES.SCHEDULES, {
+              id: item.id || `sched-fallback-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              title: item.label,
+              label: item.label,
+              date: today,
+              time: item.time,
+              startTime: item.time,
+              endTime: item.time,
+              category: item.category,
+              status: item.status,
+              taskIds: []
+            });
+          }
+          await useScheduleStore.getState().hydrate();
+        } catch (e) {
+          console.warn('[AI Store] Failed to save new day fallback schedules to IndexedDB:', e);
+        }
+      }
+
+      set({
+        dailyBrief: cachedBrief,
+        dailyInsights: insights,
+        dailyWarnings: warnings,
+        dailySchedule: finalSchedule,
+        lastGeneratedDate: lastGen || today,
+        isGenerating: false
+      });
+      
+      try {
+        localStorage.setItem('jarvis_daily_schedule', JSON.stringify(finalSchedule));
+      } catch (e) {
+        console.warn('[JARVIS AI Store] Failed to save schedule to localStorage:', e);
+      }
       return;
     }
     
@@ -247,10 +336,23 @@ ${force ? 'Strictly use only these categories for schedule items: "Coding", "Aca
       ? ((parsedResult.schedule || []).sort((a, b) => a.time.localeCompare(b.time)))
       : (lastGen === today ? get().dailySchedule : []);
     
+    // Dynamic Heuristics Insight compilations
+    let insights = [];
+    let warnings = [];
+    try {
+      const { insightsEngine } = await import('../ai/services/insightsEngine');
+      const engineResult = await insightsEngine.generateDailyInsights();
+      insights = engineResult.insights || [];
+      warnings = engineResult.warnings || [];
+      console.log('[JARVIS AI Store] Heuristic daily insights/warnings compiled.');
+    } catch (e) {
+      console.warn('[JARVIS AI Store] Bypassed heuristics insights compiler:', e);
+    }
+
     set({
       dailyBrief: brief,
-      dailyInsights: [],
-      dailyWarnings: [],
+      dailyInsights: insights,
+      dailyWarnings: warnings,
       dailySchedule: schedule,
       lastGeneratedDate: today,
       isGenerating: false
@@ -260,19 +362,68 @@ ${force ? 'Strictly use only these categories for schedule items: "Coding", "Aca
       localStorage.setItem('jarvis_daily_brief', JSON.stringify(brief));
       localStorage.setItem('jarvis_daily_schedule', JSON.stringify(schedule));
       localStorage.setItem('jarvis_last_generated_date', today);
+
+      // Mirror the newly generated daily schedule to IndexedDB
+      if (force && schedule.length > 0) {
+        const { localDb, STORES } = await import('../database/core/localDatabase');
+        const { useScheduleStore } = await import('./scheduleStore');
+        
+        const allSchedules = await localDb.getAll(STORES.SCHEDULES);
+        const todayIds = allSchedules.filter(s => s.date === today).map(s => s.id);
+        
+        for (const id of todayIds) {
+          await localDb.delete(STORES.SCHEDULES, id);
+        }
+        
+        for (const item of schedule) {
+          await localDb.put(STORES.SCHEDULES, {
+            id: item.id || `sched-ai-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            title: item.label,
+            label: item.label,
+            date: today,
+            time: item.time,
+            startTime: item.time,
+            endTime: item.time,
+            category: item.category,
+            status: item.status,
+            taskIds: []
+          });
+        }
+        await useScheduleStore.getState().hydrate();
+      }
     } catch (e) {
-      console.warn('[JARVIS AI Store] Failed to save daily data to localStorage:', e);
+      console.warn('[JARVIS AI Store] Failed to save daily data or sync to IndexedDB:', e);
     }
   },
 
   generateBootBrief: async (force = false) => {
     const today = new Date().toISOString().slice(0, 10);
+    const cached = get().bootBrief;
     
+    // STRICT MANUAL RULES: Load cache or fallback without contacting AI unless forced
     if (!force) {
-      const cached = get().bootBrief;
       if (cached && cached.date === today) {
+        set({ isBootGenerating: false });
         return cached;
       }
+      
+      console.log('[JARVIS AI Store] Eager boot diagnostics bypassed. Generating dynamic local boot payload.');
+      const fallbackBoot = {
+        date: today,
+        speechText: `Welcome back, Commander. System metrics loaded. All security vault layers are active. Standing by for instructions.`,
+        visualBrief: {
+          primary: "Review daily objectives and maintain system discipline.",
+          secondary: "Ensure all fitness and routine metrics are logged.",
+          watchOuts: "Check overdue tasks and financial thresholds.",
+          goalsSummary: "Active goals are loaded and tracking.",
+          systemHealth: "85%"
+        }
+      };
+      set({
+        bootBrief: fallbackBoot,
+        isBootGenerating: false
+      });
+      return fallbackBoot;
     }
     
     set({ isBootGenerating: true, lastError: null });
@@ -439,8 +590,8 @@ Return a JSON object ONLY, with no extra text or markdown formatting (except a s
     
     return bootData;
   },
-  
-  addToSchedule: (item) => {
+    addToSchedule: async (item) => {
+    const today = new Date().toISOString().slice(0, 10);
     const nextItem = {
       id: item.id || `sched-usr-${Date.now()}`,
       time: item.time || '12:00',
@@ -451,29 +602,114 @@ Return a JSON object ONLY, with no extra text or markdown formatting (except a s
     const nextSchedule = [...get().dailySchedule, nextItem].sort((a, b) => a.time.localeCompare(b.time));
     set({ dailySchedule: nextSchedule });
     localStorage.setItem('jarvis_daily_schedule', JSON.stringify(nextSchedule));
+
+    try {
+      const { localDb, STORES } = await import('../database/core/localDatabase');
+      const { useScheduleStore } = await import('./scheduleStore');
+      await localDb.put(STORES.SCHEDULES, {
+        id: nextItem.id,
+        title: nextItem.label,
+        label: nextItem.label,
+        date: today,
+        time: nextItem.time,
+        startTime: nextItem.time,
+        endTime: nextItem.time,
+        category: nextItem.category,
+        status: nextItem.status,
+        taskIds: []
+      });
+      await useScheduleStore.getState().hydrate();
+    } catch (e) {
+      console.warn('[AI Store] Failed to save schedule item to IndexedDB:', e);
+    }
   },
   
-  updateScheduleItem: (id, updates) => {
+  updateScheduleItem: async (id, updates) => {
+    const today = new Date().toISOString().slice(0, 10);
     const nextSchedule = get().dailySchedule.map(item => 
       item.id === id ? { ...item, ...updates } : item
     ).sort((a, b) => a.time.localeCompare(b.time));
     set({ dailySchedule: nextSchedule });
     localStorage.setItem('jarvis_daily_schedule', JSON.stringify(nextSchedule));
+
+    try {
+      const { localDb, STORES } = await import('../database/core/localDatabase');
+      const { useScheduleStore } = await import('./scheduleStore');
+      const updatedItem = nextSchedule.find(item => item.id === id);
+      if (updatedItem) {
+        const existing = await localDb.getById(STORES.SCHEDULES, id) || {};
+        await localDb.put(STORES.SCHEDULES, {
+          ...existing,
+          id: updatedItem.id,
+          title: updatedItem.label,
+          label: updatedItem.label,
+          date: existing.date || today,
+          time: updatedItem.time,
+          startTime: updatedItem.time,
+          endTime: updatedItem.time,
+          category: updatedItem.category,
+          status: updatedItem.status
+        });
+        await useScheduleStore.getState().hydrate();
+      }
+    } catch (e) {
+      console.warn('[AI Store] Failed to update schedule item in IndexedDB:', e);
+    }
   },
   
-  deleteScheduleItem: (id) => {
+  deleteScheduleItem: async (id) => {
     const nextSchedule = get().dailySchedule.filter(item => item.id !== id);
     set({ dailySchedule: nextSchedule });
     localStorage.setItem('jarvis_daily_schedule', JSON.stringify(nextSchedule));
+
+    try {
+      const { localDb, STORES } = await import('../database/core/localDatabase');
+      const { useScheduleStore } = await import('./scheduleStore');
+      await localDb.delete(STORES.SCHEDULES, id);
+      await useScheduleStore.getState().hydrate();
+    } catch (e) {
+      console.warn('[AI Store] Failed to delete schedule item from IndexedDB:', e);
+    }
   },
 
-  resetSchedule: () => {
+  resetSchedule: async () => {
+    const today = new Date().toISOString().slice(0, 10);
     const defaultSchedule = [
-      { id: 'sched-wakeup', time: '08:00', label: 'Wake up', category: 'Routines', status: 'upcoming' },
-      { id: 'sched-sleep', time: '00:00', label: 'Sleep', category: 'Routines', status: 'upcoming' }
+      { id: `sched-wakeup-${today}`, time: '08:00', label: 'Wake up', category: 'Routines', status: 'upcoming' },
+      { id: `sched-sleep-${today}`, time: '00:00', label: 'Sleep', category: 'Routines', status: 'upcoming' }
     ];
     set({ dailySchedule: defaultSchedule });
     localStorage.setItem('jarvis_daily_schedule', JSON.stringify(defaultSchedule));
+
+    try {
+      const { localDb, STORES } = await import('../database/core/localDatabase');
+      const { useScheduleStore } = await import('./scheduleStore');
+      
+      const allSchedules = await localDb.getAll(STORES.SCHEDULES);
+      const todayIds = allSchedules.filter(s => s.date === today).map(s => s.id);
+      
+      for (const id of todayIds) {
+        await localDb.delete(STORES.SCHEDULES, id);
+      }
+      
+      for (const item of defaultSchedule) {
+        await localDb.put(STORES.SCHEDULES, {
+          id: item.id,
+          title: item.label,
+          label: item.label,
+          date: today,
+          time: item.time,
+          startTime: item.time,
+          endTime: item.time,
+          category: item.category,
+          status: item.status,
+          taskIds: []
+        });
+      }
+      await useScheduleStore.getState().hydrate();
+    } catch (e) {
+      console.warn('[AI Store] Failed to reset schedules in IndexedDB:', e);
+    }
   },
 
   // AI Execution tracking

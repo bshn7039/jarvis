@@ -1,10 +1,11 @@
-import { Menu, Plus, ChevronDown, Settings, Trash2, Key, Eye, EyeOff, Check, X } from 'lucide-react';
+import { Menu, Plus, ChevronDown, Settings, Trash2, Key, Eye, EyeOff, Check, X, Volume2, VolumeX } from 'lucide-react';
 import IconButton from '../ui/IconButton';
 import { useChatStore } from '../../store/chatStore';
 import { useAiStore } from '../../store/aiStore';
 import { MODEL_CONFIG } from '../../config/aiModels';
 import NowPlayingBar from '../layout/NowPlayingBar';
 import { useState, useEffect, useRef } from 'react';
+import { soundService } from '../../services/soundService';
 
 function AiSettingsModal({ isOpen, onClose, targetModelId, onSave }) {
   const [key, setKey] = useState('');
@@ -303,6 +304,24 @@ export default function ChatHeader({ title, onMenuClick }) {
 
   const dropdownRef = useRef(null);
 
+  // Speech Output states
+  const [speakOn, setSpeakOn] = useState(() => localStorage.getItem('jarvis_speak_replies') !== 'false');
+  const [speakEngine, setSpeakEngine] = useState(() => localStorage.getItem('jarvis_speak_engine') || 'elevenlabs');
+
+  const toggleSpeak = () => {
+    const nextVal = !speakOn;
+    setSpeakOn(nextVal);
+    localStorage.setItem('jarvis_speak_replies', String(nextVal));
+    soundService.playConfirm();
+  };
+
+  const changeSpeakEngine = (e) => {
+    const nextEngine = e.target.value;
+    setSpeakEngine(nextEngine);
+    localStorage.setItem('jarvis_speak_engine', nextEngine);
+    soundService.playClick();
+  };
+
   useEffect(() => {
     if (!showModels) return;
 
@@ -349,6 +368,32 @@ export default function ChatHeader({ title, onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-2">
+        {/* TTS Toggle and Engine Select */}
+        <div className="flex items-center gap-1 border border-jarvis-border/40 bg-jarvis-panel/40 px-2 py-1 rounded-lg">
+          <button
+            onClick={toggleSpeak}
+            className={[
+              "p-1 rounded transition-colors cursor-pointer",
+              speakOn 
+                ? "text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20" 
+                : "text-jarvis-muted hover:text-jarvis-text hover:bg-white/5"
+            ].join(' ')}
+            title={speakOn ? "Turn Voice Outputs OFF" : "Turn Voice Outputs ON"}
+          >
+            {speakOn ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+          </button>
+          
+          <select
+            value={speakEngine}
+            onChange={changeSpeakEngine}
+            className="bg-transparent border-none text-[9px] font-bold uppercase tracking-wider text-jarvis-muted focus:ring-0 cursor-pointer outline-none hover:text-jarvis-text pr-1 text-center"
+            title="Select Voice Synthesis Engine"
+          >
+            <option value="elevenlabs" className="bg-jarvis-panel text-jarvis-text text-left">11Labs</option>
+            <option value="browser" className="bg-jarvis-panel text-jarvis-text text-left">Chrome</option>
+          </select>
+        </div>
+
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setShowModels(!showModels)}

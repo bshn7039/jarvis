@@ -6,7 +6,7 @@ import { useAiStore } from './aiStore';
 import { aiDispatcher } from '../ai/services/aiDispatcher';
 import { buildAiContext } from '../ai/context/contextResolver';
 import { buildSystemPrompt } from '../ai/prompts/promptBuilder';
-import { TOOL_SCHEMAS, TOOL_PERMISSIONS, PERMISSION_LEVELS, TOOL_ALIASES } from '../ai/tools/toolRegistry';
+import { TOOL_SCHEMAS, TOOL_PERMISSIONS, PERMISSION_LEVELS, TOOL_ALIASES, getFilteredTools } from '../ai/tools/toolRegistry';
 import { executeAiTool } from '../ai/execution/toolExecutor';
 
 function safeParseJson(str) {
@@ -187,68 +187,104 @@ export const useChatStore = create((set, get) => ({
     const { contextSummary, formattedString } = buildAiContext(promptText, { historyMessages: currentMessages });
     const systemPrompt = buildSystemPrompt(formattedString);
 
-    const historyMessages = currentMessages.slice(-15);
+    let apiMessages = currentMessages.slice(-15).map(m => ({
+      role: m.role,
+      content: m.content,
+      reasoningContent: m.reasoningContent || m.reasoning_content || null,
+      toolCalls: m.toolCalls || m.tool_calls,
+      tool_call_id: m.tool_call_id || m.toolCallId,
+      name: m.name
+    }));
+
+    let loopCount = 0;
+    const maxLoops = 5;
+    let currentChat = get().chatHistory.find(c => c.id === chatId);
+    let aiActionsPerformed = [...(currentChat?.aiActionsPerformed || [])];
+    let cumulativeTokens = {
+      promptTokens: currentChat?.tokenUsage?.promptTokens || 0,
+      completionTokens: currentChat?.tokenUsage?.completionTokens || 0,
+      totalTokens: currentChat?.tokenUsage?.totalTokens || 0
+    };
 
     try {
-      const response = await aiDispatcher.sendMessage(historyMessages, {
-        systemPrompt,
-        tools: TOOL_SCHEMAS,
-        model
-      });
-
-      const chat = get().chatHistory.find(c => c.id === chatId);
-      const cumulativeTokens = {
-        promptTokens: (chat.tokenUsage?.promptTokens || 0) + (response.usage?.prompt_tokens || 0),
-        completionTokens: (chat.tokenUsage?.completionTokens || 0) + (response.usage?.completion_tokens || 0),
-        totalTokens: (chat.tokenUsage?.totalTokens || 0) + (response.usage?.total_tokens || 0)
-      };
-
-      const assistantMsg = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: response.content,
-        reasoningContent: response.reasoningContent || null,
-        createdAt: new Date().toISOString(),
-        contextReferences: contextSummary,
-        toolCalls: response.toolCalls ? response.toolCalls.map(tc => {
-          const resolvedName = TOOL_ALIASES[tc.function.name] || tc.function.name;
-          const perm = TOOL_PERMISSIONS[resolvedName] || PERMISSION_LEVELS.READ_ONLY;
-          return {
-            id: tc.id,
-            name: tc.function.name,
-            args: safeParseJson(tc.function.arguments || '{}'),
-            status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
-            result: null
-          };
-        }) : null
-      };
-
-      let updatedChat = {
-        ...chat,
-        messages: [...chat.messages, assistantMsg],
-        contextSummary: Array.from(new Set([...(chat.contextSummary || []), ...contextSummary])),
-        tokenUsage: cumulativeTokens,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const hasPendingConfirmation = assistantMsg.toolCalls?.some(tc => tc.status === 'pending_confirmation');
-
-      if (hasPendingConfirmation) {
-        aiStore.setExecutionStatus('idle');
-        await chatService.update(chatId, updatedChat);
-        set(state => ({
-          chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
-        }));
-        return;
-      }
-
-      if (assistantMsg.toolCalls && assistantMsg.toolCalls.length > 0) {
-        aiStore.setExecutionStatus('executing');
-        let aiActionsPerformed = [...(chat.aiActionsPerformed || [])];
+      while (loopCount < maxLoops) {
+        loopCount++;
         
+        const response = await aiDispatcher.sendMessage(apiMessages, {
+          systemPrompt,
+          tools: getFilteredTools(contextSummary, promptText),
+          model
+        });
+
+        cumulativeTokens.promptTokens += (response.usage?.prompt_tokens || 0);
+        cumulativeTokens.completionTokens += (response.usage?.completion_tokens || 0);
+        cumulativeTokens.totalTokens += (response.usage?.total_tokens || 0);
+
+        const assistantMsg = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: response.content,
+          reasoningContent: response.reasoningContent || null,
+          createdAt: new Date().toISOString(),
+          contextReferences: contextSummary,
+          toolCalls: response.toolCalls ? response.toolCalls.map(tc => {
+            const resolvedName = TOOL_ALIASES[tc.function.name] || tc.function.name;
+            const perm = TOOL_PERMISSIONS[resolvedName] || PERMISSION_LEVELS.READ_ONLY;
+            return {
+              id: tc.id,
+              name: tc.function.name,
+              args: safeParseJson(tc.function.arguments || '{}'),
+              status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
+              result: null
+            };
+          }) : null
+        };
+
+        currentChat = {
+          ...currentChat,
+          messages: [...currentChat.messages, assistantMsg],
+          contextSummary: Array.from(new Set([...(currentChat.contextSummary || []), ...contextSummary])),
+          tokenUsage: cumulativeTokens,
+          updatedAt: new Date().toISOString(),
+        };
+
+        await chatService.update(chatId, currentChat);
+        set(state => ({
+          chatHistory: state.chatHistory.map(c => c.id === chatId ? currentChat : c)
+        }));
+
+        if (!assistantMsg.toolCalls || assistantMsg.toolCalls.length === 0) {
+          aiStore.setExecutionStatus('completed');
+          try {
+            if (assistantMsg.content) {
+              const { speakText } = await import('../utils/speakText');
+              speakText(assistantMsg.content);
+            }
+          } catch (err) {
+            console.warn('[Speak Hook Error]:', err);
+          }
+          return;
+        }
+
+        const hasPendingConfirmation = assistantMsg.toolCalls.some(tc => tc.status === 'pending_confirmation');
+        if (hasPendingConfirmation) {
+          aiStore.setExecutionStatus('idle');
+          try {
+            if (assistantMsg.content) {
+              const { speakText } = await import('../utils/speakText');
+              speakText(assistantMsg.content);
+            }
+          } catch (err) {
+            console.warn('[Speak Hook Error]:', err);
+          }
+          return;
+        }
+
+        aiStore.setExecutionStatus('executing');
+        const toolResults = [];
+
         for (const tc of assistantMsg.toolCalls) {
           if (tc.status === 'pending_execution') {
-            // Check Cooldown & Duplicate
             try {
               aiStore.addPendingTool(tc);
               const result = await executeAiTool(tc.name, tc.args);
@@ -262,87 +298,54 @@ export const useChatStore = create((set, get) => ({
               aiStore.updateToolStatus(tc.id, 'error', { error: err.message });
             }
           }
+          toolResults.push(tc);
         }
 
-        updatedChat.aiActionsPerformed = Array.from(new Set(aiActionsPerformed));
+        currentChat.aiActionsPerformed = Array.from(new Set(aiActionsPerformed));
 
-        await chatService.update(chatId, updatedChat);
+        await chatService.update(chatId, currentChat);
         set(state => ({
-          chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
+          chatHistory: state.chatHistory.map(c => c.id === chatId ? currentChat : c)
         }));
 
-        const messagesWithTools = [
-          ...historyMessages.map(m => ({
-            role: m.role,
-            content: m.content,
-            reasoningContent: m.reasoningContent || m.reasoning_content || null,
-            toolCalls: m.toolCalls || m.tool_calls,
-            tool_call_id: m.tool_call_id || m.toolCallId,
-            name: m.name
-          })),
+        apiMessages = [
+          ...apiMessages,
           {
             role: 'assistant',
-            content: assistantMsg.content,
-            reasoningContent: assistantMsg.reasoningContent || assistantMsg.reasoning_content || null,
-            tool_calls: assistantMsg.toolCalls.map(tc => ({
+            content: response.content,
+            reasoningContent: response.reasoningContent || response.reasoning_content || null,
+            tool_calls: response.toolCalls ? response.toolCalls.map(tc => ({
               id: tc.id,
               type: 'function',
               function: {
-                name: tc.name,
-                arguments: JSON.stringify(tc.args)
+                name: tc.function.name,
+                arguments: tc.function.arguments
               }
-            }))
+            })) : undefined
           },
-          ...assistantMsg.toolCalls.map(tc => ({
+          ...toolResults.map(tr => ({
             role: 'tool',
-            name: tc.name,
-            tool_call_id: tc.id,
-            content: JSON.stringify(tc.result)
+            name: tr.name,
+            tool_call_id: tr.id,
+            content: JSON.stringify(tr.result)
           }))
         ];
-
-        const nextResponse = await aiDispatcher.sendMessage(messagesWithTools, {
-          systemPrompt,
-          model,
-          tools: TOOL_SCHEMAS
-        });
-
-        const finalChat = get().chatHistory.find(c => c.id === chatId);
-        const finalCumulativeTokens = {
-          promptTokens: (finalChat.tokenUsage?.promptTokens || 0) + (nextResponse.usage?.prompt_tokens || 0),
-          completionTokens: (finalChat.tokenUsage?.completionTokens || 0) + (nextResponse.usage?.completion_tokens || 0),
-          totalTokens: (finalChat.tokenUsage?.totalTokens || 0) + (nextResponse.usage?.total_tokens || 0)
-        };
-
-        const finalAssistantMsg = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: nextResponse.content,
-          reasoningContent: nextResponse.reasoningContent || null,
-          createdAt: new Date().toISOString(),
-          contextReferences: contextSummary
-        };
-
-        const finalChatUpdated = {
-          ...finalChat,
-          messages: [...finalChat.messages, finalAssistantMsg],
-          tokenUsage: finalCumulativeTokens,
-          updatedAt: new Date().toISOString()
-        };
-
-        await chatService.update(chatId, finalChatUpdated);
-        set(state => ({
-          chatHistory: state.chatHistory.map(c => c.id === chatId ? finalChatUpdated : c)
-        }));
-        aiStore.setExecutionStatus('completed');
-
-      } else {
-        await chatService.update(chatId, updatedChat);
-        set(state => ({
-          chatHistory: state.chatHistory.map(c => c.id === chatId ? updatedChat : c)
-        }));
-        aiStore.setExecutionStatus('completed');
       }
+
+      aiStore.setExecutionStatus('completed');
+
+      // Speak final assistant response if TTS is enabled
+      try {
+        const finalChatRecord = get().chatHistory.find(c => c.id === chatId);
+        const lastMessage = finalChatRecord?.messages[finalChatRecord.messages.length - 1];
+        if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content) {
+          const { speakText } = await import('../utils/speakText');
+          speakText(lastMessage.content);
+        }
+      } catch (err) {
+        console.warn('[Speak Hook Error]:', err);
+      }
+
     } catch (error) {
       aiStore.setError(error.message);
       aiStore.setExecutionStatus('failed');
@@ -423,7 +426,7 @@ export const useChatStore = create((set, get) => ({
         const historyIdx = chat.messages.findIndex(m => m.id === messageId);
         const historyMessages = chat.messages.slice(0, historyIdx).slice(-15);
         
-        const { formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '', { historyMessages: chat.messages.slice(0, historyIdx) });
+        const { contextSummary, formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '', { historyMessages: chat.messages.slice(0, historyIdx) });
         const systemPrompt = buildSystemPrompt(formattedString);
 
         const messagesWithTools = [
@@ -456,38 +459,126 @@ export const useChatStore = create((set, get) => ({
           }))
         ];
 
-        const nextResponse = await aiDispatcher.sendMessage(messagesWithTools, {
-          systemPrompt,
-          model: useAiStore.getState().currentModel,
-          tools: TOOL_SCHEMAS
-        });
-
-        const activeChat = get().chatHistory.find(c => c.id === chatId);
-        const cumulativeTokens = {
-          promptTokens: (activeChat.tokenUsage?.promptTokens || 0) + (nextResponse.usage?.prompt_tokens || 0),
-          completionTokens: (activeChat.tokenUsage?.completionTokens || 0) + (nextResponse.usage?.completion_tokens || 0),
-          totalTokens: (activeChat.tokenUsage?.totalTokens || 0) + (nextResponse.usage?.total_tokens || 0)
+        let apiMessages = [...messagesWithTools];
+        let loopCount = 0;
+        const maxLoops = 5;
+        let currentChat = get().chatHistory.find(c => c.id === chatId);
+        let aiActionsPerformed = [...(currentChat?.aiActionsPerformed || [])];
+        let cumulativeTokens = {
+          promptTokens: currentChat?.tokenUsage?.promptTokens || 0,
+          completionTokens: currentChat?.tokenUsage?.completionTokens || 0,
+          totalTokens: currentChat?.tokenUsage?.totalTokens || 0
         };
 
-        const finalAssistantMsg = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: nextResponse.content,
-          reasoningContent: nextResponse.reasoningContent || null,
-          createdAt: new Date().toISOString()
-        };
+        while (loopCount < maxLoops) {
+          loopCount++;
+          const nextResponse = await aiDispatcher.sendMessage(apiMessages, {
+            systemPrompt,
+            model: useAiStore.getState().currentModel,
+            tools: getFilteredTools(contextSummary, chat.messages[historyIdx - 1]?.content || '')
+          });
 
-        const finalChatUpdated = {
-          ...activeChat,
-          messages: [...activeChat.messages, finalAssistantMsg],
-          tokenUsage: cumulativeTokens,
-          updatedAt: new Date().toISOString()
-        };
+          cumulativeTokens.promptTokens += (nextResponse.usage?.prompt_tokens || 0);
+          cumulativeTokens.completionTokens += (nextResponse.usage?.completion_tokens || 0);
+          cumulativeTokens.totalTokens += (nextResponse.usage?.total_tokens || 0);
 
-        await chatService.update(chatId, finalChatUpdated);
-        set(state => ({
-          chatHistory: state.chatHistory.map(c => c.id === chatId ? finalChatUpdated : c)
-        }));
+          const assistantMsg = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: nextResponse.content,
+            reasoningContent: nextResponse.reasoningContent || null,
+            createdAt: new Date().toISOString(),
+            toolCalls: nextResponse.toolCalls ? nextResponse.toolCalls.map(tc => {
+              const resolvedName = TOOL_ALIASES[tc.function.name] || tc.function.name;
+              const perm = TOOL_PERMISSIONS[resolvedName] || PERMISSION_LEVELS.READ_ONLY;
+              return {
+                id: tc.id,
+                name: tc.function.name,
+                args: safeParseJson(tc.function.arguments || '{}'),
+                status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
+                result: null
+              };
+            }) : null
+          };
+
+          currentChat = {
+            ...currentChat,
+            messages: [...currentChat.messages, assistantMsg],
+            tokenUsage: cumulativeTokens,
+            updatedAt: new Date().toISOString()
+          };
+
+          await chatService.update(chatId, currentChat);
+          set(state => ({
+            chatHistory: state.chatHistory.map(c => c.id === chatId ? currentChat : c)
+          }));
+
+          if (!assistantMsg.toolCalls || assistantMsg.toolCalls.length === 0) {
+            break;
+          }
+
+          const hasPendingConfirmation = assistantMsg.toolCalls.some(tc => tc.status === 'pending_confirmation');
+          if (hasPendingConfirmation) {
+            break;
+          }
+
+          const toolResults = [];
+          for (const tc of assistantMsg.toolCalls) {
+            if (tc.status === 'pending_execution') {
+              try {
+                const result = await executeAiTool(tc.name, tc.args);
+                tc.status = 'executed';
+                tc.result = result;
+                aiActionsPerformed.push(tc.name);
+              } catch (err) {
+                tc.status = 'error';
+                tc.result = { error: err.message };
+              }
+            }
+            toolResults.push(tc);
+          }
+
+          currentChat.aiActionsPerformed = Array.from(new Set(aiActionsPerformed));
+          await chatService.update(chatId, currentChat);
+          set(state => ({
+            chatHistory: state.chatHistory.map(c => c.id === chatId ? currentChat : c)
+          }));
+
+          apiMessages = [
+            ...apiMessages,
+            {
+              role: 'assistant',
+              content: nextResponse.content,
+              reasoningContent: nextResponse.reasoningContent || nextResponse.reasoning_content || null,
+              tool_calls: nextResponse.toolCalls ? nextResponse.toolCalls.map(tc => ({
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.function.name,
+                  arguments: tc.function.arguments
+                }
+              })) : undefined
+            },
+            ...toolResults.map(tr => ({
+              role: 'tool',
+              name: tr.name,
+              tool_call_id: tr.id,
+              content: JSON.stringify(tr.result)
+            }))
+          ];
+        }
+
+        // Speak final assistant response if TTS is enabled
+        try {
+          const finalChatRecord = get().chatHistory.find(c => c.id === chatId);
+          const lastMessage = finalChatRecord?.messages[finalChatRecord.messages.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content) {
+            const { speakText } = await import('../utils/speakText');
+            speakText(lastMessage.content);
+          }
+        } catch (err) {
+          console.warn('[Speak Hook Error]:', err);
+        }
       } catch (err) {
         useAiStore.getState().setError(err.message);
       } finally {
@@ -536,7 +627,7 @@ export const useChatStore = create((set, get) => ({
         const historyIdx = chat.messages.findIndex(m => m.id === messageId);
         const historyMessages = chat.messages.slice(0, historyIdx).slice(-15);
         
-        const { formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '', { historyMessages: chat.messages.slice(0, historyIdx) });
+        const { contextSummary, formattedString } = buildAiContext(chat.messages[historyIdx - 1]?.content || '', { historyMessages: chat.messages.slice(0, historyIdx) });
         const systemPrompt = buildSystemPrompt(formattedString);
 
         const messagesWithTools = [
@@ -569,37 +660,126 @@ export const useChatStore = create((set, get) => ({
           }))
         ];
 
-        const nextResponse = await aiDispatcher.sendMessage(messagesWithTools, {
-          systemPrompt,
-          model: useAiStore.getState().currentModel,
-          tools: TOOL_SCHEMAS
-        });
-
-        const activeChat = get().chatHistory.find(c => c.id === chatId);
-        const cumulativeTokens = {
-          promptTokens: (activeChat.tokenUsage?.promptTokens || 0) + (nextResponse.usage?.prompt_tokens || 0),
-          completionTokens: (activeChat.tokenUsage?.completionTokens || 0) + (nextResponse.usage?.completion_tokens || 0),
-          totalTokens: (activeChat.tokenUsage?.totalTokens || 0) + (nextResponse.usage?.total_tokens || 0)
+        let apiMessages = [...messagesWithTools];
+        let loopCount = 0;
+        const maxLoops = 5;
+        let currentChat = get().chatHistory.find(c => c.id === chatId);
+        let aiActionsPerformed = [...(currentChat?.aiActionsPerformed || [])];
+        let cumulativeTokens = {
+          promptTokens: currentChat?.tokenUsage?.promptTokens || 0,
+          completionTokens: currentChat?.tokenUsage?.completionTokens || 0,
+          totalTokens: currentChat?.tokenUsage?.totalTokens || 0
         };
 
-        const finalAssistantMsg = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: nextResponse.content,
-          createdAt: new Date().toISOString()
-        };
+        while (loopCount < maxLoops) {
+          loopCount++;
+          const nextResponse = await aiDispatcher.sendMessage(apiMessages, {
+            systemPrompt,
+            model: useAiStore.getState().currentModel,
+            tools: getFilteredTools(contextSummary, chat.messages[historyIdx - 1]?.content || '')
+          });
 
-        const finalChatUpdated = {
-          ...activeChat,
-          messages: [...activeChat.messages, finalAssistantMsg],
-          tokenUsage: cumulativeTokens,
-          updatedAt: new Date().toISOString()
-        };
+          cumulativeTokens.promptTokens += (nextResponse.usage?.prompt_tokens || 0);
+          cumulativeTokens.completionTokens += (nextResponse.usage?.completion_tokens || 0);
+          cumulativeTokens.totalTokens += (nextResponse.usage?.total_tokens || 0);
 
-        await chatService.update(chatId, finalChatUpdated);
-        set(state => ({
-          chatHistory: state.chatHistory.map(c => c.id === chatId ? finalChatUpdated : c)
-        }));
+          const assistantMsg = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: nextResponse.content,
+            reasoningContent: nextResponse.reasoningContent || null,
+            createdAt: new Date().toISOString(),
+            toolCalls: nextResponse.toolCalls ? nextResponse.toolCalls.map(tc => {
+              const resolvedName = TOOL_ALIASES[tc.function.name] || tc.function.name;
+              const perm = TOOL_PERMISSIONS[resolvedName] || PERMISSION_LEVELS.READ_ONLY;
+              return {
+                id: tc.id,
+                name: tc.function.name,
+                args: safeParseJson(tc.function.arguments || '{}'),
+                status: perm === PERMISSION_LEVELS.CONFIRM_REQUIRED ? 'pending_confirmation' : 'pending_execution',
+                result: null
+              };
+            }) : null
+          };
+
+          currentChat = {
+            ...currentChat,
+            messages: [...currentChat.messages, assistantMsg],
+            tokenUsage: cumulativeTokens,
+            updatedAt: new Date().toISOString()
+          };
+
+          await chatService.update(chatId, currentChat);
+          set(state => ({
+            chatHistory: state.chatHistory.map(c => c.id === chatId ? currentChat : c)
+          }));
+
+          if (!assistantMsg.toolCalls || assistantMsg.toolCalls.length === 0) {
+            break;
+          }
+
+          const hasPendingConfirmation = assistantMsg.toolCalls.some(tc => tc.status === 'pending_confirmation');
+          if (hasPendingConfirmation) {
+            break;
+          }
+
+          const toolResults = [];
+          for (const tc of assistantMsg.toolCalls) {
+            if (tc.status === 'pending_execution') {
+              try {
+                const result = await executeAiTool(tc.name, tc.args);
+                tc.status = 'executed';
+                tc.result = result;
+                aiActionsPerformed.push(tc.name);
+              } catch (err) {
+                tc.status = 'error';
+                tc.result = { error: err.message };
+              }
+            }
+            toolResults.push(tc);
+          }
+
+          currentChat.aiActionsPerformed = Array.from(new Set(aiActionsPerformed));
+          await chatService.update(chatId, currentChat);
+          set(state => ({
+            chatHistory: state.chatHistory.map(c => c.id === chatId ? currentChat : c)
+          }));
+
+          apiMessages = [
+            ...apiMessages,
+            {
+              role: 'assistant',
+              content: nextResponse.content,
+              reasoningContent: nextResponse.reasoningContent || nextResponse.reasoning_content || null,
+              tool_calls: nextResponse.toolCalls ? nextResponse.toolCalls.map(tc => ({
+                id: tc.id,
+                type: 'function',
+                function: {
+                  name: tc.function.name,
+                  arguments: tc.function.arguments
+                }
+              })) : undefined
+            },
+            ...toolResults.map(tr => ({
+              role: 'tool',
+              name: tr.name,
+              tool_call_id: tr.id,
+              content: JSON.stringify(tr.result)
+            }))
+          ];
+        }
+
+        // Speak final assistant response if TTS is enabled
+        try {
+          const finalChatRecord = get().chatHistory.find(c => c.id === chatId);
+          const lastMessage = finalChatRecord?.messages[finalChatRecord.messages.length - 1];
+          if (lastMessage && lastMessage.role === 'assistant' && lastMessage.content) {
+            const { speakText } = await import('../utils/speakText');
+            speakText(lastMessage.content);
+          }
+        } catch (err) {
+          console.warn('[Speak Hook Error]:', err);
+        }
       } catch (err) {
         useAiStore.getState().setError(err.message);
       } finally {

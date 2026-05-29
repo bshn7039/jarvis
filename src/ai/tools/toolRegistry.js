@@ -81,6 +81,7 @@ export const TOOL_PERMISSIONS = {
   spotify_prev: PERMISSION_LEVELS.SAFE_WRITE,
   spotify_search_and_play: PERMISSION_LEVELS.SAFE_WRITE,
   spotify_add_to_queue: PERMISSION_LEVELS.SAFE_WRITE,
+  spotify_get_user_playlists: PERMISSION_LEVELS.SAFE_WRITE,
 
   // Academics operational capabilities
   create_academic_subject: PERMISSION_LEVELS.SAFE_WRITE,
@@ -634,14 +635,23 @@ export const TOOL_SCHEMAS = [
     type: 'function',
     function: {
       name: 'spotify_search_and_play',
-      description: 'Search for a track by song name/artist on Spotify and play the top result instantly.',
+      description: 'Search for a track, album, or playlist on Spotify and play the top result instantly.',
       parameters: {
         type: 'object',
         properties: {
-          query: { type: 'string', description: 'The search query containing track name and optional artist, e.g. "Blinding Lights by The Weeknd"' }
+          query: { type: 'string', description: 'The search query containing track, playlist, or album name (and optional artist/creator), e.g. "trending phonk for editing" or "Blinding Lights"' },
+          type: { type: 'string', enum: ['track', 'playlist', 'album'], description: 'Optional search category. Defaults to "track".' }
         },
         required: ['query']
       }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'spotify_get_user_playlists',
+      description: "Retrieve a list of the user's personal Spotify playlists (including names, URIs, and total tracks). Use this when the user asks to play a personal playlist (like 'OG') by name to resolve its URI.",
+      parameters: { type: 'object', properties: {} }
     }
   },
   {
@@ -1340,6 +1350,99 @@ export const TOOL_SCHEMAS = [
   }
 ];
 
+export function getFilteredTools(matchedDomains = [], promptText = '') {
+  const p = promptText.toLowerCase();
+  
+  // Determine active domains
+  const activeDomains = new Set(matchedDomains);
+
+  // ── English, Hindi & Marathi Domain Keyword Mappings ───────────────────────────
+  
+  const taskKeywords = ['task', 'todo', 'do', 'complete', 'finish', 'work', 'job', 'pending', 'action', 'kaam', 'karo', 'karya', 'baaki', 'khalaas', 'pura', 'yaadi', 'kar', 'baki', 'sampav', 'purna', 'yadi'];
+  if (taskKeywords.some(kw => p.includes(kw))) activeDomains.add('task');
+
+  const goalKeywords = ['goal', 'target', 'aim', 'objective', 'vision', 'milestone', 'dream', 'area', 'lakshya', 'nishana', 'sapna', 'manzil', 'koshish', 'dhyey', 'swapna', 'dhyeya'];
+  if (goalKeywords.some(kw => p.includes(kw))) activeDomains.add('goal');
+
+  const journalKeywords = ['journal', 'diary', 'log', 'reflect', 'feel', 'write', 'thought', 'mood', 'note', 'vichar', 'likho', 'mann', 'ehsaas', 'yaadein', 'khayal', 'dainandini', 'lihi', 'janiv', 'aathvani'];
+  if (journalKeywords.some(kw => p.includes(kw))) activeDomains.add('journal');
+
+  const fitnessKeywords = ['gym', 'workout', 'fit', 'exercise', 'run', 'cardio', 'calorie', 'meal', 'water', 'drink', 'diet', 'protein', 'hydration', 'eat', 'food', 'breakfast', 'lunch', 'dinner', 'weight', 'health', 'kasrat', 'paani', 'khana', 'piyo', 'vajan', 'sehat', 'nashta', 'bhojan', 'vyayam', 'pani', 'jevan', 'pi', 'arogya', 'nyahari'];
+  if (fitnessKeywords.some(kw => p.includes(kw))) activeDomains.add('fitness');
+
+  const crmKeywords = ['contact', 'people', 'friend', 'connection', 'crm', 'meet', 'email', 'phone', 'number', 'relationship', 'dost', 'mitra', 'milna', 'rishta', 'jan pehchan', 'bandhu', 'bhet', 'nata', 'maitri', 'sobat'];
+  if (crmKeywords.some(kw => p.includes(kw))) activeDomains.add('crm');
+
+  const scheduleKeywords = ['schedule', 'calendar', 'event', 'appointment', 'time', 'routine', 'today', 'tomorrow', 'plan', 'slot', 'hour', 'samay', 'din', 'aaj', 'kal', 'yojana', 'ghanta', 'tarikh', 'vel', 'divas', 'udya', 'niyojan', 'taas', 'dinank'];
+  if (scheduleKeywords.some(kw => p.includes(kw))) activeDomains.add('schedule');
+
+  const financeKeywords = ['money', 'cash', 'transaction', 'credit', 'debit', 'expense', 'spend', 'buy', 'finance', 'save', 'mutual fund', 'sip', 'nav', 'investment', 'invest', 'bank', 'account', 'rs', 'rupee', 'paisa', 'kharch', 'bachat', 'rupaye', 'nivesh', 'khata', 'dhan', 'paise', 'kharach', 'guntavnuk', 'khate'];
+  if (financeKeywords.some(kw => p.includes(kw))) activeDomains.add('finance');
+
+  const spotifyKeywords = ['spotify', 'music', 'song', 'playlist', 'play', 'pause', 'next', 'prev', 'track', 'queue', 'album', 'volume', 'audio', 'sound', 'stop', 'gaana', 'gana', 'roko', 'rakho', 'bajao', 'chalao', 'band', 'geet', 'sangeet', 'gaane', 'chalu', 'thambav', 'pudhcha', 'magcha', 'aawaj'];
+  if (spotifyKeywords.some(kw => p.includes(kw))) activeDomains.add('spotify');
+
+  const academicKeywords = ['subject', 'class', 'course', 'exam', 'study', 'learn', 'placement', 'dsa', 'code', 'certification', 'tech stack', 'semester', 'syllabus', 'padhai', 'pariksha', 'kaksha', 'vishay', 'shiksha', 'abhyas', 'varga'];
+  if (academicKeywords.some(kw => p.includes(kw))) activeDomains.add('academic');
+
+  const personalKeywords = ['personal', 'routine', 'roadmap', 'habit', 'care', 'self', 'mind', 'meditation', 'sleep', 'health', 'hygiene', 'apna', 'aadat', 'dhayan', 'neend', 'rasam', 'swataha', 'savy', 'jhop', 'dhyan'];
+  if (personalKeywords.some(kw => p.includes(kw))) {
+    activeDomains.add('personal');
+    activeDomains.add('self_care');
+    activeDomains.add('roadmap');
+  }
+
+  // Self care routines can be matched by 'personal' or 'roadmap' or 'selfcare'
+  if (activeDomains.has('personal') || activeDomains.has('roadmap')) {
+    activeDomains.add('self_care');
+  }
+
+  // Filter TOOL_SCHEMAS
+  return TOOL_SCHEMAS.filter(tool => {
+    const name = tool.function.name;
+    
+    if (name.startsWith('create_task') || name.startsWith('update_task') || name.startsWith('complete_task') || name.startsWith('delete_task')) {
+      return activeDomains.has('task');
+    }
+    if (name.startsWith('create_goal') || name.startsWith('update_goal') || name.startsWith('delete_goal')) {
+      return activeDomains.has('goal');
+    }
+    if (name.startsWith('create_journal') || name.startsWith('update_journal') || name.startsWith('delete_journal')) {
+      return activeDomains.has('journal');
+    }
+    if (name.startsWith('log_meal') || name.startsWith('log_workout') || name.startsWith('log_hydration') || name.startsWith('delete_fitness') || name.startsWith('update_fitness')) {
+      return activeDomains.has('fitness');
+    }
+    if (name.startsWith('create_crm') || name.startsWith('update_crm') || name.startsWith('delete_crm')) {
+      return activeDomains.has('crm');
+    }
+    if (name.startsWith('create_schedule') || name.startsWith('add_to_daily_schedule') || name.startsWith('update_daily_schedule') || name.startsWith('delete_from_daily_schedule') || name.startsWith('reset_daily_schedule')) {
+      return activeDomains.has('schedule');
+    }
+    if (name.startsWith('create_finance') || name.startsWith('update_finance') || name.startsWith('delete_finance') || name.startsWith('create_savings') || name.startsWith('bulk_create_finance') || name.includes('mutual_fund')) {
+      return activeDomains.has('finance');
+    }
+    if (name.startsWith('spotify_')) {
+      return activeDomains.has('spotify');
+    }
+    if (name.includes('academic_')) {
+      return activeDomains.has('academic');
+    }
+    if (name.includes('personal_item')) {
+      return activeDomains.has('personal');
+    }
+    if (name.includes('self_care')) {
+      return activeDomains.has('self_care');
+    }
+    if (name.includes('roadmap')) {
+      return activeDomains.has('roadmap');
+    }
+    
+    // Default fallback: keep it if we can't classify it (to be safe)
+    return true;
+  });
+}
+
 export async function executeToolAction(name, args) {
   // Resolve alias if mapped
   const resolvedName = TOOL_ALIASES[name] || name;
@@ -1697,14 +1800,38 @@ export async function executeToolAction(name, args) {
       if (!store.token) {
         return { success: false, message: 'Spotify is not connected. Tell the user to connect Spotify in the right panel first.' };
       }
-      await store.search(sanitizedArgs.query);
+      const searchType = sanitizedArgs.type || 'track';
+      await store.search(sanitizedArgs.query, searchType);
       const results = useSpotifyStore.getState().searchResults;
       if (results && results.length > 0) {
-        const topTrack = results[0];
-        await store.play(topTrack.uri);
-        return { success: true, message: `Found and playing top result '${topTrack.name}' by ${topTrack.artists?.map(a => a.name).join(', ')}` };
+        const topResult = results[0];
+        await store.play(topResult.uri);
+        const name = topResult.name;
+        const artistStr = topResult.artists ? ` by ${topResult.artists.map(a => a.name).join(', ')}` : '';
+        return { success: true, message: `Found and playing top ${searchType} result '${name}'${artistStr}` };
       } else {
-        return { success: false, message: `No tracks found on Spotify matching query '${sanitizedArgs.query}'` };
+        return { success: false, message: `No ${searchType}s found on Spotify matching query '${sanitizedArgs.query}'` };
+      }
+    }
+
+    case 'spotify_get_user_playlists': {
+      const { useSpotifyStore } = await import('../../store/spotifyStore');
+      const store = useSpotifyStore.getState();
+      if (!store.token) {
+        return { success: false, message: 'Spotify is not connected. Tell the user to connect Spotify in the right panel first.' };
+      }
+      await store.fetchPlaylists();
+      const playlists = useSpotifyStore.getState().playlists;
+      if (playlists && playlists.length > 0) {
+        const list = playlists.map(p => ({
+          name: p.name,
+          uri: p.uri,
+          tracksCount: p.tracks?.total || 0,
+          id: p.id
+        }));
+        return { success: true, playlists: list, message: `Successfully retrieved ${playlists.length} personal playlists.` };
+      } else {
+        return { success: true, playlists: [], message: 'No personal playlists found in user Spotify account.' };
       }
     }
 

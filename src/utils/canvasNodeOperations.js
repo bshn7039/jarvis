@@ -19,6 +19,7 @@ import { useMusicStore } from '../store/musicStore';
 import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
+import { useAiStore } from '../store/aiStore';
 import { cleanupEntityReferences } from './entityCleanup';
 
 const MODULE_BINDINGS = {
@@ -270,7 +271,14 @@ function removeEntityFromLocalStore(binding, entityId, fullParts = []) {
     return;
   }
   if (binding.rootKey === 'schedules') {
-    useScheduleStore.setState((state) => ({ schedules: state.schedules.filter((item) => item.id !== entityId) }));
+    useScheduleStore.setState((state) => ({ schedules: (state.schedules || []).filter((item) => item.id !== entityId) }));
+    const nextAiSchedule = (useAiStore.getState().dailySchedule || []).filter((item) => item.id !== entityId);
+    useAiStore.setState({ dailySchedule: nextAiSchedule });
+    try {
+      localStorage.setItem('jarvis_daily_schedule', JSON.stringify(nextAiSchedule));
+    } catch (e) {
+      console.warn('[Canvas Sync] Failed to save updated dailySchedule to localStorage:', e);
+    }
     return;
   }
   if (binding.rootKey === 'chats') {
@@ -344,7 +352,10 @@ export async function updateNodeAtPath({ path, combinedState, nextValue }) {
 
   if (binding.collection) {
     const store = getActualStore(binding.store, fullParts);
-    const entityId = await extractEntityId(store, fullParts);
+    let entityId = await extractEntityId(store, fullParts);
+    if (!entityId && binding.rootKey === 'schedules') {
+      entityId = fullParts.find(p => p.startsWith('sched-'));
+    }
     if (!entityId) return false;
     const record = await localDb.getById(store, entityId);
     if (!record) return false;
@@ -355,6 +366,23 @@ export async function updateNodeAtPath({ path, combinedState, nextValue }) {
     if (fieldParts.length === 0) {
       await localDb.put(store, { ...record, ...nextValue });
       await logActivity('entity_updated', binding.entityType, entityId, { path });
+      if (binding.rootKey === 'schedules') {
+        const nextAiSchedule = (useAiStore.getState().dailySchedule || []).map((item) => 
+          item.id === entityId ? {
+            ...item,
+            label: nextValue.label || nextValue.title || item.label,
+            time: nextValue.time || nextValue.startTime || item.time,
+            category: nextValue.category || item.category,
+            status: nextValue.status || item.status
+          } : item
+        );
+        useAiStore.setState({ dailySchedule: nextAiSchedule });
+        try {
+          localStorage.setItem('jarvis_daily_schedule', JSON.stringify(nextAiSchedule));
+        } catch (e) {
+          console.warn('[Canvas Sync] Failed to save updated dailySchedule to localStorage:', e);
+        }
+      }
       await refreshAllStores();
       return true;
     }
@@ -378,6 +406,23 @@ export async function updateNodeAtPath({ path, combinedState, nextValue }) {
     target.parent[target.parentKey] = nextValue;
     await localDb.put(store, base);
     await logActivity('field_updated', binding.entityType, entityId, { path, field: target.parentKey });
+    if (binding.rootKey === 'schedules') {
+      const nextAiSchedule = (useAiStore.getState().dailySchedule || []).map((item) => 
+        item.id === entityId ? {
+          ...item,
+          label: base.label || base.title || item.label,
+          time: base.time || base.startTime || item.time,
+          category: base.category || item.category,
+          status: base.status || item.status
+        } : item
+      );
+      useAiStore.setState({ dailySchedule: nextAiSchedule });
+      try {
+        localStorage.setItem('jarvis_daily_schedule', JSON.stringify(nextAiSchedule));
+      } catch (e) {
+        console.warn('[Canvas Sync] Failed to save updated dailySchedule to localStorage:', e);
+      }
+    }
     await refreshAllStores();
     return true;
   }
@@ -411,10 +456,42 @@ export async function deleteNodeAtPath({ path, combinedState }) {
 
   if (binding.collection) {
     const store = getActualStore(binding.store, fullParts);
-    const entityId = await extractEntityId(store, fullParts);
+    
+    // Check if the user is trying to delete a date folder for schedules (e.g. schedules.2026-05-29)
+    const dateSegment = fullParts.find(p => /^\d{4}-\d{2}-\d{2}$/.test(p));
+    let entityId = await extractEntityId(store, fullParts);
+    if (!entityId && binding.rootKey === 'schedules') {
+      entityId = fullParts.find(p => p.startsWith('sched-'));
+    }
+
+    if (!entityId && dateSegment && binding.rootKey === 'schedules') {
+      // Deleting all schedules for a daily date group
+      const allItems = await localDb.getAll(store);
+      const itemsToDelete = allItems.filter(item => item.date === dateSegment);
+      
+      for (const item of itemsToDelete) {
+        removeEntityFromLocalStore(binding, item.id, fullParts);
+        await localDb.delete(store, item.id);
+        try {
+          await cleanupEntityReferences(item.id);
+        } catch (err) {
+          console.warn('[Canvas] Reference cleanup failed:', err);
+        }
+      }
+      await logActivity('entity_deleted', binding.entityType, dateSegment, { path });
+      await refreshAllStores();
+      return true;
+    }
+
     if (!entityId) return false;
     const record = await localDb.getById(store, entityId);
-    if (!record) return false;
+    
+    if (!record) {
+      // Safe fallback: if not in IndexedDB but entityId matches pattern, at least clean up from local state
+      removeEntityFromLocalStore(binding, entityId, fullParts);
+      await refreshAllStores();
+      return true;
+    }
 
     const entityIdx = fullParts.indexOf(entityId);
     const fieldParts = fullParts.slice(entityIdx + 1);
