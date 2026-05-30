@@ -48,7 +48,9 @@ export const STORES = {
   ACADEMIC_OUTPUT_LOGS: 'academicOutputLogs',
 };
 
-class LocalDatabase {
+import { firebaseDb } from '../services/firebaseDatabase';
+
+export class IndexedDbDatabase {
   constructor() {
     this.db = null;
     this.currentUserId = null;
@@ -109,7 +111,6 @@ class LocalDatabase {
     // Safety check: if store doesn't exist (e.g. during a transition), try to handle it
     if (!db.objectStoreNames.contains(storeName)) {
       console.warn(`[DB] Store ${storeName} missing in ${this.getDbName()}. Attempting recovery...`);
-      // This is rare but can happen if init() was called before a version bump was fully realized
     }
 
     const transaction = db.transaction(storeName, mode);
@@ -199,4 +200,64 @@ class LocalDatabase {
   }
 }
 
-export const localDb = new LocalDatabase();
+const DB_TYPE = import.meta.env.VITE_DB_TYPE || 'local';
+
+class LocalDatabaseRouter {
+  constructor() {
+    this.indexedDb = new IndexedDbDatabase();
+    this.firebaseDb = firebaseDb;
+    this.activeDb = DB_TYPE === 'firebase' ? this.firebaseDb : this.indexedDb;
+    console.log(`[DB] Using database backend: ${DB_TYPE.toUpperCase()}`);
+  }
+
+  setUserId(userId) {
+    this.indexedDb.setUserId(userId);
+    this.firebaseDb.setUserId(userId);
+  }
+
+  get db() {
+    return this.indexedDb.db;
+  }
+
+  set db(val) {
+    this.indexedDb.db = val;
+  }
+
+  async init() {
+    return this.activeDb.init();
+  }
+
+  async getStore(storeName, mode = 'readonly') {
+    if (DB_TYPE === 'firebase') {
+      return null;
+    }
+    return this.indexedDb.getStore(storeName, mode);
+  }
+
+  async getAll(storeName) {
+    return this.activeDb.getAll(storeName);
+  }
+
+  async getById(storeName, id) {
+    return this.activeDb.getById(storeName, id);
+  }
+
+  async put(storeName, data) {
+    return this.activeDb.put(storeName, data);
+  }
+
+  async delete(storeName, id) {
+    return this.activeDb.delete(storeName, id);
+  }
+
+  async clear(storeName) {
+    return this.activeDb.clear(storeName);
+  }
+
+  async bulkPut(storeName, items) {
+    return this.activeDb.bulkPut(storeName, items);
+  }
+}
+
+export const localDb = new LocalDatabaseRouter();
+

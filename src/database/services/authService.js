@@ -1,5 +1,20 @@
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { firebaseDb } from './firebaseDatabase';
+
 const SYSTEM_DB_NAME = 'JARVIS_SYSTEM';
 const USERS_STORE = 'users';
+
+const DB_TYPE = import.meta.env.VITE_DB_TYPE || 'local';
+let auth = null;
+if (DB_TYPE === 'firebase') {
+  const app = firebaseDb.init();
+  auth = getAuth(app);
+}
 
 class AuthService {
   constructor() {
@@ -48,6 +63,9 @@ class AuthService {
   }
 
   async hasUsers() {
+    if (DB_TYPE === 'firebase') {
+      return true; // Always return true in cloud mode so user goes to standard login/register flow
+    }
     const users = await this.getUsers();
     return users.length > 0;
   }
@@ -87,7 +105,7 @@ class AuthService {
           let emailIndex;
           try {
             emailIndex = store.index('email');
-          } catch {
+          } catch (txError) {
             resolve(null);
             return;
           }
@@ -102,6 +120,65 @@ class AuthService {
   }
 
   async register(username, email, password) {
+    if (DB_TYPE === 'firebase') {
+      try {
+        firebaseDb.init();
+        
+        // 1. Check if username is already taken in the public collection
+        const usernameRef = doc(firebaseDb.db, 'usernames', username.toLowerCase());
+        const usernameSnap = await getDoc(usernameRef);
+        if (usernameSnap.exists()) {
+          throw new Error('Username already exists');
+        }
+
+        // 2. Create the user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
+        
+        const now = new Date().toISOString();
+        const user = {
+          username,
+          email,
+          userId: firebaseUser.uid,
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        // 3. Set the active userId in our database adapter
+        firebaseDb.setUserId(firebaseUser.uid);
+
+        // 4. Save the user profile inside their subcollection
+        await firebaseDb.put('profile', {
+          id: 'user-profile',
+          username,
+          email,
+          userId: firebaseUser.uid,
+          createdAt: now,
+          updatedAt: now
+        });
+
+        // 5. Store username-to-email mapping publicly for login resolution
+        await setDoc(usernameRef, {
+          email: email.toLowerCase(),
+          userId: firebaseUser.uid
+        });
+
+        // 6. Automatically migrate legacy local IndexedDB data if it exists
+        try {
+          const { migrationService } = await import('./migrationService');
+          await migrationService.migrateUserData(username, firebaseUser.uid);
+        } catch (migrationErr) {
+          console.warn('[AuthService] Automatic post-registration legacy data migration failed:', migrationErr);
+        }
+
+        return user;
+      } catch (error) {
+        console.error('[AuthService] Firebase registration failed:', error);
+        throw error;
+      }
+    }
+
+    // Local IndexedDB Registration
     const db = await this.initDb();
 
     // Prevent duplicate username
@@ -124,7 +201,7 @@ class AuthService {
       let emailIndex;
       try {
         emailIndex = store.index('email');
-      } catch {
+      } catch (txError) {
         resolve(null);
         return;
       }
@@ -162,12 +239,59 @@ class AuthService {
   }
 
   async login(identifier, password) {
+    if (DB_TYPE === 'firebase') {
+      try {
+        let email = identifier.toLowerCase();
+        
+        // If the identifier is not an email, resolve the username to email
+        if (!identifier.includes('@')) {
+          firebaseDb.init();
+          const usernameRef = doc(firebaseDb.db, 'usernames', identifier.toLowerCase());
+          const snap = await getDoc(usernameRef);
+          if (snap.exists()) {
+            email = snap.data().email;
+          } else {
+            console.warn(`[AuthService] Username not found in cloud: ${identifier}`);
+            return null; // Username doesn't exist
+          }
+        }
+
+        // Authenticate with Firebase Auth
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const firebaseUser = userCredential.user;
+
+        // Set the active userId in the adapter
+        firebaseDb.setUserId(firebaseUser.uid);
+
+        // Retrieve user profile to find the username
+        const profile = await firebaseDb.getById('profile', 'user-profile') || {};
+        const resolvedUsername = profile.username || firebaseUser.email.split('@')[0];
+
+        // Trigger automatic legacy database data migration if it hasn't completed yet
+        try {
+          const { migrationService } = await import('./migrationService');
+          await migrationService.migrateUserData(resolvedUsername, firebaseUser.uid);
+        } catch (migrationErr) {
+          console.warn('[AuthService] Automatic post-login legacy data migration failed:', migrationErr);
+        }
+        
+        return {
+          username: resolvedUsername,
+          email: firebaseUser.email,
+          userId: firebaseUser.uid
+        };
+      } catch (error) {
+        console.error('[AuthService] Firebase login failed:', error);
+        return null;
+      }
+    }
+
+    // Local IndexedDB Login
     const user = await this.findUserByIdentifier(identifier);
     if (!user) return null;
 
     const { salt, passwordHash } = user;
     if (!salt || !passwordHash) {
-      // Legacy / invalid user entry - do not authenticate
       return null;
     }
 
