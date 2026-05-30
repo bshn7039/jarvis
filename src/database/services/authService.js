@@ -12,8 +12,8 @@ const USERS_STORE = 'users';
 const DB_TYPE = import.meta.env.VITE_DB_TYPE || 'local';
 let auth = null;
 if (DB_TYPE === 'firebase') {
-  const app = firebaseDb.init();
-  auth = getAuth(app);
+  firebaseDb.init();
+  auth = getAuth(firebaseDb.app);
 }
 
 class AuthService {
