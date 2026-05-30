@@ -1,3 +1,5 @@
+import { elevenlabsService } from '../services/elevenlabsService';
+
 let currentAudio = null;
 
 export async function speakText(text) {
@@ -38,7 +40,6 @@ export async function speakText(text) {
 
     if (!cleanText) return;
 
-    const { elevenlabsService } = await import('../services/elevenlabsService');
     const result = await elevenlabsService.textToSpeech(cleanText, null, engine === 'browser');
     
     if (result.source === 'elevenlabs' && result.audioUrl) {
