@@ -15,6 +15,7 @@ import CRM from './pages/CRM';
 import Academics from './pages/Academics';
 import Personal from './pages/Personal';
 import Activity from './pages/Activity';
+import Trash from './pages/Trash';
 import AppErrorBoundary from './components/app/AppErrorBoundary';
 import { useStoreHydration } from './hooks/useStoreHydration';
 import { useAuthStore } from './store/authStore';
@@ -52,6 +53,7 @@ function App() {
           <Route path="/crm" element={<ProtectedRoute><CRM /></ProtectedRoute>} />
           <Route path="/academics" element={<ProtectedRoute><Academics /></ProtectedRoute>} />
           <Route path="/activity" element={<ProtectedRoute><Activity /></ProtectedRoute>} />
+          <Route path="/trash" element={<ProtectedRoute><Trash /></ProtectedRoute>} />
           
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -13,6 +13,7 @@ import {
   GraduationCap,
   Activity as ActivityIcon,
   Smile,
+  Trash2,
   X
 } from 'lucide-react';
 import SidebarSection from './SidebarSection';
@@ -36,6 +37,7 @@ const navItems = [
   { id: 'crm', label: 'CRM', icon: Handshake, path: '/crm' },
   { id: 'academics', label: 'Academics', icon: GraduationCap, path: '/academics' },
   { id: 'activity', label: 'Activity', icon: ActivityIcon, path: '/activity' },
+  { id: 'trash', label: 'Recycle Bin', icon: Trash2, path: '/trash' },
 ];
 
 

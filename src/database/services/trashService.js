@@ -59,7 +59,7 @@ class TrashService {
     const entry = await localDb.getById(STORES.TRASH, trashId);
     if (!entry) throw new Error(`Trash entry ${trashId} not found`);
 
-    const { entityType, data, entityId } = entry;
+    const { entityType, data } = entry;
     
     // Restore to original store
     await localDb.put(entityType, data);
@@ -70,7 +70,7 @@ class TrashService {
     // Remove from trash
     await localDb.delete(STORES.TRASH, trashId);
     
-    return data;
+    return { restoredData: data, entityType };
   }
 
   async permanentDelete(trashId) {
