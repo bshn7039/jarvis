@@ -89,6 +89,8 @@ function FundRow({ fund }) {
   const computeFundStats = useMutualFundStore(s => s.computeFundStats);
   const deleteFund = useMutualFundStore(s => s.deleteFund);
   const deletePurchase = useMutualFundStore(s => s.deletePurchase);
+  // Direct subscription to guarantee reactivity when NAV changes
+  const navData = useMutualFundStore(s => s.liveNAVs[fund.schemeCode]);
   const [expanded, setExpanded] = useState(false);
   const [addSipOpen, setAddSipOpen] = useState(false);
 
@@ -206,6 +208,8 @@ export default function MutualFundTracker({ onAddFund }) {
   const refreshAllNAVs = useMutualFundStore(s => s.refreshAllNAVs);
   const getPortfolioTotals = useMutualFundStore(s => s.getPortfolioTotals);
   const lastNAVFetch = useMutualFundStore(s => s.lastNAVFetch);
+  // Direct subscription to liveNAVs to guarantee overall portfolio recalculations react reactively
+  const liveNAVs = useMutualFundStore(s => s.liveNAVs);
 
   const totals = getPortfolioTotals();
 

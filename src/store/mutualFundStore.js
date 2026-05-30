@@ -88,7 +88,9 @@ function isCacheStale() {
     if (!raw) return true;
     const { fetchedAt } = JSON.parse(raw);
     if (!fetchedAt) return true;
-    return Date.now() - fetchedAt > NAV_STALE_MS;
+    const time = Number(fetchedAt);
+    if (isNaN(time) || time <= 0) return true;
+    return Date.now() - time > NAV_STALE_MS;
   } catch {
     return true;
   }
@@ -111,60 +113,73 @@ export const useMutualFundStore = create((set, get) => ({
     try {
       let funds = await mutualFundService.getAll();
 
-      // Auto-seed default funds if none are tracked yet to populate the user's portfolio immediately
-      const seedFlag = await localDb.getById(STORES.METADATA, 'mutual-funds-seeded') || { id: 'mutual-funds-seeded', seeded: false };
-      if (!seedFlag.seeded && funds.length === 0) {
-        const defaultFunds = [
-          {
-            id: 'mf-seed-1',
-            schemeName: 'Nippon India Small Cap Fund Direct Growth',
-            schemeCode: '118778',
-            purchases: [{ id: 'p-seed-1-1', date: '2026-04-15', amount: 1500, nav: 101.58, units: 14.7667 }]
-          },
-          {
-            id: 'mf-seed-2',
-            schemeName: 'Axis Midcap Direct Plan Growth',
-            schemeCode: '120524',
-            purchases: [{ id: 'p-seed-2-1', date: '2026-04-16', amount: 1500, nav: 71.91, units: 20.8594 }]
-          },
-          {
-            id: 'mf-seed-3',
-            schemeName: 'Mirae Asset Large Cap Fund Direct Growth',
-            schemeCode: '119027',
-            purchases: [{ id: 'p-seed-3-1', date: '2026-04-17', amount: 1500, nav: 23.10, units: 64.9351 }]
-          },
-          {
-            id: 'mf-seed-4',
-            schemeName: 'SBI Equity Hybrid Fund Direct Plan Growth',
-            schemeCode: '119842',
-            purchases: [{ id: 'p-seed-4-1', date: '2026-04-18', amount: 2500, nav: 25.91, units: 96.4878 }]
-          },
-          {
-            id: 'mf-seed-5',
-            schemeName: 'Kotak Arbitrage Fund Direct Growth',
-            schemeCode: '119640',
-            purchases: [{ id: 'p-seed-5-1', date: '2026-04-19', amount: 6000, nav: 5.65, units: 1061.9469 }]
-          },
-          {
-            id: 'mf-seed-6',
-            schemeName: 'Parag Parikh Flexi Cap Fund Direct Growth',
-            schemeCode: '122639',
-            purchases: [{ id: 'p-seed-6-1', date: '2026-04-20', amount: 5000, nav: 2.15, units: 2325.5814 }]
+      // One-time cleanup to delete any existing hardcoded default seeded funds (starting with 'mf-seed-')
+      const cleanupFlag = await localDb.getById(STORES.METADATA, 'mutual-funds-cleanup-v1') || { id: 'mutual-funds-cleanup-v1', cleaned: false };
+      if (!cleanupFlag.cleaned) {
+        const seedFunds = funds.filter(f => f.id && f.id.startsWith('mf-seed-'));
+        if (seedFunds.length > 0) {
+          await Promise.all(seedFunds.map(f => mutualFundService.delete(f.id)));
+          funds = await mutualFundService.getAll();
+        }
+        // Clear NAV cache in localStorage so the cache starts fresh
+        try {
+          localStorage.removeItem(NAV_CACHE_KEY);
+        } catch (e) {
+          console.warn('[MF Store] Failed to clear NAV cache during cleanup:', e);
+        }
+        await localDb.put(STORES.METADATA, { id: 'mutual-funds-cleanup-v1', cleaned: true });
+      }
+
+      // Self-healing migration: Detect and fix wrong scheme code for SBI Equity Hybrid
+      let needsDatabaseUpdate = false;
+      const healedFunds = await Promise.all(funds.map(async (fund) => {
+        const nameLower = (fund.schemeName || '').toLowerCase();
+        if (
+          String(fund.schemeCode) === '120154' &&
+          nameLower.includes('sbi') &&
+          nameLower.includes('equity hybrid')
+        ) {
+          console.log(`[MF Store] Self-healing: Correcting schemeCode for fund "${fund.schemeName}" (ID: ${fund.id}) from 120154 to 119609`);
+          const updatedFund = { ...fund, schemeCode: '119609' };
+          try {
+            await localDb.put(STORES.MUTUAL_FUNDS, updatedFund);
+            needsDatabaseUpdate = true;
+          } catch (e) {
+            console.error('[MF Store] Self-healing failed to update database:', e);
           }
-        ];
-        
-        await Promise.all(defaultFunds.map(f => mutualFundService.create(f)));
-        funds = await mutualFundService.getAll();
-        await localDb.put(STORES.METADATA, { id: 'mutual-funds-seeded', seeded: true });
-      } else if (!seedFlag.seeded) {
-        await localDb.put(STORES.METADATA, { id: 'mutual-funds-seeded', seeded: true });
+          return updatedFund;
+        }
+        return fund;
+      }));
+
+      if (needsDatabaseUpdate) {
+        funds = healedFunds;
+        // Invalidate NAV cache so we fetch the fresh correct NAV immediately
+        try {
+          localStorage.removeItem(NAV_CACHE_KEY);
+        } catch (e) {
+          console.warn('[MF Store] Failed to clear NAV cache during self-healing:', e);
+        }
       }
 
       // Restore cached NAVs immediately so UI shows data without a network hit
       const cache = loadNavCache();
       const liveNAVs = cache.navs || {};
 
-      set({ funds, liveNAVs, isHydrated: true, lastNAVFetch: cache.fetchedAt ? new Date(cache.fetchedAt).toISOString() : null });
+      let lastNAVFetchISO = null;
+      if (cache.fetchedAt) {
+        const parsedTime = Number(cache.fetchedAt);
+        if (!isNaN(parsedTime) && parsedTime > 0) {
+          lastNAVFetchISO = new Date(parsedTime).toISOString();
+        } else {
+          const parsedDate = Date.parse(cache.fetchedAt);
+          if (!isNaN(parsedDate)) {
+            lastNAVFetchISO = new Date(parsedDate).toISOString();
+          }
+        }
+      }
+
+      set({ funds, liveNAVs, isHydrated: true, lastNAVFetch: lastNAVFetchISO });
 
       // Only refresh from MFAPI if cache is older than 12 hours
       if (funds.length > 0 && isCacheStale()) {
@@ -191,27 +206,151 @@ export const useMutualFundStore = create((set, get) => ({
 
   // Fetch latest NAV for one scheme (always hits network — used internally)
   fetchLiveNAV: async (schemeCode) => {
+    if (!schemeCode) {
+      console.warn('[MF Store] fetchLiveNAV called with empty schemeCode');
+      return null;
+    }
+    const cleanSchemeCode = String(schemeCode).trim();
+    if (!cleanSchemeCode || cleanSchemeCode === 'undefined' || cleanSchemeCode === 'null') {
+      console.warn('[MF Store] fetchLiveNAV called with invalid schemeCode:', schemeCode);
+      return null;
+    }
+
     try {
-      const res = await fetch(`${MFAPI_BASE}/${schemeCode}`);
-      if (!res.ok) throw new Error(`NAV fetch failed for ${schemeCode}`);
+      const res = await fetch(`${MFAPI_BASE}/${cleanSchemeCode}`);
+      if (!res.ok) throw new Error(`NAV fetch failed for ${cleanSchemeCode}`);
       const data = await res.json();
-      const latest   = data.data?.[0];
-      const previous = data.data?.[1];
+      if (!data.data || data.data.length === 0) return null;
+
+      // Robust date parsing helper to handle standard formats (dd-mm-yyyy, dd/mm/yyyy, yyyy-mm-dd)
+      const parseMfDate = (dateStr) => {
+        if (!dateStr) return 0;
+        if (dateStr.includes('-') && dateStr.split('-')[0].length === 4) {
+          return new Date(dateStr).getTime();
+        }
+        const separators = /[-/]/;
+        const parts = dateStr.split(separators);
+        if (parts.length === 3) {
+          const day = Number(parts[0]);
+          const month = Number(parts[1]);
+          const year = Number(parts[2]);
+          if (String(parts[0]).length === 4) {
+            return new Date(day, month - 1, Number(parts[2])).getTime();
+          } else {
+            return new Date(year, month - 1, day).getTime();
+          }
+        }
+        const parsed = Date.parse(dateStr);
+        return isNaN(parsed) ? 0 : parsed;
+      };
+
+      // Sort data array by date descending (latest first) to guarantee index 0 is the newest NAV
+      const sortedData = [...data.data].sort((a, b) => parseMfDate(b.date) - parseMfDate(a.date));
+
+      const latest   = sortedData[0];
+      const previous = sortedData[1];
       if (!latest) return null;
 
+      const navVal = parseFloat(latest.nav);
+      const prevNavVal = previous ? parseFloat(previous.nav) : navVal;
+      if (isNaN(navVal)) return null;
+
       const navData = {
-        nav:        parseFloat(latest.nav),
-        prevNav:    previous ? parseFloat(previous.nav) : parseFloat(latest.nav),
-        date:       latest.date,
+        nav:        navVal,
+        prevNav:    isNaN(prevNavVal) ? navVal : prevNavVal,
+        date:       latest.date || '',
         schemeName: data.meta?.scheme_name || '',
       };
 
+      // ── Background Fuzzy Self-Healing ──────────────────────────────
+      // Verify if the DB fund name actually matches the name returned by the schemeCode's metadata.
+      const fund = get().funds.find(f => String(f.schemeCode) === String(cleanSchemeCode));
+      if (fund && navData.schemeName) {
+        const dbName = (fund.schemeName || '').toLowerCase();
+        const apiName = navData.schemeName.toLowerCase();
+        
+        const getKeywords = (name) => {
+          return name
+            .replace(/[^a-z0-9\s]/g, '')
+            .split(/\s+/)
+            .filter(w => w.length > 2 && !['fund', 'direct', 'growth', 'plan', 'option', 'optionidcw', 'idcw', 'regular', 'dividend', 'mutual', 'scheme'].includes(w));
+        };
+        
+        const dbKeywords = getKeywords(dbName);
+        const apiKeywords = getKeywords(apiName);
+        const brandDb = dbKeywords[0];
+        const brandApi = apiKeywords[0];
+        
+        const sharesBrand = brandDb && brandApi && brandDb === brandApi;
+        const matchingKeywordsCount = dbKeywords.filter(w => apiKeywords.includes(w)).length;
+        
+        // Mismatch conditions: Brand name is different OR key keywords differ significantly OR plan type (Direct vs Regular) is mismatched
+        const isDbDirect = dbName.includes('direct');
+        const isApiDirect = apiName.includes('direct');
+        const planMismatch = isDbDirect !== isApiDirect;
+        
+        const isMismatched = !sharesBrand || (matchingKeywordsCount < 2 && dbKeywords.length >= 2) || planMismatch;
+        
+        if (isMismatched && dbKeywords.length > 0) {
+          console.warn(`[MF Store] Mismatch detected! DB Fund: "${fund.schemeName}", API Name: "${navData.schemeName}" for code ${cleanSchemeCode}. Attempting self-healing...`);
+          try {
+            const searchQuery = dbKeywords.slice(0, 4).join(' ');
+            const searchRes = await fetch(`${MFAPI_BASE}/search?q=${encodeURIComponent(searchQuery)}`);
+            if (searchRes.ok) {
+              const results = await searchRes.json();
+              if (results && results.length > 0) {
+                // Find the best match that aligns on brand, keywords, AND direct vs regular plan type
+                const bestMatch = results.find(r => {
+                  const rName = r.schemeName.toLowerCase();
+                  const rKeywords = getKeywords(rName);
+                  const rBrand = rKeywords[0];
+                  const isRDirect = rName.includes('direct');
+                  
+                  return rBrand === brandDb && 
+                         rKeywords.filter(w => dbKeywords.includes(w)).length >= 2 &&
+                         isRDirect === isDbDirect;
+                }) || results.find(r => {
+                  // Fallback: match brand and keywords
+                  const rName = r.schemeName.toLowerCase();
+                  const rKeywords = getKeywords(rName);
+                  const rBrand = rKeywords[0];
+                  return rBrand === brandDb && rKeywords.filter(w => dbKeywords.includes(w)).length >= 2;
+                }) || results[0];
+                
+                if (bestMatch && String(bestMatch.schemeCode) !== String(cleanSchemeCode)) {
+                  console.log(`[MF Store] Self-healed: Correcting code for "${fund.schemeName}" from ${cleanSchemeCode} to ${bestMatch.schemeCode}`);
+                  const healedFund = { ...fund, schemeCode: String(bestMatch.schemeCode) };
+                  try {
+                    await localDb.put(STORES.MUTUAL_FUNDS, healedFund);
+                    
+                    // Update funds in state
+                    set(state => ({
+                      funds: state.funds.map(f => f.id === fund.id ? healedFund : f)
+                    }));
+                    
+                    // Evict cache to ensure clean state
+                    try { localStorage.removeItem(NAV_CACHE_KEY); } catch {}
+                    
+                    // Fetch and return the live NAV for the new, correct schemeCode
+                    return get().fetchLiveNAV(bestMatch.schemeCode);
+                  } catch (e) {
+                    console.error('[MF Store] Fuzzy self-healing failed to save healed fund:', e);
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error('[MF Store] Fuzzy self-healing error:', e);
+          }
+        }
+      }
+
       set(state => ({
-        liveNAVs: { ...state.liveNAVs, [schemeCode]: navData }
+        liveNAVs: { ...state.liveNAVs, [cleanSchemeCode]: navData }
       }));
       return navData;
     } catch (err) {
-      console.error('MFAPI NAV error:', err);
+      console.error(`[MF Store] MFAPI NAV error for ${cleanSchemeCode}:`, err);
       return null;
     }
   },
