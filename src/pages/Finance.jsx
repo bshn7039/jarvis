@@ -18,6 +18,7 @@ export default function Finance() {
   const setSelectedCategory = useFinanceStore((s) => s.setSelectedCategory);
   const addTransaction = useFinanceStore((s) => s.addTransaction);
   const saveMoney = useFinanceStore((s) => s.saveMoney);
+  const updateTransaction = useFinanceStore((s) => s.updateTransaction);
   
   const balanceOverview = useFinanceStore(s => s.balanceOverview);
   const accounts = useFinanceStore(s => s.accounts);
@@ -28,6 +29,7 @@ export default function Finance() {
   const isMFHydrated = useMutualFundStore(s => s.isHydrated);
 
   const [modalType, setModalType] = useState(null); // 'credit' | 'debit' | 'saving' | 'mf' | null
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'mf'
 
   // Hydrate MF store on mount
@@ -186,7 +188,7 @@ export default function Finance() {
                     ))}
                   </select>
                 </div>
-                <TransactionTable transactions={filteredTransactions} />
+                <TransactionTable transactions={filteredTransactions} onEdit={setEditingTransaction} />
               </PagePanel>
             </div>
           </div>
@@ -198,10 +200,14 @@ export default function Finance() {
       )}
 
       <TransactionModal 
-        open={!!modalType && modalType !== 'mf'} 
-        onClose={() => setModalType(null)} 
-        type={modalType} 
-        onSubmit={addTransaction}
+        open={(!!modalType && modalType !== 'mf') || !!editingTransaction} 
+        onClose={() => {
+          setModalType(null);
+          setEditingTransaction(null);
+        }} 
+        type={editingTransaction ? editingTransaction.type : modalType} 
+        transaction={editingTransaction}
+        onSubmit={editingTransaction ? (data) => updateTransaction(editingTransaction.id, data) : addTransaction}
         onSaveSubmit={saveMoney}
       />
 

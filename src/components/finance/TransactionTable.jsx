@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useFinanceStore } from '../../store/financeStore';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 
-export default function TransactionTable({ transactions }) {
+export default function TransactionTable({ transactions, onEdit }) {
   const deleteTransaction = useFinanceStore(s => s.deleteTransaction);
   const deleteTransactions = useFinanceStore(s => s.deleteTransactions);
 
@@ -189,17 +189,26 @@ export default function TransactionTable({ transactions }) {
                     })}
                   </td>
                   <td className="px-3 py-2 text-center">
-                    <button
-                      onClick={() => {
-                        if (confirm('Delete this transaction?')) {
-                          deleteTransaction(transaction.id);
-                        }
-                      }}
-                      className="text-jarvis-muted hover:text-red-400 transition"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => onEdit?.(transaction)}
+                        className="text-jarvis-muted hover:text-jarvis-accent transition"
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this transaction?')) {
+                            deleteTransaction(transaction.id);
+                          }
+                        }}
+                        className="text-jarvis-muted hover:text-red-400 transition"
+                        title="Delete"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

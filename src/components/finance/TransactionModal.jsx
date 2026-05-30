@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BaseModal from '../modals/BaseModal';
 
 const DEBIT_CATEGORIES = [
@@ -13,7 +13,7 @@ const DEBIT_CATEGORIES = [
   'Miscellaneous',
 ];
 
-export default function TransactionModal({ open, onClose, type, onSubmit, onSaveSubmit }) {
+export default function TransactionModal({ open, onClose, type, onSubmit, onSaveSubmit, transaction }) {
   const [formData, setFormData] = useState({
     amount: '',
     title: '',
@@ -23,6 +23,32 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
     transactionDate: new Date().toISOString().split('T')[0],
     tags: ''
   });
+
+  useEffect(() => {
+    if (open) {
+      if (transaction) {
+        setFormData({
+          amount: transaction.amount || '',
+          title: transaction.title || transaction.note || '',
+          category: transaction.category || '',
+          account: transaction.account || 'cash',
+          description: transaction.description || '',
+          transactionDate: transaction.transactionDate || new Date().toISOString().split('T')[0],
+          tags: Array.isArray(transaction.tags) ? transaction.tags.join(', ') : ''
+        });
+      } else {
+        setFormData({
+          amount: '',
+          title: '',
+          category: type === 'debit' ? 'Food & Dining' : (type === 'saving' ? 'Savings Transfer' : 'Income'),
+          account: 'cash',
+          description: '',
+          transactionDate: new Date().toISOString().split('T')[0],
+          tags: ''
+        });
+      }
+    }
+  }, [open, transaction, type]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,9 +80,16 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
   };
 
   return (
-    <BaseModal open={open} onClose={onClose} ariaLabel={type === 'credit' ? 'Add Credit' : (type === 'saving' ? 'Save Money' : 'Add Debit')}>
+    <BaseModal 
+      open={open} 
+      onClose={onClose} 
+      ariaLabel={transaction ? 'Edit Transaction' : (type === 'credit' ? 'Add Credit' : (type === 'saving' ? 'Save Money' : 'Add Debit'))}
+    >
       <h2 className="text-lg font-semibold mb-4">
-        {type === 'credit' ? '+ Add Credit' : (type === 'saving' ? '💰 Save Money' : '- Add Debit')}
+        {transaction 
+          ? `✏️ Edit ${transaction.type === 'credit' ? 'Credit' : 'Debit'}` 
+          : (type === 'credit' ? '+ Add Credit' : (type === 'saving' ? '💰 Save Money' : '- Add Debit'))
+        }
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">
@@ -150,9 +183,9 @@ export default function TransactionModal({ open, onClose, type, onSubmit, onSave
           </button>
           <button
             type="submit"
-            className="rounded border border-jarvis-border bg-white/10 px-3 py-1.5 text-xs text-jarvis-text transition hover:bg-white/15"
+            className="rounded border border-jarvis-border bg-white/10 px-3 py-1.5 text-xs text-jarvis-text transition hover:bg-white/15 font-semibold"
           >
-            Confirm {type === 'credit' ? 'Credit' : (type === 'saving' ? 'Saving' : 'Debit')}
+            {transaction ? 'Save Changes' : `Confirm ${type === 'credit' ? 'Credit' : (type === 'saving' ? 'Saving' : 'Debit')}`}
           </button>
         </div>
       </form>
