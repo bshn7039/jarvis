@@ -16,8 +16,9 @@ class MigrationService {
 
       console.log(`[Migration] Checking for legacy local IndexedDB database to migrate for username: ${username}`);
       
-      // 2. Find the local user matching this username
-      const localUser = await authService.findUserByIdentifier(username);
+      // 2. Find the local user matching this username case-insensitively
+      const allLocalUsers = await authService.getUsers();
+      const localUser = allLocalUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
       if (!localUser || !localUser.userId) {
         console.log('[Migration] No local user database matching this username was found. Skipping migration.');
         return;
