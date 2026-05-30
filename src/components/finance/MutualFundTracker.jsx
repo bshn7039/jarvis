@@ -130,25 +130,25 @@ function FundRow({ fund }) {
         </div>
 
         {/* NAV date + current NAV */}
-        {stats.latestNAV && (
-          <div className="px-4 py-2 border-t border-jarvis-border/40 flex items-center justify-between text-[10px] text-jarvis-muted">
-            <span>NAV: ₹{stats.latestNAV?.toFixed(4)} as of {stats.navDate}</span>
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => { e.stopPropagation(); setAddSipOpen(true); }}
-                className="flex items-center gap-1 hover:text-jarvis-accent transition"
-              >
-                <Plus className="h-3 w-3" /> SIP
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this fund and all its purchases?')) deleteFund(fund.id); }}
-                className="flex items-center gap-1 hover:text-red-400 transition"
-              >
-                <Trash2 className="h-3 w-3" /> Delete
-              </button>
-            </div>
+        <div className="px-4 py-2 border-t border-jarvis-border/40 flex items-center justify-between text-[10px] text-jarvis-muted">
+          <span>
+            {stats.latestNAV ? `NAV: ₹${stats.latestNAV?.toFixed(4)} as of ${stats.navDate}` : 'NAV data loading or offline'}
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setAddSipOpen(true); }}
+              className="flex items-center gap-1 hover:text-jarvis-accent transition"
+            >
+              <Plus className="h-3 w-3" /> SIP
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); if (window.confirm('Delete this fund and all its purchases?')) deleteFund(fund.id); }}
+              className="flex items-center gap-1 hover:text-red-400 transition"
+            >
+              <Trash2 className="h-3 w-3" /> Delete
+            </button>
           </div>
-        )}
+        </div>
 
         {/* Purchases list (expanded) */}
         {expanded && (

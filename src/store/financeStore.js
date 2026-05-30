@@ -281,6 +281,17 @@ export const useFinanceStore = create((set, get) => ({
     });
   },
 
+  deleteTransactions: async (ids) => {
+    if (!Array.isArray(ids) || ids.length === 0) return;
+    await Promise.all(ids.map(id => financeService.delete(id)));
+    const updatedTransactions = get().transactions.filter(t => !ids.includes(t.id));
+    const derived = calculateDerivedFinance(updatedTransactions);
+    set({
+      transactions: updatedTransactions,
+      ...derived
+    });
+  },
+
   updateTransaction: async (id, updates) => {
     const transaction = get().transactions.find(t => t.id === id);
     if (!transaction) return;

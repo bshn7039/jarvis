@@ -20,6 +20,8 @@ import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
 import { useAiStore } from '../store/aiStore';
+import { useMutualFundStore } from '../store/mutualFundStore';
+import { usePersonalRoadmapStore } from '../store/personalRoadmapStore';
 import { cleanupEntityReferences } from './entityCleanup';
 
 const MODULE_BINDINGS = {
@@ -205,6 +207,8 @@ async function refreshAllStores() {
     useWritingStore.getState().hydrate(),
     useReadingStore.getState().hydrate(),
     useVaultStore.getState().hydrate(),
+    useMutualFundStore.getState().hydrate(),
+    usePersonalRoadmapStore.getState().hydrate(),
   ]);
 }
 
