@@ -275,8 +275,10 @@ function PersonalPreview() {
   
   // Find all step tasks connected to these roadmaps
   const roadmapGoalIds = roadmaps.map(r => r.id);
-  const phaseGoalIds = goals.filter(g => roadmapGoalIds.includes(g.parentId)).map(g => g.id);
-  const roadmapTasks = tasks.filter(t => (t.linkedGoalIds || []).some(id => phaseGoalIds.includes(id)));
+  const objectiveIds = goals.filter(g => roadmapGoalIds.includes(g.parentId) && g.type === 'objective').map(g => g.id);
+  const subGoalIds = goals.filter(g => objectiveIds.includes(g.parentId) && g.type === 'sub_goal').map(g => g.id);
+  const allRoadmapNodeIds = [...roadmapGoalIds, ...objectiveIds, ...subGoalIds];
+  const roadmapTasks = tasks.filter(t => (t.linkedGoalIds || []).some(id => allRoadmapNodeIds.includes(id)));
   
   const completedTasks = roadmapTasks.filter(t => t.completed).length;
   const totalTasks = roadmapTasks.length;

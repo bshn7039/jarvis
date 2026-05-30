@@ -21,6 +21,7 @@ import { useWritingStore } from '../writingStore';
 import { useReadingStore } from '../readingStore';
 import { useVaultStore } from '../vaultStore';
 import { useMutualFundStore } from '../mutualFundStore';
+import { usePersonalRoadmapStore } from '../personalRoadmapStore';
 
 export function useLiveDatabaseTree() {
   const { tasks, repetitiveTasks, repetitiveHistory } = useTaskStore(useShallow(s => ({
@@ -52,6 +53,7 @@ export function useLiveDatabaseTree() {
   const reading = useReadingStore(s => s.library);
   const vault = useVaultStore(s => s.ideas);
   const mutualFunds = useMutualFundStore(s => s.funds);
+  const roadmaps = usePersonalRoadmapStore(s => s.roadmaps);
 
   return useMemo(() => {
     const combinedState = {
@@ -77,7 +79,8 @@ export function useLiveDatabaseTree() {
         music,
         writing,
         reading,
-        vault
+        vault,
+        roadmaps
       },
     };
     
@@ -87,6 +90,6 @@ export function useLiveDatabaseTree() {
     fitnessWorkouts, fitnessMeals, fitnessHydration,
     crmContacts, academicSubjects, schedules, chats,
     selfCare, communication, socialGrowth, publicPersona, music, writing, reading, vault,
-    mutualFunds
+    mutualFunds, roadmaps
   ]);
 }

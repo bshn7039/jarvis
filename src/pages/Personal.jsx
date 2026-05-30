@@ -100,7 +100,9 @@ export default function Personal() {
     'Social Confidence',
     'Style & Presentation',
     'Skincare & Haircare',
-    'Nutrition & Sleep'
+    'Nutrition & Sleep',
+    'Creative Thinking',
+    'Discipline & Baseline Reset'
   ];
 
   // TIMERS & WEB AUDIO STATES (for interactive mini-systems)
@@ -558,6 +560,18 @@ export default function Personal() {
                   </div>
                 )}
               </div>
+
+              {currentRoadmap.example && (
+                <div className="rounded-xl border border-jarvis-border bg-white/5 p-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-jarvis-accent flex items-center gap-2">
+                    <Compass className="h-4 w-4" />
+                    REAL-LIFE APPLICATION EXAMPLE
+                  </h4>
+                  <p className="mt-2 text-xs text-jarvis-muted leading-relaxed italic">
+                    "{currentRoadmap.example}"
+                  </p>
+                </div>
+              )}
 
               {/* TWO COLUMN COCKPIT PORTAL */}
               <div className="grid gap-6 lg:grid-cols-2 pt-2">
@@ -1389,18 +1403,22 @@ export default function Personal() {
             e.preventDefault();
             const title = e.target.title.value;
             const category = e.target.category.value;
+            const parentId = e.target.parentId.value;
             const desc = e.target.description.value;
             const rule = e.target.rule.value;
             const micro = e.target.microDose.value;
+            const example = e.target.example.value;
             
             if (!title) return;
             
             await roadmapStore.addRoadmap({
               title,
               category,
+              parentId,
               description: desc,
               rule,
-              microDose: micro
+              microDose: micro,
+              example
             });
             closeModal();
           }}
@@ -1411,27 +1429,56 @@ export default function Personal() {
             <input
               name="title"
               required
-              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text"
+              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
               placeholder="e.g. Creative Public Speaking Mastery"
             />
           </label>
-          <label className="block space-y-1">
-            <span className="text-xs uppercase tracking-wide text-jarvis-muted">Category Area</span>
-            <select
-              name="category"
-              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text"
-            >
-              {roadmapCategories.slice(1).map(c => (
-                <option key={c} value={c} className="bg-jarvis-panel">{c}</option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="block space-y-1">
+              <span className="text-xs uppercase tracking-wide text-jarvis-muted">Category Area</span>
+              <select
+                name="category"
+                required
+                className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
+              >
+                {roadmapCategories.slice(1).map(c => (
+                  <option key={c} value={c} className="bg-jarvis-panel">{c}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block space-y-1">
+              <span className="text-xs uppercase tracking-wide text-jarvis-muted">Parent Main Goal / Area</span>
+              <select
+                name="parentId"
+                required
+                className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
+              >
+                {(() => {
+                  const areas = goals.filter(g => g.type === 'area');
+                  const items = [];
+                  areas.forEach(area => {
+                    items.push({ id: area.id, title: `[Area] ${area.title}` });
+                    const childGoals = goals.filter(g => g.parentId === area.id && g.type === 'goal');
+                    childGoals.forEach(goal => {
+                      items.push({ id: goal.id, title: `  └─ [Goal] ${goal.title}` });
+                    });
+                  });
+                  return items.map(item => (
+                    <option key={item.id} value={item.id} className="bg-jarvis-panel text-jarvis-text">
+                      {item.title}
+                    </option>
+                  ));
+                })()}
+              </select>
+            </label>
+          </div>
           <label className="block space-y-1">
             <span className="text-xs uppercase tracking-wide text-jarvis-muted">Description</span>
             <textarea
               name="description"
+              required
               rows={2}
-              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text"
+              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
               placeholder="Core focus and targets..."
             />
           </label>
@@ -1439,8 +1486,9 @@ export default function Personal() {
             <span className="text-xs uppercase tracking-wide text-jarvis-muted">The Mandatory Rule</span>
             <textarea
               name="rule"
+              required
               rows={2}
-              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text"
+              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
               placeholder="e.g. Forbidden to move forward without logging X action..."
             />
           </label>
@@ -1448,8 +1496,19 @@ export default function Personal() {
             <span className="text-xs uppercase tracking-wide text-jarvis-muted">Micro-Dose Frequency</span>
             <input
               name="microDose"
-              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text"
+              required
+              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
               placeholder="e.g. Do 5 minutes shadowboxing daily"
+            />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs uppercase tracking-wide text-jarvis-muted">Example Action / Real-Life Application</span>
+            <textarea
+              name="example"
+              required
+              rows={2}
+              className="w-full rounded-lg border border-jarvis-border bg-black/25 px-3 py-2 text-sm text-jarvis-text focus:outline-none focus:border-jarvis-accent"
+              placeholder="e.g. Stop reading after the chapter and put your phone in another room..."
             />
           </label>
 

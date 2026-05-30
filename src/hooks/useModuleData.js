@@ -18,6 +18,7 @@ import { useMusicStore } from '../store/musicStore';
 import { useWritingStore } from '../store/writingStore';
 import { useReadingStore } from '../store/readingStore';
 import { useVaultStore } from '../store/vaultStore';
+import { usePersonalRoadmapStore } from '../store/personalRoadmapStore';
 
 export function useModuleData(moduleId) {
   const tasks = useTaskStore(useShallow(s => ({ 
@@ -71,6 +72,7 @@ export function useModuleData(moduleId) {
   const writing = useWritingStore(s => s.drafts);
   const reading = useReadingStore(s => s.library);
   const vault = useVaultStore(s => s.ideas);
+  const roadmaps = usePersonalRoadmapStore(s => s.roadmaps);
 
   switch (moduleId) {
     case 'tasks':
@@ -104,7 +106,8 @@ export function useModuleData(moduleId) {
         music,
         writing,
         reading,
-        vault
+        vault,
+        roadmaps
       };
     default:
       return null;

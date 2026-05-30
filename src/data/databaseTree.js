@@ -70,11 +70,74 @@ export function buildNode(data, path, depth = 0) {
         type: 'folder',
         checked: true,
         expanded: false,
-        children: transactions.map(t => {
-          const tNode = buildNode(t, `finance.transactions.${t.id}`, depth + 2);
-          tNode.label = `${t.type === 'credit' ? '+' : '-'} ₹${(t.amount || 0).toLocaleString()} - ${t.title || t.category}`;
-          return tNode;
-        })
+        children: (() => {
+          const months = {};
+          const sortedTxns = [...transactions].sort((a, b) => 
+            (b.transactionDate || b.date || '').localeCompare(a.transactionDate || a.date || '')
+          );
+
+          sortedTxns.forEach(t => {
+            const dateStr = t.transactionDate || t.date || new Date().toISOString().split('T')[0];
+            const parts = dateStr.split('-');
+            if (parts.length < 2) return;
+            const y = parts[0];
+            const m = parts[1];
+            const d = parseInt(parts[2] || '1', 10);
+            const monthKey = `${y}-${m}`;
+
+            let weekName = 'Week 1 (1st - 7th)';
+            if (d > 28) weekName = 'Week 5 (29th - End)';
+            else if (d > 21) weekName = 'Week 4 (22nd - 28th)';
+            else if (d > 14) weekName = 'Week 3 (15th - 21st)';
+            else if (d > 7) weekName = 'Week 2 (8th - 14th)';
+
+            if (!months[monthKey]) {
+              months[monthKey] = {};
+            }
+            if (!months[monthKey][weekName]) {
+              months[monthKey][weekName] = [];
+            }
+            months[monthKey][weekName].push(t);
+          });
+
+          const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          const monthKeys = Object.keys(months).sort((a, b) => b.localeCompare(a));
+          
+          return monthKeys.map(monthKey => {
+            const weeksObj = months[monthKey];
+            const weekNamesSorted = Object.keys(weeksObj).sort((a, b) => b.localeCompare(a));
+            
+            const [y, m] = monthKey.split('-');
+            const monthIdx = parseInt(m, 10) - 1;
+            const monthLabel = `${monthNames[monthIdx] || m} ${y}`;
+
+            return {
+              id: `finance.transactions.month.${monthKey}`,
+              label: monthLabel,
+              type: 'folder',
+              checked: true,
+              expanded: false,
+              children: weekNamesSorted.map(weekName => {
+                const weekTxns = weeksObj[weekName];
+                const weekSlug = weekName.split(' ')[1] || '1';
+                
+                return {
+                  id: `finance.transactions.month.${monthKey}.week-${weekSlug}`,
+                  label: weekName,
+                  type: 'folder',
+                  checked: true,
+                  expanded: false,
+                  children: weekTxns.map(t => {
+                    const tNode = buildNode(t, `finance.transactions.${t.id}`, depth + 4);
+                    tNode.id = `finance.transactions.month.${monthKey}.week-${weekSlug}.${t.id}`;
+                    tNode.label = `${t.type === 'credit' ? '+' : '-'} ₹${(t.amount || 0).toLocaleString()} - ${t.title || t.category}`;
+                    return tNode;
+                  })
+                };
+              })
+            };
+          });
+        })()
       },
       {
         id: 'finance.mutualfunds-group',
@@ -416,6 +479,7 @@ export function buildNode(data, path, depth = 0) {
       { key: 'writing', label: 'Writing & Creativity' },
       { key: 'reading', label: 'Reading & Learning' },
       { key: 'vault', label: 'Creative Vault' },
+      { key: 'roadmaps', label: 'Personal Roadmaps' },
     ];
 
     node.children = categories.map(cat => {

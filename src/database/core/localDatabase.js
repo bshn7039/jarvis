@@ -56,6 +56,13 @@ class LocalDatabase {
 
   setUserId(userId) {
     if (this.currentUserId !== userId) {
+      if (this.db) {
+        try {
+          this.db.close();
+        } catch (e) {
+          console.warn('[DB] Failed to close previous database connection:', e);
+        }
+      }
       this.currentUserId = userId;
       this.db = null; // Reset connection for new namespace
     }

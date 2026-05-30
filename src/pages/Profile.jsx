@@ -157,8 +157,6 @@ export default function Profile() {
   const [showNewCardModal, setShowNewCardModal] = useState(false);
 
   // Security Vault States
-  const [isVaultActive, setIsVaultActive] = useState(localStorage.getItem('jarvis_vault_active') === 'true');
-  const [vaultPassword, setVaultPassword] = useState('');
   const [backupPassword, setBackupPassword] = useState('');
   const [restorePassword, setRestorePassword] = useState('');
   const [restoreFile, setRestoreFile] = useState(null);
@@ -171,56 +169,11 @@ export default function Profile() {
     setTimeout(() => setSecurityMessage({ text: '', type: '' }), 5000);
   };
 
-  const handleSetVaultPassword = async (e) => {
-    e.preventDefault();
-    if (!vaultPassword) return;
-    setIsSecuring(true);
-    try {
-      await securityService.setPassword(vaultPassword);
-      setIsVaultActive(true);
-      setVaultPassword('');
-      showFeedback('Local cryptographic security passphrase set successfully.', 'success');
-    } catch (err) {
-      showFeedback('Failed to initialize security lock: ' + err.message, 'error');
-    } finally {
-      setIsSecuring(false);
-    }
-  };
-
-  const handleRemoveVaultPassword = async (e) => {
-    e.preventDefault();
-    if (!vaultPassword) return;
-    setIsSecuring(true);
-    try {
-      const isValid = await securityService.verifyPassword(vaultPassword);
-      if (!isValid) {
-        showFeedback('Verification failed. Invalid passphrase.', 'error');
-        return;
-      }
-      securityService.removePassword();
-      setIsVaultActive(false);
-      setVaultPassword('');
-      showFeedback('Cryptographic security vault disabled.', 'success');
-    } catch (err) {
-      showFeedback('Failed to remove vault lock: ' + err.message, 'error');
-    } finally {
-      setIsSecuring(false);
-    }
-  };
-
   const handleExportBackup = async (e) => {
     e.preventDefault();
     if (!backupPassword) return;
     setIsSecuring(true);
     try {
-      // If vault is active, check password first to avoid mismatch
-      if (isVaultActive) {
-        const isValid = await securityService.verifyPassword(backupPassword);
-        if (!isValid) {
-          showFeedback('Verification failed. Password mismatch.', 'error');
-          return;
-        }
-      }
       await securityService.exportEncryptedBackup(backupPassword);
       setBackupPassword('');
       showFeedback('Database fully encrypted and backup package exported.', 'success');
@@ -259,9 +212,9 @@ export default function Profile() {
 
   if (!profile) return null;
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = '/login';
   };
 
   const handleUpdateLanguage = (index, field, value) => {
@@ -351,61 +304,7 @@ export default function Profile() {
             {/* Security Vault Settings Grid */}
             <div className="grid gap-6 md:grid-cols-2">
               
-              {/* Vault Passphrase Configuration */}
-              <div className="rounded-xl border border-jarvis-border/60 bg-black/10 p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Key className="h-4 w-4 text-jarvis-accent" />
-                    <h4 className="text-xs font-semibold uppercase tracking-wider text-jarvis-text">Cryptographic Vault Lock</h4>
-                  </div>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                    isVaultActive 
-                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                      : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  }`}>
-                    {isVaultActive ? 'Active Lock' : 'No Lock Set'}
-                  </span>
-                </div>
-                
-                <p className="text-[11px] text-jarvis-muted leading-relaxed">
-                  Establish a secure passphrase to protect highly confidential records (like Journals and Personal Vault elements) directly within IndexedDB.
-                </p>
-
-                <form onSubmit={isVaultActive ? handleRemoveVaultPassword : handleSetVaultPassword} className="space-y-3">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[9px] uppercase tracking-wider text-jarvis-muted">Vault Passphrase</label>
-                    <input
-                      type="password"
-                      value={vaultPassword}
-                      onChange={(e) => setVaultPassword(e.target.value)}
-                      placeholder="Enter passphrase..."
-                      required
-                      className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-xs text-jarvis-text focus:border-jarvis-muted/40 focus:outline-none"
-                    />
-                  </div>
-                  
-                  <button
-                    type="submit"
-                    disabled={isSecuring}
-                    className={`w-full flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all ${
-                      isVaultActive
-                        ? 'border border-red-900/30 bg-red-900/15 text-red-400 hover:bg-red-900/25 cursor-pointer'
-                        : 'border border-jarvis-accent/30 bg-jarvis-accent/15 text-jarvis-accent hover:bg-jarvis-accent/25 cursor-pointer'
-                    }`}
-                  >
-                    {isSecuring ? (
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                    ) : isVaultActive ? (
-                      <Unlock className="h-3.5 w-3.5" />
-                    ) : (
-                      <Lock className="h-3.5 w-3.5" />
-                    )}
-                    {isVaultActive ? 'Disable Cryptographic Lock' : 'Enable Cryptographic Lock'}
-                  </button>
-                </form>
-              </div>
-
-              {/* Secure Encrypted Export */}
+              {/* Secure Snapshot Export */}
               <div className="rounded-xl border border-jarvis-border/60 bg-black/10 p-5 space-y-4">
                 <div className="flex items-center gap-2">
                   <Download className="h-4 w-4 text-sky-400" />
@@ -423,7 +322,7 @@ export default function Profile() {
                       type="password"
                       value={backupPassword}
                       onChange={(e) => setBackupPassword(e.target.value)}
-                      placeholder={isVaultActive ? "Enter active Vault password..." : "Define backup password..."}
+                      placeholder="Define backup password..."
                       required
                       className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-xs text-jarvis-text focus:border-jarvis-muted/40 focus:outline-none"
                     />
@@ -444,56 +343,56 @@ export default function Profile() {
                 </form>
               </div>
 
-            </div>
+              {/* Decrypt & Restore Section */}
+              <div className="rounded-xl border border-jarvis-border/60 bg-black/10 p-5 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-indigo-400" />
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-jarvis-text">Restore Database Snapshot</h4>
+                </div>
+                
+                <p className="text-[11px] text-jarvis-muted leading-relaxed">
+                  Restore your JARVIS system from an encrypted backup package. <span className="text-red-400 font-medium">Warning:</span> This will completely wipe and overwrite your existing database stores with the backup contents.
+                </p>
 
-            {/* Decrypt & Restore Section */}
-            <div className="rounded-xl border border-jarvis-border/60 bg-black/10 p-5 space-y-4">
-              <div className="flex items-center gap-2">
-                <Upload className="h-4 w-4 text-indigo-400" />
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-jarvis-text">Restore Database Snapshot</h4>
+                <form onSubmit={handleRestoreBackup} className="space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] uppercase tracking-wider text-jarvis-muted">Backup JSON File</label>
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={(e) => setRestoreFile(e.target.files[0])}
+                      required
+                      className="w-full text-[11px] text-jarvis-muted file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border file:border-jarvis-border/40 file:bg-black/40 file:text-[10px] file:text-jarvis-text file:hover:bg-white/5 file:cursor-pointer"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[9px] uppercase tracking-wider text-jarvis-muted">Decryption Password</label>
+                    <input
+                      type="password"
+                      value={restorePassword}
+                      onChange={(e) => setRestorePassword(e.target.value)}
+                      placeholder="Enter backup password..."
+                      required
+                      className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-xs text-jarvis-text focus:border-jarvis-muted/40 focus:outline-none"
+                    />
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    disabled={isSecuring || !restoreFile}
+                    className="w-full flex items-center justify-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
+                  >
+                    {isSecuring ? (
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5" />
+                    )}
+                    Decrypt & Ingest Database
+                  </button>
+                </form>
               </div>
-              
-              <p className="text-[11px] text-jarvis-muted leading-relaxed">
-                Restore your JARVIS system from an encrypted backup package. <span className="text-red-400 font-medium">Warning:</span> This will completely wipe and overwrite your existing database stores with the backup contents.
-              </p>
 
-              <form onSubmit={handleRestoreBackup} className="grid gap-4 md:grid-cols-3 items-end">
-                <div className="flex flex-col gap-1">
-                  <label className="text-[9px] uppercase tracking-wider text-jarvis-muted">Backup JSON File</label>
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={(e) => setRestoreFile(e.target.files[0])}
-                    required
-                    className="w-full text-xs text-jarvis-muted file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-jarvis-border/40 file:bg-black/40 file:text-xs file:text-jarvis-text file:hover:bg-white/5 file:cursor-pointer"
-                  />
-                </div>
-                
-                <div className="flex flex-col gap-1">
-                  <label className="text-[9px] uppercase tracking-wider text-jarvis-muted">Decryption Password</label>
-                  <input
-                    type="password"
-                    value={restorePassword}
-                    onChange={(e) => setRestorePassword(e.target.value)}
-                    placeholder="Enter backup password..."
-                    required
-                    className="rounded-lg border border-jarvis-border bg-black/20 px-3 py-2 text-xs text-jarvis-text focus:border-jarvis-muted/40 focus:outline-none"
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  disabled={isSecuring || !restoreFile}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-indigo-500/30 bg-indigo-500/15 text-indigo-400 hover:bg-indigo-500/25 px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer"
-                >
-                  {isSecuring ? (
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Upload className="h-3.5 w-3.5" />
-                  )}
-                  Decrypt & Ingest Database
-                </button>
-              </form>
             </div>
 
           </div>

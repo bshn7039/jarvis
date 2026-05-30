@@ -8,14 +8,14 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-7', // Personal Evolution
     category: 'Reading & Learning',
     title: 'Reading & Learning: The "One Action" Rule',
-    description: 'Treat self-development books as instruction manuals instead of novels.',
+    description: 'You bought the exact right books (Atomic Habits, Deep Work, Psychology of Money), but you treated them like novels instead of instruction manuals.',
     phases: [
       {
         objectiveId: 'obj-reading-p1',
         title: 'Phase 1: Environment Setup',
         steps: [
           { subGoalId: 'sub-reading-p1-s1', text: 'Set your book in an obvious, visible place (e.g. bedside table or desk)' },
-          { text: 'Remove distraction triggers (e.g. put phone in another room while reading)', subGoalId: 'sub-reading-p1-s2' }
+          { subGoalId: 'sub-reading-p1-s2', text: 'Remove distraction triggers (e.g. put phone in another room while reading)' }
         ]
       },
       {
@@ -34,7 +34,7 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-3', // Communication
     category: 'Voice & Breath Control',
     title: 'Voice & Breath Control: The Deep Default',
-    description: 'Shift voice power down to your diaphragm and find low chest resonance to speak confidently.',
+    description: 'Your voice sounds thin when you breathe from your chest and shoulders. We want to drop the power down to your stomach (your diaphragm). Hum low resonance notes to find your chest vibration and slow down speaking pace deliberately.',
     phases: [
       {
         objectiveId: 'obj-voice-p1',
@@ -65,10 +65,10 @@ const SEED_BLUEPRINTS = [
   },
   {
     goalId: 'goal-roadmap-fighting',
-    parentId: 'area-3', // Communication / Confidence
+    parentId: 'area-3', // Confidence
     category: 'Fighting & Confidence',
     title: 'Fighting (Confidence Booster & Physical Anchor)',
-    description: 'Knowing you can throw a punch changes how you walk into a room. Learn stance, striking, and defense.',
+    description: 'Knowing you can throw a punch changes how you walk into a room. Build confidence, defense, and striking.',
     phases: [
       {
         objectiveId: 'obj-fighting-p1',
@@ -93,7 +93,7 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-4', // Creative Skills
     category: 'Writing & Creativity',
     title: 'Writing, Poetry & Video Editing (The Output)',
-    description: 'Organize chaotic thoughts into clear sentences, prune lyrics, and master video pacing.',
+    description: "Real writing doesn't happen on the first try. Writing forces chaotic thoughts into clean, structured sentences.",
     phases: [
       {
         objectiveId: 'obj-writing-p1',
@@ -118,7 +118,7 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-4', // Creative Skills
     category: 'Singing & Instruments',
     title: 'Instruments (Guitar/Flute) & Singing',
-    description: 'Learn G-C-D-Em chords, match pitch with singing, and master flute breath control.',
+    description: 'Since you are a total rookie, the goal is just to make some noise, train your ear, and have fun.',
     phases: [
       {
         objectiveId: 'obj-music-p1',
@@ -146,10 +146,10 @@ const SEED_BLUEPRINTS = [
   },
   {
     goalId: 'goal-roadmap-social',
-    parentId: 'area-3', // Communication / Social Confidence
+    parentId: 'area-3', // Social Confidence
     category: 'Social Confidence',
     title: 'Social Confidence & Desensitization',
-    description: 'Overcome anxiety around strangers, lower the pedestal, and practice low-stakes desensitization.',
+    description: "Overcome high anxiety around unfamiliar girls, adults, and groups. Lower the pedestal, practice low-stakes interactions, and use the introvert's cheat code (ask and listen).",
     phases: [
       {
         objectiveId: 'obj-social-p1',
@@ -167,15 +167,15 @@ const SEED_BLUEPRINTS = [
           { subGoalId: 'sub-social-p2-s4', text: 'Lower the Pedestal: treat everyone like an engineering student trying to get by' },
           { subGoalId: 'sub-social-p2-s5', text: 'Low-Stakes Interaction: ask stranger for time in Hindi' },
           { subGoalId: 'sub-social-p2-s6', text: 'Low-Stakes Interaction: ask barista a question in English' },
-          { subGoalId: 'sub-social-p2-s7', text: 'Low-Stakes Interaction: compliment a classmate\'s shoes and walk away' },
-          { subGoalId: 'sub-social-p2-s8', text: 'Introvert\'s Cheat Code: ask one good question about them and just listen' }
+          { subGoalId: 'sub-social-p2-s7', text: "compliment a classmate's shoes and walk away" },
+          { subGoalId: 'sub-social-p2-s8', text: "Introvert's Cheat Code: ask one good question about them and just listen" }
         ]
       },
       {
         objectiveId: 'obj-social-p3',
         title: 'Phase 3: The Professional & Digital Persona',
         steps: [
-          { subGoalId: 'sub-social-p3-s9', text: 'Document, Don\'t Create: Set up LinkedIn and Twitter profiles' },
+          { subGoalId: 'sub-social-p3-s9', text: "Document, Don't Create: Set up LinkedIn and Twitter profiles" },
           { subGoalId: 'sub-social-p3-s10', text: 'Write short posts documenting your B.Tech transition, Java learnings, or JARVIS system' },
           { subGoalId: 'sub-social-p3-s11', text: 'Write journal entries in English to organize chaotic thoughts' }
         ]
@@ -187,7 +187,7 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-7', // Personal Evolution
     category: 'Style & Presentation',
     title: 'Style & Presentation (Dressing the Current Frame)',
-    description: 'Buy clothes that fit perfectly on chest but drape slightly loose around stomach, and adopt flannels/overshirts.',
+    description: 'At 5\'10" and 80kg, you have a solid frame. Go for clothes that fit perfectly on the shoulders and chest, but drape slightly loose around the midsection.',
     phases: [
       {
         objectiveId: 'obj-style-p1',
@@ -212,7 +212,7 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-7', // Personal Evolution
     category: 'Skincare & Haircare',
     title: 'Skincare & Haircare (Immediate Upgrades)',
-    description: 'Build simple skin cleansing habits (Cleanser/Moisturizer/Sunscreen) and clean haircut routines.',
+    description: 'Keep it simple so you actually stick to it. Cleanser, moisturizer, sunscreen, and regular cuts.',
     phases: [
       {
         objectiveId: 'obj-skincare-p1',
@@ -238,7 +238,7 @@ const SEED_BLUEPRINTS = [
     parentId: 'area-7', // Personal Evolution
     category: 'Nutrition & Sleep',
     title: 'Nutrition & Sleep System (The Engine)',
-    description: 'Shift bedtime to 9:00 PM - 5:00 AM by 15-minute increments and apply 7:30 PM dinner rules.',
+    description: 'Your sleep and diet goals are heavily connected. Shift your bedtime to 9 PM-5 AM and finish dinner by 7:30 PM.',
     phases: [
       {
         objectiveId: 'obj-sleep-p1',
@@ -265,6 +265,66 @@ const SEED_BLUEPRINTS = [
         ]
       }
     ]
+  },
+  {
+    goalId: 'goal-roadmap-creative',
+    parentId: 'area-4', // Creative Skills
+    category: 'Creative Thinking',
+    title: 'Creative Thinking: The Idea Muscle',
+    description: 'To be creative—whether writing code, proposing cool projects, or being witty in conversation—you need good inputs and forced outputs.',
+    phases: [
+      {
+        objectiveId: 'obj-creative-p1',
+        title: 'Phase 1: Input & Capture',
+        steps: [
+          { subGoalId: 'sub-creative-p1-s1', text: 'Write down 3 weird or interesting ideas daily in your notebook' },
+          { subGoalId: 'sub-creative-p1-s2', text: 'Read or consume high-quality essays, designs, or code repositories for 15 minutes' }
+        ]
+      }
+    ]
+  },
+  {
+    goalId: 'goal-roadmap-discipline',
+    parentId: 'area-6', // Productivity & Discipline
+    category: 'Discipline & Baseline Reset',
+    title: 'The Operating System: Discipline & Baseline Reset',
+    description: 'Fix momentum over motivation, break the dopamine traps (PMO, daydreaming), adopt fitness as a physical anchor, and execute the daily non-negotiable 3.',
+    phases: [
+      {
+        objectiveId: 'obj-discipline-p1',
+        title: 'Phase 1: Fixing the "Start" (Momentum over Motivation)',
+        steps: [
+          { subGoalId: 'sub-discipline-p1-s1', text: 'The 5-Minute Contract: Open the IDE or book for exactly 5 minutes without studying obligation.' },
+          { subGoalId: 'sub-discipline-p1-s2', text: 'Calibrate the Rewards: Tie personal rewards strictly to the end of the day.' }
+        ]
+      },
+      {
+        objectiveId: 'obj-discipline-p2',
+        title: 'Phase 2: Breaking the Dopamine Trap',
+        steps: [
+          { subGoalId: 'sub-discipline-p2-s3', text: 'Identify the Trigger: Note down what bored/tired states trigger PMO/wasted loops.' },
+          { subGoalId: 'sub-discipline-p2-s4', text: 'The Circuit Breaker: Physically change environment/do 10 pushups when loop triggers.' },
+          { subGoalId: 'sub-discipline-p2-s5', text: 'Neutralize the Daydreaming: Direct romantic/aesthetic frustrations into building yourself up.' }
+        ]
+      },
+      {
+        objectiveId: 'obj-discipline-p3',
+        title: 'Phase 3: The Physical Anchor',
+        steps: [
+          { subGoalId: 'sub-discipline-p3-s6', text: 'Reframing Fitness: Use gym as the ultimate direct feedback training ground for consistency.' },
+          { subGoalId: 'sub-discipline-p3-s7', text: 'The Spillover Effect: Build self-trust by working out so confidence spreads to coding/social.' }
+        ]
+      },
+      {
+        objectiveId: 'obj-discipline-p4',
+        title: 'Phase 4: Simple Execution (The Daily 3)',
+        steps: [
+          { subGoalId: 'sub-discipline-p4-s8', text: 'The Night Before: Avoid micro-schedules; define exactly 3 non-negotiable tasks.' },
+          { subGoalId: 'sub-discipline-p4-s9', text: 'The Target: Write down the 3 non-negotiables on a physical paper.' },
+          { subGoalId: 'sub-discipline-p4-s10', text: 'Execution: Wake up and execute the 3 non-negotiables first to win the day.' }
+        ]
+      }
+    ]
   }
 ];
 
@@ -281,7 +341,9 @@ const SEED_ROADMAPS_METADATA = SEED_BLUEPRINTS.map(b => ({
         b.goalId === 'goal-roadmap-social' ? 'Phase 1: 2-Second rule + Shadow speaking + Read aloud. Phase 2: Lower the pedestal + Low stakes interactions. Phase 3: Document B.Tech on LinkedIn/Twitter.' :
         b.goalId === 'goal-roadmap-style' ? 'Avoid overly tight or massive baggy clothes. Use open overshirt/flannel/jacket layering. Avoid skinny jeans; use straight-leg/athletic-fit.' :
         b.goalId === 'goal-roadmap-skincare' ? 'Face: Cleanser (morning and night) + Moisturizer + Sunscreen (day). Hair: Shampoo + Conditioner + regular cuts.' :
-        'Sleep Shifting: Bedtime shifted back by 15-30 minutes every few days. The Dinner Rule: Finish dinner by 7 PM or 7:30 PM. Cooking for yourself is a superpower.',
+        b.goalId === 'goal-roadmap-sleep' ? 'Sleep Shifting: Bedtime shifted back by 15-30 minutes every few days. The Dinner Rule: Finish dinner by 7 PM or 7:30 PM. Cooking for yourself is a superpower.' :
+        b.goalId === 'goal-roadmap-creative' ? 'Establish a routine for high-quality inputs (reading, visual feeds) and forced output drafts daily.' :
+        'Momentum over motivation: 5-minute contract to start. Break PMO/daydreaming circuit. Fitness is the ultimate consistency metric.',
   example: b.goalId === 'goal-roadmap-reading' ? 'You read Atomic Habits about "Environment Design." Stop reading. Go disable your YouTube Shorts or set your guitar on its stand. Once that action is taken, you earn the right to read the next chapter.' :
            b.goalId === 'goal-roadmap-voice' ? 'Lie flat on floor with heavy book on stomach (Floor Test). Hum low low Low note before starting the day. Slow speed by 10%.' :
            b.goalId === 'goal-roadmap-fighting' ? 'Before gym: Look up boxing stance and jab-cross on YouTube. Spend 5 mins shadowboxing in front of a mirror focusing on keeping hands up and moving feet.' :
@@ -290,7 +352,9 @@ const SEED_ROADMAPS_METADATA = SEED_BLUEPRINTS.map(b => ({
            b.goalId === 'goal-roadmap-social' ? 'Pause 2 seconds before speaking. Shadow speak aloud to an empty room. Ask a stranger for the time in Hindi, ask barista in English, compliment shoes and walk away.' :
            b.goalId === 'goal-roadmap-style' ? 'An open overshirt or flannel over a solid-colored t-shirt squares off shoulders and hides stomach weight.' :
            b.goalId === 'goal-roadmap-skincare' ? 'Wash face in morning, apply moisturizer and sunscreen. Wash face at night, apply moisturizer. Cut sides of hair every 3-4 weeks.' :
-           'Log everything you eat. If bedtime is currently 12 AM, shift to 11:45 PM for a few days, then 11:30 PM, until hitting 9 PM.',
+           b.goalId === 'goal-roadmap-sleep' ? 'Log everything you eat. If bedtime is currently 12 AM, shift to 11:45 PM for a few days, then 11:30 PM, until hitting 9 PM.' :
+           b.goalId === 'goal-roadmap-creative' ? 'Sit down and write 10 ideas about a single simple prompt (e.g. 10 app ideas, 10 lyrics, 10 ways to style flannels).' :
+           'Whenever the urge to browse PMO or waste time daydreaming hits, immediately close the laptop, walk out, drink cold water, or drop for 10 pushups.',
   microDose: b.goalId === 'goal-roadmap-reading' ? 'Read just 5 pages a day. Do not try to read for an hour. Consistency beats volume.' :
              b.goalId === 'goal-roadmap-voice' ? 'Morning Resonance Hum: Hum low Low note for 3 minutes. Project your voice physically to the wall behind the listener. Deliberate 10% speaking slow-down.' :
              b.goalId === 'goal-roadmap-fighting' ? 'Shadowbox for 5 minutes in front of a mirror daily.' :
@@ -299,7 +363,9 @@ const SEED_ROADMAPS_METADATA = SEED_BLUEPRINTS.map(b => ({
              b.goalId === 'goal-roadmap-social' ? 'Pause 2 seconds before speaking. Actively shadow speak for 5 minutes. Read aloud for 10 minutes.' :
              b.goalId === 'goal-roadmap-style' ? 'Mindset: Don\'t wait until you lose weight to dress well. Dress sharp today to build immediate confidence.' :
              b.goalId === 'goal-roadmap-skincare' ? 'Wash face morning/night. Wear sunscreen daily. Get a haircut every 3-4 weeks.' :
-             'Finish dinner by 7:30 PM. Log meals. Shift bedtime by 15 mins if shifting.',
+             b.goalId === 'goal-roadmap-sleep' ? 'Finish dinner by 7:30 PM. Log meals. Shift bedtime by 15 mins if shifting.' :
+             b.goalId === 'goal-roadmap-creative' ? 'Input: Read a design essay or technical article for 10 mins. Output: Jot down 3 ideas in Jarvis.' :
+             'Use the 5-minute transition contract. Clear daily 3 non-negotiables. Tie rewards strictly to the end of the day.',
   customLogs: {
     appliedActions: [],
     breathingSessions: [],
@@ -323,15 +389,76 @@ export const usePersonalRoadmapStore = create((set, get) => ({
 
   hydrate: async () => {
     try {
-      let dbRoadmaps = await personalRoadmapService.getRoadmaps();
-      if (!dbRoadmaps || dbRoadmaps.length === 0) {
-        console.log('[Roadmap Store] Seeding default metadata...');
-        const savedPromises = SEED_ROADMAPS_METADATA.map(async (r) => {
+      const dbRoadmaps = await personalRoadmapService.getRoadmaps();
+      
+      // Deduplicate: Keep one roadmap per category, preferring the copy that has custom logs
+      const uniqueCategoryMap = new Map();
+      const idsToDelete = [];
+      
+      const sortedRoadmaps = [...dbRoadmaps].sort((a, b) => {
+        const aLogsCount = Object.values(a.customLogs || {}).flat().length;
+        const bLogsCount = Object.values(b.customLogs || {}).flat().length;
+        return bLogsCount - aLogsCount;
+      });
+      
+      const keptRoadmaps = [];
+      
+      for (const r of sortedRoadmaps) {
+        const key = r.category.toLowerCase().trim();
+        if (uniqueCategoryMap.has(key)) {
+          idsToDelete.push(r.id);
+        } else {
+          uniqueCategoryMap.set(key, r);
+          keptRoadmaps.push(r);
+        }
+      }
+      
+      // Delete duplicates
+      if (idsToDelete.length > 0) {
+        console.log(`[Roadmap Store] Deduplicating, deleting ${idsToDelete.length} duplicates...`);
+        for (const id of idsToDelete) {
+          await personalRoadmapService.delete(id);
+          try {
+            const { useGoalStore } = await import('./goalStore');
+            await useGoalStore.getState().deleteGoal(id);
+          } catch (e) {}
+        }
+      }
+
+      // Check for and add any missing seed roadmaps
+      let dbRoadmapsFinal = [...keptRoadmaps];
+      const missingSeeds = SEED_ROADMAPS_METADATA.filter(seed => {
+        const key = seed.category.toLowerCase().trim();
+        return !uniqueCategoryMap.has(key);
+      });
+      
+      if (missingSeeds.length > 0) {
+        console.log(`[Roadmap Store] Seeding ${missingSeeds.length} missing roadmaps...`);
+        const savedPromises = missingSeeds.map(async (r) => {
           return personalRoadmapService.saveRoadmap(r);
         });
-        dbRoadmaps = await Promise.all(savedPromises);
+        const newlySaved = await Promise.all(savedPromises);
+        dbRoadmapsFinal = [...dbRoadmapsFinal, ...newlySaved];
       }
-      set({ roadmaps: dbRoadmaps, isHydrated: true });
+      
+      // Auto-update existing roadmaps to have the latest custom titles and descriptions
+      dbRoadmapsFinal = await Promise.all(dbRoadmapsFinal.map(async (r) => {
+        const matchSeed = SEED_ROADMAPS_METADATA.find(s => s.category.toLowerCase().trim() === r.category.toLowerCase().trim());
+        if (matchSeed && (r.description !== matchSeed.description || r.title !== matchSeed.title)) {
+          console.log(`[Roadmap Store] Auto-updating ${r.category} metadata in DB...`);
+          const updated = await personalRoadmapService.updateRoadmap(r.id, {
+            title: matchSeed.title,
+            description: matchSeed.description,
+            rule: matchSeed.rule,
+            example: matchSeed.example,
+            microDose: matchSeed.microDose
+          });
+          return updated || r;
+        }
+        return r;
+      }));
+      
+      set({ roadmaps: dbRoadmapsFinal, isHydrated: true });
       
       // Sync Goals and Sub-Goals into J.A.R.V.I.S. Goals system
       await get().preSeedIntoJarvis();
@@ -372,10 +499,11 @@ export const usePersonalRoadmapStore = create((set, get) => ({
         taskUpdated = true;
       }
 
+      // Sync SEED blueprints directly into J.A.R.V.I.S. goals hierarchy
       for (const blueprint of SEED_BLUEPRINTS) {
         // 2. Sync Main Goal
-        const mainGoalExists = currentGoals.some(g => g.id === blueprint.goalId);
-        if (!mainGoalExists) {
+        const existingGoal = currentGoals.find(g => g.id === blueprint.goalId);
+        if (!existingGoal) {
           await goalStore.addGoal({
             id: blueprint.goalId,
             parentId: blueprint.parentId,
@@ -387,12 +515,18 @@ export const usePersonalRoadmapStore = create((set, get) => ({
             linkedTaskIds: []
           });
           goalUpdated = true;
+        } else if (existingGoal.title !== blueprint.title || existingGoal.description !== blueprint.description) {
+          await goalStore.updateGoal(existingGoal.id, {
+            title: blueprint.title,
+            description: blueprint.description
+          });
+          goalUpdated = true;
         }
 
         // 3. Sync Phase (Objective)
         for (const phase of blueprint.phases) {
-          const objectiveExists = currentGoals.some(g => g.id === phase.objectiveId);
-          if (!objectiveExists) {
+          const existingObjective = currentGoals.find(g => g.id === phase.objectiveId);
+          if (!existingObjective) {
             await goalStore.addGoal({
               id: phase.objectiveId,
               parentId: blueprint.goalId,
@@ -404,12 +538,15 @@ export const usePersonalRoadmapStore = create((set, get) => ({
               linkedTaskIds: []
             });
             goalUpdated = true;
+          } else if (existingObjective.title !== phase.title) {
+            await goalStore.updateGoal(existingObjective.id, { title: phase.title });
+            goalUpdated = true;
           }
 
           // 4. Sync Phase Step (Sub-Goal instead of Task)
           for (const step of phase.steps) {
-            const subGoalExists = currentGoals.some(g => g.id === step.subGoalId);
-            if (!subGoalExists) {
+            const existingSubGoal = currentGoals.find(g => g.id === step.subGoalId);
+            if (!existingSubGoal) {
               await goalStore.addGoal({
                 id: step.subGoalId,
                 parentId: phase.objectiveId,
@@ -420,6 +557,9 @@ export const usePersonalRoadmapStore = create((set, get) => ({
                 completed: false,
                 linkedTaskIds: []
               });
+              goalUpdated = true;
+            } else if (existingSubGoal.title !== step.text) {
+              await goalStore.updateGoal(existingSubGoal.id, { title: step.text });
               goalUpdated = true;
             }
           }
@@ -437,6 +577,12 @@ export const usePersonalRoadmapStore = create((set, get) => ({
 
   addRoadmap: async (data) => {
     const goalId = `goal-roadmap-${Date.now()}`;
+    let parentAreaId = data.parentId || 'area-7';
+    if (!data.parentId) {
+      if (data.category?.includes('Communication') || data.category?.includes('Voice') || data.category?.includes('Fighting')) parentAreaId = 'area-3';
+      else if (data.category?.includes('Writing') || data.category?.includes('Music') || data.category?.includes('Singing')) parentAreaId = 'area-4';
+    }
+
     const next = {
       id: goalId,
       category: data.category || 'Reading & Learning',
@@ -445,6 +591,7 @@ export const usePersonalRoadmapStore = create((set, get) => ({
       rule: data.rule || '',
       example: data.example || '',
       microDose: data.microDose || '',
+      parentId: parentAreaId,
       customLogs: data.customLogs || {},
       active: true
     };
@@ -457,10 +604,6 @@ export const usePersonalRoadmapStore = create((set, get) => ({
     try {
       const { useGoalStore } = await import('./goalStore');
       const goalStore = useGoalStore.getState();
-
-      let parentAreaId = 'area-7';
-      if (data.category?.includes('Communication') || data.category?.includes('Voice') || data.category?.includes('Fighting')) parentAreaId = 'area-3';
-      else if (data.category?.includes('Writing') || data.category?.includes('Music') || data.category?.includes('Singing')) parentAreaId = 'area-4';
 
       await goalStore.addGoal({
         id: goalId,
