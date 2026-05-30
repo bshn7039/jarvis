@@ -17,15 +17,18 @@ class MigrationService {
       console.log(`[Migration] Checking for legacy local IndexedDB database to migrate for username: ${username}`);
       
       // 2. Find the local user matching this username case-insensitively
-      const allLocalUsers = await authService.getUsers();
-      const localUser = allLocalUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
-      if (!localUser || !localUser.userId) {
-        console.log('[Migration] No local user database matching this username was found. Skipping migration.');
-        return;
+      let localUserId = null;
+      try {
+        const allLocalUsers = await authService.getUsers();
+        const localUser = allLocalUsers.find(u => u.username.toLowerCase() === username.toLowerCase());
+        if (localUser && localUser.userId) {
+          localUserId = localUser.userId;
+        }
+      } catch (err) {
+        console.warn('[Migration] Failed to fetch local users, falling back to legacy single-user:', err);
       }
       
-      const localUserId = localUser.userId;
-      console.log(`[Migration] Found local database with userId: ${localUserId}. Starting data migration to Firebase...`);
+      console.log(`[Migration] Target local database identifier: ${localUserId ? `user_${localUserId}` : 'default (legacy)'}. Starting data migration to Firebase...`);
       
       // 3. Initialize a separate IndexedDB instance for the local user to read their offline data
       const localDbInstance = new IndexedDbDatabase();
